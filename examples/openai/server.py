@@ -1,13 +1,14 @@
 import argparse
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from loguru import logger
 from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 from syft_llm_router import BaseLLMRouter
+from syft_llm_router.error import InvalidRequestError, RouterError
 from syft_llm_router.schema import (
     ChatRequest,
     ChatResponse,
@@ -47,21 +48,33 @@ def create_server(server_name: str, config_path: Optional[Path] = None):
 
 
 def handle_completion_request(
-    request: CompletionRequest, ctx: Request
-) -> CompletionResponse:
+    request: CompletionRequest,
+    ctx: Request,
+) -> Union[CompletionResponse, RouterError]:
     """Handle a completion request."""
 
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
-    response = provider.generate_completion(request=request)
+    try:
+        response = provider.generate_completion(request=request)
+    except Exception as e:
+        logger.error(f"Error processing request: {e}")
+        response = InvalidRequestError(message=str(e))
     return response
 
 
-def handle_chat_completion_request(request: ChatRequest, ctx: Request) -> ChatResponse:
+def handle_chat_completion_request(
+    request: ChatRequest,
+    ctx: Request,
+) -> Union[ChatResponse, RouterError]:
     """Handle a chat completion request."""
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
-    response = provider.generate_chat(request=request)
+    try:
+        response = provider.generate_chat(request=request)
+    except Exception as e:
+        logger.error(f"Error processing request: {e}")
+        response = InvalidRequestError(message=str(e))
     return response
 
 

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, Field
+from typing_extensions import TypeVar
 
 
 class BaseError(BaseModel):
@@ -52,3 +53,6 @@ class RateLimitExceededError(BaseError):
         default="Rate limit exceeded",
         description="Error message for rate limit exceeded errors",
     )
+
+
+RouterError = TypeVar("RouterError", bound=BaseError, covariant=True)
