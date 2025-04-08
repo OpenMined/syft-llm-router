@@ -1,0 +1,30 @@
+[project]
+name = "syft-llm-router"
+version = "0.1.0"
+description = "Syft LLM Router Protocol"
+requires-python = ">=3.10.12"
+dependencies = [
+    "ipython>=8.34.0",
+    "pydantic>=2.11.2",
+    "syft-event",
+    "typer>=0.15.2",
+]
+
+[project.scripts]
+syftllm = "syft_llm_router.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "openai>=1.70.0",
+]
+
+[tool.uv.sources]
+syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/syft_llm_router"]

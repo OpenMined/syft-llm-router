@@ -1,0 +1,100 @@
+import argparse
+from syft_event import SyftEvents
+from syft_event.types import Request
+from syft_core import Client
+from syft_llm_router.schema import (
+    CompletionRequest,
+    ChatRequest,
+    ChatResponse,
+    CompletionResponse,
+)
+from typing_extensions import Optional
+from pathlib import Path
+from loguru import logger
+
+
+def load_router():
+    """Load your implementation of the LLM provider."""
+
+    # This is a placeholder for the actual provider loading logic.
+    # You should replace this with the actual provider you want to use.
+    # For example, if you have a provider class named `MyLLMProvider`, you would do:
+    # from my_llm_provider import MyLLMProvider
+    # args = ...  # Load or define your provider arguments here 
+    # kwargs = ...  # Load or define your provider keyword arguments here
+    # provider = MyLLMProvider(*args, **kwargs)
+    # return provider
+
+    raise NotImplementedError(
+        "You need to implement the load_router function to return your LLM provider."
+    )
+
+
+def create_server(server_name: str, config_path: Optional[Path] = None):
+    """Create and return the SyftEvents server with the given config path."""
+    if config_path:
+        client = Client.load(path=config_path)
+    else:
+        client = Client.load()
+    return SyftEvents(server_name, client=client)
+
+
+def handle_completion_request(
+    request: CompletionRequest, ctx: Request
+) -> CompletionResponse:
+    """Handle a completion request."""
+
+    logger.info(f"Processing completion request: <{request.id}>from <{request.sender}>")
+    provider = load_router()
+    response = provider.generate_completion(request=request)
+    return response
+
+
+def handle_chat_completion_request(request: ChatRequest, ctx: Request) -> ChatResponse:
+    """Handle a chat completion request."""
+    logger.info(f"Processing chat request: <{request.id}>from <{request.sender}>")
+    provider = load_router()
+    response = provider.generate_chat(request=request)
+    return response
+
+
+def register_routes(server):
+    """Register all routes on the given server instance."""
+    server.on_request("/completions")(handle_completion_request)
+    server.on_request("/chat")(handle_chat_completion_request)
+    return server
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Syft LLM Provider server")
+
+    parser.add_argument(
+        "--server-name",
+        type=str,
+        default="llm",
+        help="Name of the server instance. Default is 'llm'.",
+        required=False,
+    )
+    parser.add_argument(
+        "--config",
+        "-c",
+        type=str,
+        help="Path to client configuration file",
+        required=False,
+    )
+
+    args = parser.parse_args()
+
+    # Create server with config
+    box = create_server(server_name=args.server_name, config_path=args.config)
+
+    # Register routes
+    register_routes(box)
+
+    try:
+        print("Starting server...")
+        box.run_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server...")
+    except Exception as e:
+        print(f"Error running server: {e}")

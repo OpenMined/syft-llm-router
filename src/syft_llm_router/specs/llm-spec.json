@@ -1,0 +1,387 @@
+{
+    "syftbox-llm": "0.0.1",
+    "info": {
+        "title": "SyftBox LLM Specification",
+        "version": "0.0.1",
+        "description": "A specification for standardizing outputs from various LLM providers including OpenAI, Anthropic, HuggingFace, etc.",
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "extensions": [
+            {
+                "name": "x-extension-process",
+                "description": "Describes how extensions should be handled in this specification"
+            }
+        ]
+    },
+    "servers": [
+        {
+            "name": "Example Server",
+            "url": "https://api.example.com/v1"
+        }
+    ],
+    "methods": [
+        {
+            "name": "generateCompletion",
+            "description": "Generate a text completion based on a prompt",
+            "params": [
+                {
+                    "name": "model",
+                    "description": "The model identifier to use for generation",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "prompt",
+                    "description": "The input text to generate from",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "options",
+                    "description": "Additional parameters for the generation",
+                    "required": false,
+                    "schema": {
+                        "$ref": "#/components/schemas/GenerationOptions"
+                    }
+                }
+            ],
+            "result": {
+                "name": "completionResult",
+                "description": "The result of the completion operation",
+                "schema": {
+                    "$ref": "#/components/schemas/CompletionResponse"
+                }
+            },
+            "errors": [
+                {
+                    "$ref": "#/components/errors/ModelNotFound"
+                },
+                {
+                    "$ref": "#/components/errors/InvalidRequest"
+                },
+                {
+                    "$ref": "#/components/errors/RateLimitExceeded"
+                }
+            ]
+        },
+        {
+            "name": "generateChat",
+            "description": "Generate a chat response based on a conversation history",
+            "params": [
+                {
+                    "name": "model",
+                    "description": "The model identifier to use for chat",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "messages",
+                    "description": "Array of message objects representing the conversation",
+                    "required": true,
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Message"
+                        }
+                    }
+                },
+                {
+                    "name": "options",
+                    "description": "Additional parameters for the generation",
+                    "required": false,
+                    "schema": {
+                        "$ref": "#/components/schemas/GenerationOptions"
+                    }
+                }
+            ],
+            "result": {
+                "name": "chatResult",
+                "description": "The result of the chat operation",
+                "schema": {
+                    "$ref": "#/components/schemas/ChatResponse"
+                }
+            },
+            "errors": [
+                {
+                    "$ref": "#/components/errors/ModelNotFound"
+                },
+                {
+                    "$ref": "#/components/errors/InvalidRequest"
+                },
+                {
+                    "$ref": "#/components/errors/RateLimitExceeded"
+                }
+            ]
+        }
+    ],
+    "components": {
+        "x-extension-types": {
+            "OpenAI": {
+                "namespace": "x-openai",
+                "description": "Extensions specific to OpenAI models",
+                "website": "https://platform.openai.com/docs/api-reference"
+            },
+            "Anthropic": {
+                "namespace": "x-anthropic",
+                "description": "Extensions specific to Anthropic models",
+                "website": "https://docs.anthropic.com/claude/reference"
+            },
+            "HuggingFace": {
+                "namespace": "x-hf",
+                "description": "Extensions specific to HuggingFace models",
+                "website": "https://huggingface.co/docs/api-inference"
+            },
+            "LangChain": {
+                "namespace": "x-langchain",
+                "description": "Extensions specific to LangChain framework",
+                "website": "https://js.langchain.com/docs/"
+            },
+            "LlamaIndex": {
+                "namespace": "x-llamaindex",
+                "description": "Extensions specific to LlamaIndex framework",
+                "website": "https://docs.llamaindex.ai/"
+            }
+        },
+        "schemas": {
+            "Message": {
+                "type": "object",
+                "required": [
+                    "role",
+                    "content"
+                ],
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "system",
+                            "user",
+                            "assistant"
+                        ],
+                        "description": "The role of the message author"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The content of the message"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Optional name identifying the message author"
+                    }
+                }
+            },
+            "GenerationOptions": {
+                "type": "object",
+                "properties": {
+                    "max_tokens": {
+                        "type": "integer",
+                        "description": "Maximum number of tokens to generate"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "description": "Sampling temperature",
+                        "minimum": 0.0,
+                        "maximum": 2.0
+                    },
+                    "top_p": {
+                        "type": "number",
+                        "description": "Nucleus sampling parameter",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "stop_sequences": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Sequences that will stop generation if encountered"
+                    },
+                    "logprobs": {
+                        "type": "boolean",
+                        "description": "Whether to return log probabilities of the output tokens"
+                    },
+                    "top_logprobs": {
+                        "type": "integer",
+                        "description": "Number of most likely tokens to return logprobs for (only works when logprobs=true)"
+                    },
+                    "extensions": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Container for router-specific extensions"
+                    }
+                }
+            },
+            "CompletionResponse": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "model",
+                    "text",
+                    "usage"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Unique identifier (UUID) for this completion"
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": "Model used for generation"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Generated text"
+                    },
+                    "finish_reason": {
+                        "type": "string",
+                        "enum": [
+                            "stop",
+                            "length",
+                            "content_filter"
+                        ],
+                        "description": "Reason why the generation stopped"
+                    },
+                    "usage": {
+                        "$ref": "#/components/schemas/Usage"
+                    },
+                    "provider_info": {
+                        "type": "object",
+                        "description": "Router-specific information"
+                    },
+                    "logprobs": {
+                        "logprobs": {
+                            "$ref": "#/components/schemas/LogProbs"
+                        }
+                    }
+                },
+                "ChatResponse": {
+                    "type": "object",
+                    "required": [
+                        "id",
+                        "model",
+                        "message",
+                        "usage"
+                    ],
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "Unique identifier (UUID) for this chat completion"
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "Model used for generation"
+                        },
+                        "message": {
+                            "$ref": "#/components/schemas/Message"
+                        },
+                        "finish_reason": {
+                            "type": "string",
+                            "enum": [
+                                "stop",
+                                "length",
+                                "content_filter"
+                            ],
+                            "description": "Reason why the generation stopped"
+                        },
+                        "usage": {
+                            "$ref": "#/components/schemas/Usage"
+                        },
+                        "provider_info": {
+                            "type": "object",
+                            "description": "Router-specific information"
+                        },
+                        "logprobs": {
+                            "logprobs": {
+                                "$ref": "#/components/schemas/LogProbs"
+                            }
+                        }
+                    },
+                    "Usage": {
+                        "type": "object",
+                        "required": [
+                            "prompt_tokens",
+                            "completion_tokens",
+                            "total_tokens"
+                        ],
+                        "properties": {
+                            "prompt_tokens": {
+                                "type": "integer",
+                                "description": "Number of tokens in the prompt"
+                            },
+                            "completion_tokens": {
+                                "type": "integer",
+                                "description": "Number of tokens in the completion"
+                            },
+                            "total_tokens": {
+                                "type": "integer",
+                                "description": "Total tokens used"
+                            }
+                        }
+                    },
+                    "LogProbs": {
+                        "type": "object",
+                        "properties": {
+                            "token_logprobs": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "number"
+                                },
+                                "description": "Map of tokens to their log probabilities"
+                            }
+                        }
+                    }
+                },
+                "errors": {
+                    "ModelNotFound": {
+                        "code": 404,
+                        "message": "Model not found",
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "model": {
+                                    "type": "string",
+                                    "description": "The requested model ID"
+                                }
+                            }
+                        }
+                    },
+                    "InvalidRequest": {
+                        "code": 400,
+                        "message": "Invalid request",
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "details": {
+                                    "type": "string",
+                                    "description": "Details about the validation error"
+                                }
+                            }
+                        }
+                    },
+                    "RateLimitExceeded": {
+                        "code": 429,
+                        "message": "Rate limit exceeded",
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "retry_after": {
+                                    "type": "integer",
+                                    "description": "Seconds to wait before retrying"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
