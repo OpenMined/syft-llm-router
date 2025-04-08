@@ -1,7 +1,7 @@
-from typer import Typer, Option
 from pathlib import Path
-from typing_extensions import Union, Annotated
+from typing import Annotated, Union
 
+from typer import Option, Typer
 
 app = Typer(
     name="syftrouter",
@@ -9,6 +9,7 @@ app = Typer(
     no_args_is_help=True,
     pretty_exceptions_enable=False,
     context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=True,
 )
 
 
@@ -22,8 +23,14 @@ def version() -> None:
 
 TEMPLATE_FOLDER = Path(__file__).parent / "templates"
 SERVER_TEMPLATE_FILENAME = "server.py.tmpl"
-PROVIDER_TEMPLATE_FILENAME = "provider.py.tmpl"
+PROVIDER_TEMPLATE_FILENAME = "router.py.tmpl"
 
+
+PROJECT_NAME_OPTS = Option(
+    "--name",
+    "-n",
+    help="Name of the LLM Provider project",
+)
 
 PROJECT_DIR_OPTS = Option(
     "-f",
@@ -55,7 +62,7 @@ def __copy_template(template_name: str, project_folder: Path) -> None:
     print(f"Created {dest_name} template at {dest}")
 
 
-def __create_folder(folder: Union[str, Path]) -> None:
+def __create_folder(folder: Union[str, Path]) -> Path:
     """
     Create a folder if it doesn't exist.
     """
@@ -67,12 +74,13 @@ def __create_folder(folder: Union[str, Path]) -> None:
 
 @app.command()
 def create_llmrouter_app(
+    name: Annotated[str, PROJECT_NAME_OPTS],
     folder: Annotated[Path, PROJECT_DIR_OPTS] = Path.cwd(),
 ) -> None:
     """Initialize a new project in the given folder."""
 
     # Create project folder if it doesn't exist
-    project_folder = __create_folder(folder)
+    project_folder = __create_folder(folder / name)
 
     # Copy the templates to the project folder
     for filename in [SERVER_TEMPLATE_FILENAME, PROVIDER_TEMPLATE_FILENAME]:

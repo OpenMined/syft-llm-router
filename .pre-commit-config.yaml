@@ -14,8 +14,9 @@ repos:
     rev: v0.1.12
     hooks:
     -   id: ruff
-        args: ["--fix", "--exit-non-zero-on-fix", "--select=I,E,F,UP"]
+        args: ["--fix", "--exit-non-zero-on-fix", "--select=I,E,F,UP", "--no-cache"]
     -   id: ruff-format
+        args: ["--no-cache"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
@@ -25,4 +26,4 @@ repos:
             "pydantic>=2.11.2",
             "types-requests",
         ]
-        exclude: ^tests/
+        exclude: ^(tests/|examples/)

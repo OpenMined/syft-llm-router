@@ -1,7 +1,7 @@
 import argparse
 import os
 from pathlib import Path
-from typing_extensions import Optional
+from typing import Optional
 
 from loguru import logger
 from syft_core import Client
@@ -28,9 +28,13 @@ def load_router() -> BaseLLMRouter:
     # provider = MyLLMProvider(*args, **kwargs)
     # return provider
 
-    raise NotImplementedError(
-        "You need to implement the load_router function to return your LLM provider."
-    )
+    from router import SyftOpenAIRouter
+
+    api_key = os.environ.get("OPENAI_API_KEY", None)
+
+    router = SyftOpenAIRouter(api_key=api_key)
+
+    return router
 
 
 def create_server(server_name: str, config_path: Optional[Path] = None):
@@ -47,7 +51,7 @@ def handle_completion_request(
 ) -> CompletionResponse:
     """Handle a completion request."""
 
-    logger.info(f"Processing completion request: <{request.id}>from <{request.sender}>")
+    logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     response = provider.generate_completion(request=request)
     return response
@@ -55,7 +59,7 @@ def handle_completion_request(
 
 def handle_chat_completion_request(request: ChatRequest, ctx: Request) -> ChatResponse:
     """Handle a chat completion request."""
-    logger.info(f"Processing chat request: <{request.id}>from <{request.sender}>")
+    logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     response = provider.generate_chat(request=request)
     return response
@@ -86,6 +90,13 @@ if __name__ == "__main__":
         required=False,
     )
 
+    # Customization added to input OpenAI API key
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        help="OpenAI API key. If not provided, will use OPENAI_API_KEY environment variable.",
+    )
+
     args = parser.parse_args()
 
     # Create server with config
@@ -93,6 +104,10 @@ if __name__ == "__main__":
 
     # Register routes
     register_routes(box)
+
+    # Set environment variables for OpenAI API key
+    if args.api_key:
+        os.environ["OPENAI_API_KEY"] = args.api_key
 
     try:
         print("Starting server...")

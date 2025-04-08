@@ -1,7 +1,7 @@
 {
-    "syftbox-llm": "0.0.1",
+    "syft-llm-router": "0.0.1",
     "info": {
-        "title": "SyftBox LLM Specification",
+        "title": "SyftBox LLM Router Specification",
         "version": "0.0.1",
         "description": "A specification for standardizing outputs from various LLM providers including OpenAI, Anthropic, HuggingFace, etc.",
         "license": {
