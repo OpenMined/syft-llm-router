@@ -60,13 +60,13 @@
             },
             "errors": [
                 {
-                    "$ref": "#/components/errors/ModelNotFound"
+                    "$ref": "#/components/errors/ModelNotFoundError"
                 },
                 {
-                    "$ref": "#/components/errors/InvalidRequest"
+                    "$ref": "#/components/errors/InvalidRequestError"
                 },
                 {
-                    "$ref": "#/components/errors/RateLimitExceeded"
+                    "$ref": "#/components/errors/RateLimitExceededError"
                 }
             ]
         },
@@ -187,14 +187,14 @@
                     "temperature": {
                         "type": "number",
                         "description": "Sampling temperature",
-                        "minimum": 0.0,
-                        "maximum": 2.0
+                        "minimum": 0,
+                        "maximum": 2
                     },
                     "top_p": {
                         "type": "number",
                         "description": "Nucleus sampling parameter",
-                        "minimum": 0.0,
-                        "maximum": 1.0
+                        "minimum": 0,
+                        "maximum": 1
                     },
                     "stop_sequences": {
                         "type": "array",
@@ -341,44 +341,63 @@
                     }
                 },
                 "errors": {
-                    "ModelNotFound": {
-                        "code": 404,
-                        "message": "Model not found",
-                        "data": {
-                            "type": "object",
-                            "properties": {
-                                "model": {
-                                    "type": "string",
-                                    "description": "The requested model ID"
-                                }
+                    "BaseError": {
+                        "type": "object",
+                        "required": [
+                            "code",
+                            "message"
+                        ],
+                        "properties": {
+                            "code": {
+                                "type": "integer",
+                                "description": "Error code"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "Human readable error message"
+                            },
+                            "data": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "description": "Additional data related to the error"
                             }
                         }
                     },
-                    "InvalidRequest": {
-                        "code": 400,
-                        "message": "Invalid request",
-                        "data": {
-                            "type": "object",
-                            "properties": {
-                                "details": {
-                                    "type": "string",
-                                    "description": "Details about the validation error"
+                    "InvalidRequestError": {
+                        "description": "The request was invalid or malformed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/errors/BaseError"
+                            },
+                            {
+                                "properties": {
+                                    "code": {
+                                        "type": "integer",
+                                        "enum": [
+                                            400
+                                        ]
+                                    }
                                 }
                             }
-                        }
+                        ]
                     },
-                    "RateLimitExceeded": {
-                        "code": 429,
-                        "message": "Rate limit exceeded",
-                        "data": {
-                            "type": "object",
-                            "properties": {
-                                "retry_after": {
-                                    "type": "integer",
-                                    "description": "Seconds to wait before retrying"
+                    "RateLimitExceededError": {
+                        "description": "The request exceeded the rate limit",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/errors/BaseError"
+                            },
+                            {
+                                "properties": {
+                                    "code": {
+                                        "type": "integer",
+                                        "enum": [
+                                            429
+                                        ]
+                                    }
                                 }
                             }
-                        }
+                        ]
                     }
                 }
             }
