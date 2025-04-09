@@ -33,3 +33,7 @@ This start an RPC server over SyftBox.
 ```bash
 uv run python openai-router/server.py
 ```
+
+## Examples
+
+Please refer to the examples in the [examples](./examples) folder for sample router implementations.
