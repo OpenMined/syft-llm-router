@@ -1,6 +1,7 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -18,32 +19,6 @@ class FinishReason(str, Enum):
     STOP = "stop"
     LENGTH = "length"
     CONTENT_FILTER = "content_filter"
-
-
-class ChatRequest(BaseModel):
-    """Request for a chat completion."""
-
-    # The model identifier to use for chat
-    model: str
-
-    # Array of message objects representing the conversation
-    messages: List["Message"]
-
-    # Additional parameters for the generation
-    options: Optional["GenerationOptions"] = None
-
-
-class CompletionRequest(BaseModel):
-    """Request for a text completion."""
-
-    # The model identifier to use for generation
-    model: str
-
-    # The input text to generate from
-    prompt: str
-
-    # Additional parameters for the generation
-    options: Optional["GenerationOptions"] = None
 
 
 class Message(BaseModel):
@@ -72,7 +47,7 @@ class GenerationOptions(BaseModel):
     top_p: Optional[float] = Field(None, ge=0.0, le=1.0)
 
     # Sequences that will stop generation if encountered
-    stop_sequences: Optional[List[str]] = None
+    stop_sequences: Optional[list[str]] = None
 
     # Whether to return log probabilities of the generated tokens
     logprobs: Optional[bool] = None
@@ -81,7 +56,7 @@ class GenerationOptions(BaseModel):
     top_logprobs: Optional[int] = None
 
     # Extensions for the generation options
-    extensions: Optional[Dict[str, Any]] = Field(
+    extensions: Optional[dict[str, Any]] = Field(
         default=None, description="Container for specification extensions"
     )
 
@@ -103,7 +78,7 @@ class LogProbs(BaseModel):
     """Log probabilities for generated tokens."""
 
     # Map of tokens to their log probabilities
-    token_logprobs: Dict[str, float] = Field(
+    token_logprobs: dict[str, float] = Field(
         description="Map of tokens to their log probabilities"
     )
 
@@ -127,7 +102,7 @@ class CompletionResponse(BaseModel):
     usage: Usage
 
     # Provider-specific information
-    provider_info: Optional[Dict[str, Any]] = None
+    provider_info: Optional[dict[str, Any]] = None
 
     # Log probabilities for generated tokens
     logprobs: Optional[LogProbs] = None
@@ -152,7 +127,7 @@ class ChatResponse(BaseModel):
     usage: Usage
 
     # Provider-specific information
-    provider_info: Optional[Dict[str, Any]] = None
+    provider_info: Optional[dict[str, Any]] = None
 
     # Log probabilities for generated tokens
     logprobs: Optional[LogProbs] = None
@@ -179,7 +154,7 @@ class GenerateChatParams(BaseModel):
     model: str
 
     # Array of message objects representing the conversation
-    messages: List[Message]
+    messages: list[Message]
 
     # Additional parameters for the generation
     options: Optional[GenerationOptions] = None

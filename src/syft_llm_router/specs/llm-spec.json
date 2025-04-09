@@ -261,145 +261,148 @@
                             "$ref": "#/components/schemas/LogProbs"
                         }
                     }
-                },
-                "ChatResponse": {
-                    "type": "object",
-                    "required": [
-                        "id",
-                        "model",
-                        "message",
-                        "usage"
-                    ],
-                    "properties": {
-                        "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "description": "Unique identifier (UUID) for this chat completion"
-                        },
-                        "model": {
-                            "type": "string",
-                            "description": "Model used for generation"
-                        },
-                        "message": {
-                            "$ref": "#/components/schemas/Message"
-                        },
-                        "finish_reason": {
-                            "type": "string",
-                            "enum": [
-                                "stop",
-                                "length",
-                                "content_filter"
-                            ],
-                            "description": "Reason why the generation stopped"
-                        },
-                        "usage": {
-                            "$ref": "#/components/schemas/Usage"
-                        },
-                        "provider_info": {
-                            "type": "object",
-                            "description": "Router-specific information"
-                        },
-                        "logprobs": {
-                            "logprobs": {
-                                "$ref": "#/components/schemas/LogProbs"
-                            }
-                        }
+                }
+            },
+            "ChatResponse": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "model",
+                    "message",
+                    "usage"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Unique identifier (UUID) for this chat completion"
                     },
-                    "Usage": {
-                        "type": "object",
-                        "required": [
-                            "prompt_tokens",
-                            "completion_tokens",
-                            "total_tokens"
+                    "model": {
+                        "type": "string",
+                        "description": "Model used for generation"
+                    },
+                    "message": {
+                        "$ref": "#/components/schemas/Message"
+                    },
+                    "finish_reason": {
+                        "type": "string",
+                        "enum": [
+                            "stop",
+                            "length",
+                            "content_filter"
                         ],
-                        "properties": {
-                            "prompt_tokens": {
-                                "type": "integer",
-                                "description": "Number of tokens in the prompt"
-                            },
-                            "completion_tokens": {
-                                "type": "integer",
-                                "description": "Number of tokens in the completion"
-                            },
-                            "total_tokens": {
-                                "type": "integer",
-                                "description": "Total tokens used"
-                            }
-                        }
+                        "description": "Reason why the generation stopped"
                     },
-                    "LogProbs": {
+                    "usage": {
+                        "$ref": "#/components/schemas/Usage"
+                    },
+                    "provider_info": {
                         "type": "object",
-                        "properties": {
-                            "token_logprobs": {
-                                "type": "object",
-                                "additionalProperties": {
-                                    "type": "number"
-                                },
-                                "description": "Map of tokens to their log probabilities"
-                            }
+                        "description": "Router-specific information"
+                    },
+                    "logprobs": {
+                        "logprobs": {
+                            "$ref": "#/components/schemas/LogProbs"
                         }
                     }
                 },
-                "errors": {
-                    "RouterError": {
+                "Usage": {
+                    "type": "object",
+                    "required": [
+                        "prompt_tokens",
+                        "completion_tokens",
+                        "total_tokens"
+                    ],
+                    "properties": {
+                        "prompt_tokens": {
+                            "type": "integer",
+                            "description": "Number of tokens in the prompt"
+                        },
+                        "completion_tokens": {
+                            "type": "integer",
+                            "description": "Number of tokens in the completion"
+                        },
+                        "total_tokens": {
+                            "type": "integer",
+                            "description": "Total tokens used"
+                        }
+                    }
+                },
+                "LogProbs": {
+                    "type": "object",
+                    "required": [
+                        "token_logprobs"
+                    ],
+                    "properties": {
+                        "token_logprobs": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "number"
+                            },
+                            "description": "Map of tokens to their log probabilities"
+                        }
+                    }
+                }
+            }
+        },
+        "errors": {
+            "RouterError": {
+                "type": "object",
+                "required": [
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "integer",
+                        "description": "Error code"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Human readable error message"
+                    },
+                    "data": {
                         "type": "object",
-                        "required": [
-                            "code",
-                            "message"
-                        ],
+                        "additionalProperties": true,
+                        "description": "Additional data related to the error"
+                    }
+                }
+            },
+            "InvalidRequestError": {
+                "description": "The request was invalid or malformed",
+                "allOf": [
+                    {
+                        "$ref": "#/components/errors/RouterError"
+                    },
+                    {
                         "properties": {
                             "code": {
                                 "type": "integer",
-                                "description": "Error code"
-                            },
-                            "message": {
-                                "type": "string",
-                                "description": "Human readable error message"
-                            },
-                            "data": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "description": "Additional data related to the error"
+                                "enum": [
+                                    400
+                                ]
                             }
                         }
-                    },
-                    "InvalidRequestError": {
-                        "description": "The request was invalid or malformed",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/errors/RouterError"
-                            },
-                            {
-                                "properties": {
-                                    "code": {
-                                        "type": "integer",
-                                        "enum": [
-                                            400
-                                        ]
-                                    }
-                                }
-                            }
-                        ]
-                    },
-                    "RateLimitExceededError": {
-                        "description": "The request exceeded the rate limit",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/errors/RouterError"
-                            },
-                            {
-                                "properties": {
-                                    "code": {
-                                        "type": "integer",
-                                        "enum": [
-                                            429
-                                        ]
-                                    }
-                                }
-                            }
-                        ]
                     }
-                }
+                ]
+            },
+            "RateLimitExceededError": {
+                "description": "The request exceeded the rate limit",
+                "allOf": [
+                    {
+                        "$ref": "#/components/errors/RouterError"
+                    },
+                    {
+                        "properties": {
+                            "code": {
+                                "type": "integer",
+                                "enum": [
+                                    429
+                                ]
+                            }
+                        }
+                    }
+                ]
             }
         }
     }

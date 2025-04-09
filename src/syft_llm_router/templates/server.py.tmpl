@@ -10,12 +10,25 @@ from syft_event.types import Request
 from syft_llm_router import BaseLLMRouter
 from syft_llm_router.error import InvalidRequestError, Error
 from syft_llm_router.schema import (
-    ChatRequest,
     ChatResponse,
-    CompletionRequest,
     CompletionResponse,
 )
 
+
+class ChatRequest(BaseModel):
+    """Chat request model."""
+
+    model: str
+    messages: list[Message]
+    options: Optional[GenerationOptions] = None
+
+
+class CompletionRequest(BaseModel):
+    """Completion request model."""
+
+    model: str
+    prompt: str
+    options: Optional[GenerationOptions] = None
 
 
 def load_router() -> BaseLLMRouter:
@@ -53,7 +66,11 @@ def handle_completion_request(
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     try:
-        response = provider.generate_completion(request=request)
+        response = provider.generate_completion(
+            model=request.model,
+            prompt=request.prompt,
+            options=request.options,
+        )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))
@@ -68,7 +85,11 @@ def handle_chat_completion_request(
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     try:
-        response = provider.generate_chat(request=request)
+        response = provider.generate_chat(
+            model=request.model,
+            messages=request.messages,
+            options=request.options,
+        )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))

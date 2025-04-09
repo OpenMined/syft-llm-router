@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from loguru import logger
+from pydantic import BaseModel
 from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
@@ -15,11 +16,28 @@ from syft_llm_router.extras.rate_limiter import (
     rate_limit,
 )
 from syft_llm_router.schema import (
-    ChatRequest,
     ChatResponse,
-    CompletionRequest,
     CompletionResponse,
+    GenerationOptions,
+    Message,
 )
+
+
+class ChatRequest(BaseModel):
+    """Chat request model."""
+
+    model: str
+    messages: list[Message]
+    options: Optional[GenerationOptions] = None
+
+
+class CompletionRequest(BaseModel):
+    """Completion request model."""
+
+    model: str
+    prompt: str
+    options: Optional[GenerationOptions] = None
+
 
 rate_limiter_config = RateLimiterConfig(
     requests_per_minute=1,
@@ -71,7 +89,11 @@ def handle_completion_request(
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     try:
-        response = provider.generate_completion(request=request)
+        response = provider.generate_completion(
+            model=request.model,
+            prompt=request.prompt,
+            options=request.options,
+        )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))
@@ -87,7 +109,11 @@ def handle_chat_completion_request(
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     try:
-        response = provider.generate_chat(request=request)
+        response = provider.generate_chat(
+            model=request.model,
+            messages=request.messages,
+            options=request.options,
+        )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))

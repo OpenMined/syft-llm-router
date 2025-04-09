@@ -1,7 +1,7 @@
 from loguru import logger
 from syft_core import Client
 from syft_llm_router.error import RouterError
-from syft_llm_router.schema import ChatRequest, ChatResponse
+from syft_llm_router.schema import ChatResponse
 from syft_rpc import rpc
 
 
@@ -44,7 +44,7 @@ def send_chat(
     messages.append({"role": "user", "content": user_message})
 
     # Create request
-    request = {
+    request_data = {
         "model": model,
         "messages": messages,
         "options": {"temperature": 0.7, "max_tokens": 150, "top_p": 1.0},
@@ -55,7 +55,7 @@ def send_chat(
         future = rpc.send(
             client=client,
             url=rpc.make_url(datasite=datasite, app_name="llm", endpoint="chat"),
-            body=ChatRequest(**request),
+            body=request_data,
             expiry="5m",
             cache=True,
         )

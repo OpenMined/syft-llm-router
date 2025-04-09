@@ -3,11 +3,10 @@ from typing import Optional
 
 from syft_llm_router import BaseLLMRouter
 from syft_llm_router.schema import (
-    ChatRequest,
     ChatResponse,
-    CompletionRequest,
     CompletionResponse,
     FinishReason,
+    GenerationOptions,
     LogProbs,
     Message,
     Role,
@@ -64,46 +63,49 @@ class SyftOpenAIRouter(BaseLLMRouter):
             organization=organization,
         )
 
-    def generate_completion(self, request: CompletionRequest) -> CompletionResponse:
+    def generate_completion(
+        self,
+        model: str,
+        prompt: str,
+        options: GenerationOptions,
+    ) -> CompletionResponse:
         """Generate a text completion using OpenAI.
 
         Note: OpenAI has deprecated their completions endpoint in favor of chat completions.
         This method uses chat completions with a user message to simulate the older completions behavior.
         """
         # Build options dictionary
-        options = {}
-        if request.options:
-            if request.options.max_tokens is not None:
-                options["max_tokens"] = request.options.max_tokens
-            if request.options.temperature is not None:
-                options["temperature"] = request.options.temperature
-            if request.options.top_p is not None:
-                options["top_p"] = request.options.top_p
-            if request.options.stop_sequences:
-                options["stop"] = request.options.stop_sequences
+        parsed_opts = {}
+        if options:
+            if options.max_tokens is not None:
+                parsed_opts["max_tokens"] = options.max_tokens
+            if options.temperature is not None:
+                parsed_opts["temperature"] = options.temperature
+            if options.top_p is not None:
+                parsed_opts["top_p"] = options.top_p
+            if options.stop_sequences:
+                parsed_opts["stop"] = options.stop_sequences
 
             # Handle logprobs parameters
-            if request.options.logprobs is True:
-                options["logprobs"] = True
-                if request.options.top_logprobs is not None:
-                    options["top_logprobs"] = request.options.top_logprobs
+            if options.logprobs is True:
+                parsed_opts["logprobs"] = True
+                if options.top_logprobs is not None:
+                    parsed_opts["top_logprobs"] = options.top_logprobs
 
             # Add any OpenAI-specific extensions
-            if request.options.extensions:
+            if options.extensions:
                 # Add OpenAI-specific extensions to the options
-                openai_extensions = clean_extensions(
-                    request.options.extensions, "x-openai-"
-                )
-                options.update(openai_extensions)
+                openai_extensions = clean_extensions(options.extensions, "x-openai-")
+                parsed_opts.update(openai_extensions)
 
         # Use chat completions as a replacement for the deprecated completions endpoint
         response = self.client.chat.completions.create(
-            model=request.model,
-            messages=[{"role": "user", "content": request.prompt}],
-            **options,
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            **parsed_opts,
         )
 
-        print("Hello....", response)
+        print("Received response from OpenAI client.")
 
         # Extract the response text
         text = response.choices[0].message.content or ""
@@ -120,11 +122,7 @@ class SyftOpenAIRouter(BaseLLMRouter):
 
         # Process logprobs if requested and available
         logprobs = None
-        if (
-            request.options
-            and request.options.logprobs
-            and hasattr(response.choices[0], "logprobs")
-        ):
+        if options and options.logprobs and hasattr(response.choices[0], "logprobs"):
             logprobs_data = response.choices[0].logprobs
 
             # Transform OpenAI's logprobs format to our standardized format
@@ -161,45 +159,48 @@ class SyftOpenAIRouter(BaseLLMRouter):
             logprobs=logprobs,  # Include the logprobs in the response
         )
 
-    def generate_chat(self, request: ChatRequest) -> ChatResponse:
+    def generate_chat(
+        self,
+        model: str,
+        messages: list[Message],
+        options: GenerationOptions,
+    ) -> ChatResponse:
         """Generate a chat response using OpenAI."""
         # Convert our message format to OpenAI format
-        messages = []
-        for msg in request.messages:
+        parsed_msgs = []
+        for msg in messages:
             openai_msg = {"role": msg.role.value, "content": msg.content}
             if msg.name:
                 openai_msg["name"] = msg.name
-            messages.append(openai_msg)
+            parsed_msgs.append(openai_msg)
 
         # Build options dictionary
-        options = {}
-        if request.options:
-            if request.options.max_tokens is not None:
-                options["max_tokens"] = request.options.max_tokens
-            if request.options.temperature is not None:
-                options["temperature"] = request.options.temperature
-            if request.options.top_p is not None:
-                options["top_p"] = request.options.top_p
-            if request.options.stop_sequences:
-                options["stop"] = request.options.stop_sequences
+        parsed_opts = {}
+        if options:
+            if options.max_tokens is not None:
+                parsed_opts["max_tokens"] = options.max_tokens
+            if options.temperature is not None:
+                parsed_opts["temperature"] = options.temperature
+            if options.top_p is not None:
+                parsed_opts["top_p"] = options.top_p
+            if options.stop_sequences:
+                parsed_opts["stop"] = options.stop_sequences
 
             # Handle logprobs parameters
-            if request.options.logprobs is True:
-                options["logprobs"] = True
-                if request.options.top_logprobs is not None:
-                    options["top_logprobs"] = request.options.top_logprobs
+            if options.logprobs is True:
+                parsed_opts["logprobs"] = True
+                if options.top_logprobs is not None:
+                    parsed_opts["top_logprobs"] = options.top_logprobs
 
             # Add any OpenAI-specific extensions
-            if request.options.extensions:
+            if options.extensions:
                 # Add OpenAI-specific extensions to the options
-                openai_extensions = clean_extensions(
-                    request.options.extensions, "x-openai-"
-                )
-                options.update(openai_extensions)
+                openai_extensions = clean_extensions(options.extensions, "x-openai-")
+                parsed_opts.update(openai_extensions)
 
         # Make the API call
         response = self.client.chat.completions.create(
-            model=request.model, messages=messages, **options
+            model=model, messages=parsed_msgs, **parsed_opts
         )
 
         # Map the OpenAI finish reason to our standardized format
@@ -217,11 +218,7 @@ class SyftOpenAIRouter(BaseLLMRouter):
 
         # Process logprobs if requested and available
         logprobs = None
-        if (
-            request.options
-            and request.options.logprobs
-            and hasattr(response.choices[0], "logprobs")
-        ):
+        if options and options.logprobs and hasattr(response.choices[0], "logprobs"):
             logprobs_data = response.choices[0].logprobs
 
             # Transform OpenAI's logprobs format to our standardized format
