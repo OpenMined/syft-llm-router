@@ -28,5 +28,5 @@ uv run python server.py
 First, ensure the server is running, then execute:
 
 ```bash
-uv run python chat_request
+uv run python chat_request.py
 ```
