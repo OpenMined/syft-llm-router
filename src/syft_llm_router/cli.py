@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Annotated, Union
 
+from jinja2 import Template
 from typer import Option, Typer
 
 app = Typer(
@@ -22,8 +23,13 @@ def version() -> None:
 
 
 TEMPLATE_FOLDER = Path(__file__).parent / "templates"
-SERVER_TEMPLATE_FILENAME = "server.py.tmpl"
-PROVIDER_TEMPLATE_FILENAME = "router.py.tmpl"
+
+# Template filenames
+TEMPLATE_FILES = [
+    "server.py.tmpl",
+    "router.py.tmpl",
+    "pyproject.toml.tmpl",
+]
 
 
 PROJECT_NAME_OPTS = Option(
@@ -54,7 +60,9 @@ def __copy_template(template_name: str, project_folder: Path) -> None:
         return
 
     # Read the template content
-    content = src.read_text()
+    raw_template = src.read_text()
+    template = Template(raw_template)
+    content = template.render(project_name=project_folder.name)
 
     # Replace placeholders in the template content
     dest.write_text(content)
@@ -83,7 +91,7 @@ def create_llmrouter_app(
     project_folder = __create_folder(folder / name)
 
     # Copy the templates to the project folder
-    for filename in [SERVER_TEMPLATE_FILENAME, PROVIDER_TEMPLATE_FILENAME]:
+    for filename in TEMPLATE_FILES:
         __copy_template(filename, project_folder)
 
     print(f"Initialized project in {project_folder}")

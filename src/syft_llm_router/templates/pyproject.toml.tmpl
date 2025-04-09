@@ -1,0 +1,28 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "Syft LLM Router Implementation"
+requires-python = ">=3.9"
+readme = "README.md"
+
+# Dependencies needed to run the server
+dependencies = [
+    "loguru>=0.6.0",
+    "syft-event>=0.1.0",
+    "syft-llm-router>=0.1.0",
+    "pydantic>=2.0.0",
+]
+
+[tool.uv.sources]
+syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
+syft-llm-router = { git = "https://github.com/OpenMined/syft-llm-router.git", rev = "main" }
+
+
+# Application configuration
+[tool.{{ project_name }}]
+
+# Rate limiting settings
+enable_rate_limiting = true
+requests_per_minute = 1
+requests_per_hour = 10
+requests_per_day = 1000

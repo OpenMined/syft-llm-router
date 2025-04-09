@@ -6,6 +6,7 @@ requires-python = ">=3.9"
 readme = "README.md"
 dependencies = [
     "ipython>=8.18.1",
+    "jinja2>=3.1.6",
     "pydantic>=2.11.2",
     "syft-event",
     "typer>=0.15.2",
