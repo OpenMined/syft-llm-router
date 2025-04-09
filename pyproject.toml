@@ -5,7 +5,7 @@ description = "Syft LLM Router Protocol"
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = [
-    "ipython>=8.34.0",
+    "ipython>=8.18.1",
     "pydantic>=2.11.2",
     "syft-event",
     "typer>=0.15.2",

@@ -1,10 +1,9 @@
-from typing import Optional
+from typing import Optional, TypeVar
 
 from pydantic import BaseModel, Field
-from typing_extensions import TypeVar
 
 
-class BaseError(BaseModel):
+class RouterError(BaseModel):
     """Base error model for LLM router errors."""
 
     code: int
@@ -16,7 +15,7 @@ class BaseError(BaseModel):
     class Config:
         """Pydantic configuration."""
 
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "code": 400,
                 "message": "Invalid request",
@@ -25,7 +24,7 @@ class BaseError(BaseModel):
         }
 
 
-class ModelNotFoundError(BaseError):
+class ModelNotFoundError(RouterError):
     """Error when the requested model cannot be found."""
 
     code: int = 404
@@ -35,7 +34,7 @@ class ModelNotFoundError(BaseError):
     )
 
 
-class InvalidRequestError(BaseError):
+class InvalidRequestError(RouterError):
     """Error when the request is invalid."""
 
     code: int = 400
@@ -45,14 +44,14 @@ class InvalidRequestError(BaseError):
     )
 
 
-class RateLimitExceededError(BaseError):
+class RateLimitExceededError(RouterError):
     """Error when rate limits have been exceeded."""
 
     code: int = 429
     message: str = Field(
-        default="Rate limit exceeded",
+        default="Rate limit exceeded. Please try again later.",
         description="Error message for rate limit exceeded errors",
     )
 
 
-RouterError = TypeVar("RouterError", bound=BaseError, covariant=True)
+Error = TypeVar("Error", bound=RouterError, covariant=True)

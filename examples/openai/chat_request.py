@@ -1,5 +1,6 @@
 from loguru import logger
 from syft_core import Client
+from syft_llm_router.error import RouterError
 from syft_llm_router.schema import ChatRequest, ChatResponse
 from syft_rpc import rpc
 
@@ -61,9 +62,11 @@ def send_chat(
 
         response = future.wait()
         response.raise_for_status()
-        chat_response = response.model(ChatResponse)
-
-        return chat_response.message.content
+        try:
+            chat_response = response.model(ChatResponse)
+            return chat_response.message.content
+        except Exception:
+            return response.model(RouterError)
 
     except Exception as e:
         logger.error(f"Error sending chat request: {e}")

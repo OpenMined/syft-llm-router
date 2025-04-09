@@ -341,7 +341,7 @@
                     }
                 },
                 "errors": {
-                    "BaseError": {
+                    "RouterError": {
                         "type": "object",
                         "required": [
                             "code",
@@ -367,7 +367,7 @@
                         "description": "The request was invalid or malformed",
                         "allOf": [
                             {
-                                "$ref": "#/components/errors/BaseError"
+                                "$ref": "#/components/errors/RouterError"
                             },
                             {
                                 "properties": {
@@ -385,7 +385,7 @@
                         "description": "The request exceeded the rate limit",
                         "allOf": [
                             {
-                                "$ref": "#/components/errors/BaseError"
+                                "$ref": "#/components/errors/RouterError"
                             },
                             {
                                 "properties": {

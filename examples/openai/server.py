@@ -8,13 +8,27 @@ from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 from syft_llm_router import BaseLLMRouter
-from syft_llm_router.error import InvalidRequestError, RouterError
+from syft_llm_router.error import Error, InvalidRequestError
+from syft_llm_router.extras.rate_limiter import (
+    RateLimiter,
+    RateLimiterConfig,
+    rate_limit,
+)
 from syft_llm_router.schema import (
     ChatRequest,
     ChatResponse,
     CompletionRequest,
     CompletionResponse,
 )
+
+rate_limiter_config = RateLimiterConfig(
+    requests_per_minute=1,
+    requests_per_hour=3,
+    requests_per_day=10,
+    enabled=True,
+)
+
+rate_limiter = RateLimiter(config=rate_limiter_config)
 
 
 def load_router() -> BaseLLMRouter:
@@ -47,10 +61,11 @@ def create_server(server_name: str, config_path: Optional[Path] = None):
     return SyftEvents(server_name, client=client)
 
 
+@rate_limit(rate_limiter)
 def handle_completion_request(
     request: CompletionRequest,
     ctx: Request,
-) -> Union[CompletionResponse, RouterError]:
+) -> Union[CompletionResponse, Error]:
     """Handle a completion request."""
 
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
@@ -63,10 +78,11 @@ def handle_completion_request(
     return response
 
 
+@rate_limit(rate_limiter)
 def handle_chat_completion_request(
     request: ChatRequest,
     ctx: Request,
-) -> Union[ChatResponse, RouterError]:
+) -> Union[ChatResponse, Error]:
     """Handle a chat completion request."""
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()

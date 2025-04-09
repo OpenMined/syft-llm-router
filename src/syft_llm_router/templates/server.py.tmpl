@@ -8,7 +8,7 @@ from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 from syft_llm_router import BaseLLMRouter
-from syft_llm_router.error import InvalidRequestError, RouterError
+from syft_llm_router.error import InvalidRequestError, Error
 from syft_llm_router.schema import (
     ChatRequest,
     ChatResponse,
@@ -47,7 +47,7 @@ def create_server(server_name: str, config_path: Optional[Path] = None):
 def handle_completion_request(
     request: CompletionRequest,
     ctx: Request,
-) -> Union[CompletionResponse, RouterError]:
+) -> Union[CompletionResponse, Error]:
     """Handle a completion request."""
 
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
@@ -63,7 +63,7 @@ def handle_completion_request(
 def handle_chat_completion_request(
     request: ChatRequest,
     ctx: Request,
-) -> Union[ChatResponse, RouterError]:
+) -> Union[ChatResponse, Error]:
     """Handle a chat completion request."""
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
