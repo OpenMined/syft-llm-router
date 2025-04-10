@@ -75,28 +75,27 @@ class SyftOpenAIRouter(BaseLLMRouter):
         This method uses chat completions with a user message to simulate the older completions behavior.
         """
         # Build options dictionary
-        parsed_opts = {}
-        if options:
-            if options.max_tokens is not None:
-                parsed_opts["max_tokens"] = options.max_tokens
-            if options.temperature is not None:
-                parsed_opts["temperature"] = options.temperature
-            if options.top_p is not None:
-                parsed_opts["top_p"] = options.top_p
-            if options.stop_sequences:
-                parsed_opts["stop"] = options.stop_sequences
+        # Map GenerationOptions to OpenAI parameters
+        option_mapping = {
+            "max_tokens": options.max_tokens,
+            "temperature": options.temperature,
+            "top_p": options.top_p,
+            "stop": options.stop_sequences,
+        }
 
-            # Handle logprobs parameters
-            if options.logprobs is True:
-                parsed_opts["logprobs"] = True
-                if options.top_logprobs is not None:
-                    parsed_opts["top_logprobs"] = options.top_logprobs
+        # Build options dictionary excluding None values
+        parsed_opts = {k: v for k, v in option_mapping.items() if v is not None}
 
-            # Add any OpenAI-specific extensions
-            if options.extensions:
-                # Add OpenAI-specific extensions to the options
-                openai_extensions = clean_extensions(options.extensions, "x-openai-")
-                parsed_opts.update(openai_extensions)
+        # Handle logprobs parameters
+        if options and options.logprobs is True:
+            parsed_opts["logprobs"] = True
+            if options.top_logprobs is not None:
+                parsed_opts["top_logprobs"] = options.top_logprobs
+
+        # Add any OpenAI-specific extensions
+        if options and options.extensions:
+            openai_extensions = clean_extensions(options.extensions, "x-openai-")
+            parsed_opts.update(openai_extensions)
 
         # Use chat completions as a replacement for the deprecated completions endpoint
         response = self.client.chat.completions.create(
@@ -175,28 +174,27 @@ class SyftOpenAIRouter(BaseLLMRouter):
             parsed_msgs.append(openai_msg)
 
         # Build options dictionary
-        parsed_opts = {}
-        if options:
-            if options.max_tokens is not None:
-                parsed_opts["max_tokens"] = options.max_tokens
-            if options.temperature is not None:
-                parsed_opts["temperature"] = options.temperature
-            if options.top_p is not None:
-                parsed_opts["top_p"] = options.top_p
-            if options.stop_sequences:
-                parsed_opts["stop"] = options.stop_sequences
+        # Map GenerationOptions to OpenAI parameters
+        option_mapping = {
+            "max_tokens": options.max_tokens,
+            "temperature": options.temperature,
+            "top_p": options.top_p,
+            "stop": options.stop_sequences,
+        }
 
-            # Handle logprobs parameters
-            if options.logprobs is True:
-                parsed_opts["logprobs"] = True
-                if options.top_logprobs is not None:
-                    parsed_opts["top_logprobs"] = options.top_logprobs
+        # Build options dictionary excluding None values
+        parsed_opts = {k: v for k, v in option_mapping.items() if v is not None}
 
-            # Add any OpenAI-specific extensions
-            if options.extensions:
-                # Add OpenAI-specific extensions to the options
-                openai_extensions = clean_extensions(options.extensions, "x-openai-")
-                parsed_opts.update(openai_extensions)
+        # Handle logprobs parameters
+        if options and options.logprobs is True:
+            parsed_opts["logprobs"] = True
+            if options.top_logprobs is not None:
+                parsed_opts["top_logprobs"] = options.top_logprobs
+
+        # Add any OpenAI-specific extensions
+        if options and options.extensions:
+            openai_extensions = clean_extensions(options.extensions, "x-openai-")
+            parsed_opts.update(openai_extensions)
 
         # Make the API call
         response = self.client.chat.completions.create(
