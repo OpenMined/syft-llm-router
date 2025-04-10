@@ -69,11 +69,7 @@ class SyftOpenAIRouter(BaseLLMRouter):
         prompt: str,
         options: GenerationOptions,
     ) -> CompletionResponse:
-        """Generate a text completion using OpenAI.
-
-        Note: OpenAI has deprecated their completions endpoint in favor of chat completions.
-        This method uses chat completions with a user message to simulate the older completions behavior.
-        """
+        """Generate a text completion using OpenAI."""
         # Build options dictionary
         # Map GenerationOptions to OpenAI parameters
         option_mapping = {

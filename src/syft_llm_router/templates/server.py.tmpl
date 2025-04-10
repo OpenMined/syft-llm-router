@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+from pydantic import BaseModel
 from typing import Optional, Union
 
 from loguru import logger
@@ -12,6 +13,8 @@ from syft_llm_router.error import InvalidRequestError, Error
 from syft_llm_router.schema import (
     ChatResponse,
     CompletionResponse,
+    GenerationOptions,
+    Message
 )
 
 
