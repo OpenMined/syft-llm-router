@@ -26,4 +26,4 @@ repos:
             "pydantic>=2.11.2",
             "types-requests",
         ]
-        exclude: ^(tests/|examples/)
+        exclude: ^(tests/|examples/|src/syft_llm_router/schema2/)
