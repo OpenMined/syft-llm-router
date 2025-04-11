@@ -51,12 +51,14 @@ def load_router() -> BaseLLMRouter:
     )
 
 
-def create_server(server_name: str, config_path: Optional[Path] = None):
+def create_server(project_name: str, config_path: Optional[Path] = None):
     """Create and return the SyftEvents server with the given config path."""
     if config_path:
         client = Client.load(path=config_path)
     else:
         client = Client.load()
+
+    server_name = f"llm/{project_name}"
     return SyftEvents(server_name, client=client)
 
 
@@ -110,11 +112,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Syft LLM Router server")
 
     parser.add_argument(
-        "--server-name",
+        "--project-name",
         type=str,
-        default="llm",
-        help="Name of the server instance. Default is 'llm'.",
-        required=False,
+        help="Name of the project instance.",
+        required=True,
     )
     parser.add_argument(
         "--config",
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Create server with config
-    box = create_server(server_name=args.server_name, config_path=args.config)
+    box = create_server(project_name=args.project_name, config_path=args.config)
 
     # Register routes
     register_routes(box)

@@ -45,6 +45,11 @@ PROJECT_DIR_OPTS = Option(
 )
 
 
+def __to_hyphenated(name: str) -> str:
+    """Convert a name to a hyphenated string."""
+    return "-".join(word.lower() for word in name.split())
+
+
 def __copy_template(template_name: str, project_folder: Path) -> None:
     """
     Copy a template file to the project folder and replace placeholders."""
@@ -86,6 +91,8 @@ def create_llmrouter_app(
     folder: Annotated[Path, PROJECT_DIR_OPTS] = Path.cwd(),
 ) -> None:
     """Initialize a new project in the given folder."""
+
+    name = __to_hyphenated(name)
 
     # Create project folder if it doesn't exist
     project_folder = __create_folder(folder / name)
