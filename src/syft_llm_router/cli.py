@@ -23,6 +23,7 @@ TEMPLATE_FILES = [
     "server.py.tmpl",
     "router.py.tmpl",
     "pyproject.toml.tmpl",
+    "chat_test.py.tmpl",
 ]
 
 # Add this with other constants
