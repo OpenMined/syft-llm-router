@@ -1,8 +1,11 @@
+import json
 from pathlib import Path
-from typing import Annotated, Union
+from typing import Annotated, Optional, Union
 
 from jinja2 import Template
 from typer import Option, Typer
+
+from syft_llm_router.publish_utils import ProjectMetadata, release_metadata
 
 app = Typer(
     name="syftrouter",
@@ -12,15 +15,6 @@ app = Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=True,
 )
-
-
-@app.command()
-def version() -> None:
-    """Print syft_llm_router version."""
-    from syft_llm_router import __version__
-
-    print("Version: ", __version__)
-
 
 TEMPLATE_FOLDER = Path(__file__).parent / "templates"
 
@@ -43,6 +37,26 @@ PROJECT_DIR_OPTS = Option(
     "--folder",
     help="Path to a LLM Provider project folder",
 )
+
+DESCRIPTION_OPTS = Option(
+    "-d",
+    "--description",
+    help="Project description",
+)
+
+TAGS_OPTS = Option(
+    "-t",
+    "--tags",
+    help="Comma-separated list of tags",
+)
+
+README_OPTS = Option(
+    "-r",
+    "--readme",
+    help="Path to README file",
+)
+
+DEFAULT_PROJECT_FOLDER = Path.cwd()
 
 
 def __to_hyphenated(name: str) -> str:
@@ -86,9 +100,17 @@ def __create_folder(folder: Union[str, Path]) -> Path:
 
 
 @app.command()
+def version() -> None:
+    """Print syft_llm_router version."""
+    from syft_llm_router import __version__
+
+    print("Version: ", __version__)
+
+
+@app.command()
 def create_llmrouter_app(
-    name: Annotated[str, PROJECT_NAME_OPTS],
-    folder: Annotated[Path, PROJECT_DIR_OPTS] = Path.cwd(),
+    name: Annotated[str, PROJECT_NAME_OPTS] = "",
+    folder: Annotated[Path, PROJECT_DIR_OPTS] = DEFAULT_PROJECT_FOLDER,
 ) -> None:
     """Initialize a new project in the given folder."""
 
@@ -102,6 +124,70 @@ def create_llmrouter_app(
         __copy_template(filename, project_folder)
 
     print(f"Initialized project in {project_folder}")
+
+
+@app.command()
+def publish(
+    folder: Annotated[Path, PROJECT_DIR_OPTS],
+    description: Annotated[str, DESCRIPTION_OPTS],
+    tags: Annotated[str, TAGS_OPTS],
+    readme: Annotated[Path, README_OPTS],
+    client_config: Annotated[
+        Optional[Path], Option(help="Path to Syft client config file")
+    ] = None,
+) -> None:
+    """Release project metadata to make it publicly available in Syft."""
+    from syft_core import Client
+
+    # project name is the folder name
+    name = folder.name
+
+    # Validate required files
+    metadata_gen = ProjectMetadata(project_folder=folder)
+    if not metadata_gen.validate_project_structure():
+        print("Error: Invalid project structure")
+        return
+
+    # Read README content if provided
+    readme_content = ""
+    if readme and readme.exists():
+        readme_content = readme.read_text()
+    else:
+        print("Warning: No README file provided")
+
+    client = Client.load(client_config) if client_config else Client.load()
+
+    documented_endpoints = {}
+    # Load the RPC schema
+    app_name = f"llm/{name}"
+    rpc_schema_path = client.app_data(app_name) / "rpc.schema.json"
+    # Validate the RPC schema exists
+    if rpc_schema_path.exists():
+        documented_endpoints = json.load(rpc_schema_path.read_text())
+    else:
+        print(f"Error: RPC schema file does not exist at: {rpc_schema_path}")
+
+    # Convert tags string to list
+    tag_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+    # Generate metadata
+    try:
+        metadata = metadata_gen.generate(
+            project_name=name,
+            description=description or f"{name} LLM Router Implementation",
+            tags=tag_list,
+            readme_content=readme_content,
+            documented_endpoints=documented_endpoints,
+        )
+    except Exception as e:
+        print(f"Error generating metadata: {str(e)}")
+        return
+
+    # Release metadata
+    if release_metadata(metadata, client):
+        print(f"Successfully released metadata for {name}")
+    else:
+        print("Error releasing metadata")
 
 
 def main() -> None:
