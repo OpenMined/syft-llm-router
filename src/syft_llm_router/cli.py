@@ -25,6 +25,9 @@ TEMPLATE_FILES = [
     "pyproject.toml.tmpl",
 ]
 
+# Add this with other constants
+RPC_SCHEMA_FILENAME = Path("rpc.schema.json")
+RPC_SCHEMA_PATH = "rpc" / RPC_SCHEMA_FILENAME
 
 PROJECT_NAME_OPTS = Option(
     "--name",
@@ -160,10 +163,10 @@ def publish(
     documented_endpoints = {}
     # Load the RPC schema
     app_name = f"llm/{name}"
-    rpc_schema_path = client.app_data(app_name) / "rpc.schema.json"
+    rpc_schema_path = client.app_data(app_name) / RPC_SCHEMA_PATH
     # Validate the RPC schema exists
     if rpc_schema_path.exists():
-        documented_endpoints = json.load(rpc_schema_path.read_text())
+        documented_endpoints = json.loads(rpc_schema_path.read_text())
     else:
         print(f"Error: RPC schema file does not exist at: {rpc_schema_path}")
 
