@@ -100,11 +100,16 @@ def handle_chat_completion_request(
         response = InvalidRequestError(message=str(e))
     return response
 
+def ping(ctx: Request) -> str:
+    """Ping the server."""
+    return "pong"
+
 
 def register_routes(server):
     """Register all routes on the given server instance."""
     server.on_request("/completions")(handle_completion_request)
     server.on_request("/chat")(handle_chat_completion_request)
+    server.on_request("/ping")(ping)
     return server
 
 
