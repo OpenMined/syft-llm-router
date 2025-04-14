@@ -10,10 +10,10 @@ APP_NAME = "llm/{{ project_name }}"
 
 def test_chat(
     client: Client,
+    model: str,
     datasite: str,
     user_message: str,
     system_message: str = None,
-    model: str = "phi-4",
 ):
     """
     Send a simple chat request to an LLM through the Syft LLM Router.
@@ -156,6 +156,7 @@ if __name__ == "__main__":
         datasite=datasite,
         user_message=question,
         system_message="Limit your answer to the final result. Explain your answer.",
+        model="",
     )
 
     et = time.time()
@@ -173,6 +174,7 @@ if __name__ == "__main__":
         client=client,
         datasite=datasite,
         promt=prompt,
+        model="",
     )
     et = time.time()
     print(f"Time taken: {et - st} seconds")
