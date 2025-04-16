@@ -4,12 +4,20 @@ A simple router for Language Model applications built over SyftBox.
 
 ## Installation
 
-First, ensure you have [uv](https://github.com/astral-sh/uv) installed. Then:
+1. First, ensure you have [uv](https://github.com/astral-sh/uv) installed.
+
+
+2. Clone the repo
 
 ```bash
-uv venv
+git clone https://github.com/OpenMined/syft-llm-router.git
+cd syft-llm-router
+```
 
-uv pip install syft-llm-router
+3. Create environment and install dependencies
+
+```bash
+uv sync -P syft-llm-router
 ```
 
 ## Quick Start
