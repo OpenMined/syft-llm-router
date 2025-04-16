@@ -17,23 +17,27 @@ uv pip install syft-llm-router
 1. Create a new router application:
 
 ```bash
-uv run syftllm create-router-app -n openai-router
+uv run syftllm create-router-app -n my-llm-router
 ```
 
-2. Implement the router server in `openai-router/router.py`
+2. Implement the router server in `my-llm-router/router.py`
 
-3. Import and load the router in `openai-router/server.py`
+3. Import and load the router in `my-llm-router/server.py`
 
 4. Install any dependencies required by your router
 
-5. Start the router server:
+5. Start the router server
 
 This start an RPC server over SyftBox.
 
 ```bash
-uv run python openai-router/server.py
+uv run python my-llm-router/server.py --project-name llm-router
 ```
 
 ## Examples
 
-Please refer to the examples in the [examples](./examples) folder for sample router implementations.
+Please refer to the examples in the [examples](./examples) folder for detailed sample router implementations.
+
+## Publishing Your Router
+
+For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](./publish.md).

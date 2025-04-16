@@ -95,3 +95,7 @@ The router includes comprehensive error handling for:
 - Model validation
 - API request failures
 - Response parsing errors
+
+
+## Publishing your Router
+For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](../../publish.md).
