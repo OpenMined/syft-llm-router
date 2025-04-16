@@ -47,7 +47,7 @@ Note: Make sure your router implementation is stable and well-tested before publ
 
 ## Discovering Published Models
 
-To discover and interact with published models, you can use the discover app. For detailed instructions on setting up and using the discover app, please refer to the [Discover App README](../discover/ReadME.md).
+To discover and interact with published models, you can use the discover app. For detailed instructions on setting up and using the discover app, please refer to the [Discover App README](discover/ReadME.md).
 
 The discover app provides a web interface to:
 - Browse all published models
