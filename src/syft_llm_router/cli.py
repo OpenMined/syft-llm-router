@@ -11,7 +11,7 @@ from typer import Option, Typer
 from syft_llm_router.publish_utils import ProjectMetadata, release_metadata
 
 app = Typer(
-    name="syft-router",
+    name="syftrouter",
     help="Syft LLM Router CLI",
     no_args_is_help=True,
     pretty_exceptions_enable=False,
@@ -117,7 +117,6 @@ def version() -> None:
 @app.command()
 def create_app(
     name: Annotated[str, PROJECT_NAME_OPTS] = "",
-    folder: Annotated[Path, PROJECT_DIR_OPTS] = DEFAULT_PROJECT_FOLDER,
     dir_path: Annotated[
         Optional[Path],
         Option(
@@ -125,16 +124,14 @@ def create_app(
             "-d",
             help="Target directory to create the project in (alternative to --folder)"
         )
-    ] = None,
+    ] = DEFAULT_PROJECT_FOLDER,
 ) -> None:
     """Initialize a new project in the given folder."""
-
-    target_folder = dir_path 
     
     name = __to_hyphenated(name)
 
     # Create project folder if it doesn't exist
-    project_folder = __create_folder(target_folder / name)
+    project_folder = __create_folder(dir_path / name)
 
     # Copy the templates to the project folder
     for filename in TEMPLATE_FILES:
@@ -172,13 +169,11 @@ def publish(
     """Release project metadata to make it publicly available in Syft."""
     if not dir_path:
         print("Error: --dir parameter is required")
-        return
-    target_folder = dir_path
-    
+        return    
     from syft_core import Client
 
     # project name is the folder name
-    name = target_folder.name
+    name = dir_path.name
     
     if description is None:
         description = input(f"Enter a description for {name} [default: '{name} LLM Router Implementation']: ")
@@ -191,17 +186,17 @@ def publish(
         
     readme_content = ""
     if readme is None:
-        readme_path = input(f"Enter path to README file [default: {target_folder}/README.md]: ")
+        readme_path = input(f"Enter path to README file [default: {dir_path}/README.md]: ")
         readme_path = readme_path.strip()
         
         if not readme_path:
-            readme_path = target_folder / "README.md"
+            readme_path = dir_path / "README.md"
         else:
             readme_path = Path(readme_path)
                 
 
     # Validate required files
-    metadata_gen = ProjectMetadata(project_folder=target_folder)
+    metadata_gen = ProjectMetadata(project_folder=dir_path)
     if not metadata_gen.validate_project_structure():
         print("Error: Invalid project structure")
         return
@@ -248,7 +243,7 @@ def publish(
         print("Error releasing metadata")
 
 
-def __install_dependencies(target_folder: Path) -> bool:
+def __install_dependencies(dir_path: Path) -> bool:
     """Install dependencies for a project, with fallback options."""
     print("Installing dependencies...")
     
@@ -256,7 +251,7 @@ def __install_dependencies(target_folder: Path) -> bool:
         subprocess.run(
             "uv sync --project . --quiet",
             shell=True,
-            cwd=target_folder,
+            cwd=dir_path,
             check=True,
         )
         return True
@@ -291,11 +286,9 @@ def test_app(
         )
     ] = False,
 ) -> None:
-    """Run the server and test script to verify the integration works correctly."""
-    target_folder = dir_path
-    
+    """Run the server and test script to verify the integration works correctly."""    
     try:
-        __install_dependencies(target_folder)
+        __install_dependencies(dir_path)
         
         print("Starting server...")
         server_cmd = "uv run --quiet python server.py"
@@ -311,14 +304,14 @@ def test_app(
             server_process = subprocess.Popen(
                 server_cmd,
                 shell=True,
-                cwd=target_folder,
+                cwd=dir_path,
             )
         else:
             with open("/dev/null", "w") as devnull:
                 server_process = subprocess.Popen(
                     server_cmd,
                     shell=True,
-                    cwd=target_folder,
+                    cwd=dir_path,
                     stdout=devnull,
                     stderr=devnull,
                 )
@@ -336,7 +329,7 @@ def test_app(
             chat_process = subprocess.Popen(
                 "uv run --quiet python chat_test.py",
                 shell=True,
-                cwd=target_folder,
+                cwd=dir_path,
             )
             
             # Keep the process running until user terminates
@@ -385,11 +378,9 @@ def serve(
         )
     ] = False,
 ) -> None:
-    """Start the server in a detached process."""
-    target_folder = dir_path
-    
+    """Start the server in a detached process."""    
     try:
-        __install_dependencies(target_folder)   
+        __install_dependencies(dir_path)   
 
         server_cmd = "uv run --quiet python server.py"
         if server_args:
@@ -406,7 +397,7 @@ def serve(
                 subprocess.run(
                     server_cmd,
                     shell=True,
-                    cwd=target_folder,
+                    cwd=dir_path,
                     check=True,
                 )
             except KeyboardInterrupt:
@@ -414,14 +405,14 @@ def serve(
             return
             
         # For non-debug mode, use detached process with log file
-        log_file = target_folder / "server.log"
+        log_file = dir_path / "server.log"
         print(f"Server logs will be written to: {log_file}")
         
         with open(log_file, "w") as log:
             server_process = subprocess.Popen(
                 server_cmd,
                 shell=True,
-                cwd=target_folder,
+                cwd=dir_path,
                 stdout=log,
                 stderr=log,
                 start_new_session=True,
