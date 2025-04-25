@@ -2,7 +2,7 @@
 set -e
 
 uv venv -p 3.12 .venv
-uv sync
+uv pip install .
 . .venv/bin/activate
 
 while true; do
