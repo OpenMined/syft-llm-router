@@ -123,7 +123,7 @@
             ]
         },
         {
-            "name": "embedDocument",
+            "name": "embedDocuments",
             "description": "Process JSON files in a specified location and create embeddings for indexing",
             "params": [
                 {
@@ -355,14 +355,6 @@
                     "batchSize": {
                         "type": "integer",
                         "description": "Number of documents to process in a single batch"
-                    },
-                    "embeddingModel": {
-                        "type": "string",
-                        "description": "Name of embedding model to use"
-                    },
-                    "dimensions": {
-                        "type": "integer",
-                        "description": "Dimensionality of the embedding vectors"
                     },
                     "processInterval": {
                         "type": "integer",

@@ -35,7 +35,7 @@ class BaseLLMRouter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_document(
+    def embed_documents(
         self,
         watch_path: str,
         embedder_endpoint: str,

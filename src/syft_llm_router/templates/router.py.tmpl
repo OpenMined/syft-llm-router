@@ -44,7 +44,7 @@ class SyftLLMRouter(BaseLLMRouter):
         """Generate a chat response based on a conversation history."""
         raise NotImplementedError
 
-    def embed_document(
+    def embed_documents(
         self,
         watch_path: str,
         embedder_endpoint: str,

@@ -190,16 +190,6 @@ class EmbeddingOptions(SchemaBase):
         default=None, description="Number of documents to process in a single batch"
     )
 
-    # Name of embedding model to use
-    embedding_model: Optional[str] = Field(
-        default=None, description="Name of embedding model to use"
-    )
-
-    # Dimensionality of the embedding vectors
-    dimensions: Optional[int] = Field(
-        default=None, description="Dimensionality of the embedding vectors"
-    )
-
     # Interval in seconds to check for new files
     process_interval: Optional[int] = Field(
         default=None, description="Interval in seconds to check for new files"
