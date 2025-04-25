@@ -19,7 +19,7 @@ class ProjectMetadata:
             project_folder: Path to the project directory containing the implementation.
         """
         self.project_folder = Path(project_folder)
-        self.required_files = ["router.py", "server.py", "pyproject.toml"]
+        self.required_files = ["router.py", "server.py", "pyproject.toml", "run.sh"]
 
     def validate_project_structure(self) -> bool:
         """Validate that the project has all required files.
@@ -94,7 +94,11 @@ class ProjectMetadata:
             Dict: Complete metadata dictionary
         """
         if not self.validate_project_structure():
-            raise ValueError("Invalid project structure")
+            raise ValueError(
+                "Invalid project structure. "
+                "Please ensure all required files are present. "
+                "Required files: " + ", ".join(self.required_files)
+            )
 
         project_metadata = self.read_project_metadata()
 

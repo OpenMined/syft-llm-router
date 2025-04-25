@@ -1,8 +1,20 @@
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+
+def to_camel(snake_str: str) -> str:
+    """Convert snake_case to camelCase"""
+    components = snake_str.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])
+
+
+class SchemaBase(BaseModel):
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
 
 
 class Role(str, Enum):
@@ -21,7 +33,7 @@ class FinishReason(str, Enum):
     CONTENT_FILTER = "content_filter"
 
 
-class Message(BaseModel):
+class Message(SchemaBase):
     """A message in a conversation between user and assistant."""
 
     # The role of the message author
@@ -34,7 +46,7 @@ class Message(BaseModel):
     name: Optional[str] = None
 
 
-class GenerationOptions(BaseModel):
+class GenerationOptions(SchemaBase):
     """Options that control the text generation process."""
 
     # The maximum number of tokens to generate
@@ -61,7 +73,7 @@ class GenerationOptions(BaseModel):
     )
 
 
-class Usage(BaseModel):
+class Usage(SchemaBase):
     """Token usage information for the request and response."""
 
     # The number of tokens in the prompt
@@ -74,7 +86,7 @@ class Usage(BaseModel):
     total_tokens: int
 
 
-class LogProbs(BaseModel):
+class LogProbs(SchemaBase):
     """Log probabilities for generated tokens."""
 
     # Map of tokens to their log probabilities
@@ -83,7 +95,7 @@ class LogProbs(BaseModel):
     )
 
 
-class CompletionResponse(BaseModel):
+class CompletionResponse(SchemaBase):
     """Response from a text completion request."""
 
     # Unique identifier for this completion
@@ -108,7 +120,7 @@ class CompletionResponse(BaseModel):
     logprobs: Optional[LogProbs] = None
 
 
-class ChatResponse(BaseModel):
+class ChatResponse(SchemaBase):
     """Response from a chat completion request."""
 
     # The ID of the response (using UUID instead of string)
@@ -134,7 +146,7 @@ class ChatResponse(BaseModel):
 
 
 # Method parameter models
-class GenerateCompletionParams(BaseModel):
+class GenerateCompletionParams(SchemaBase):
     """Parameters for text completion generation."""
 
     # The model identifier to use for generation
@@ -147,7 +159,7 @@ class GenerateCompletionParams(BaseModel):
     options: Optional[GenerationOptions] = None
 
 
-class GenerateChatParams(BaseModel):
+class GenerateChatParams(SchemaBase):
     """Parameters for chat completion generation."""
 
     # The model identifier to use for chat
@@ -158,3 +170,134 @@ class GenerateChatParams(BaseModel):
 
     # Additional parameters for the generation
     options: Optional[GenerationOptions] = None
+
+
+class EmbeddingOptions(SchemaBase):
+    """Options for controlling document embedding process"""
+
+    # Size of text chunks for embedding
+    chunk_size: Optional[int] = Field(
+        default=None, description="Size of text chunks for embedding"
+    )
+
+    # Overlap between consecutive chunks
+    chunk_overlap: Optional[int] = Field(
+        default=None, description="Overlap between consecutive chunks"
+    )
+
+    # Number of documents to process in a single batch
+    batch_size: Optional[int] = Field(
+        default=None, description="Number of documents to process in a single batch"
+    )
+
+    # Interval in seconds to check for new files
+    process_interval: Optional[int] = Field(
+        default=None, description="Interval in seconds to check for new files"
+    )
+
+    # Container for embedder-specific extensions
+    extensions: Optional[dict[str, Any]] = Field(
+        default=None, description="Container for embedder-specific extensions"
+    )
+
+
+class RetrievalOptions(SchemaBase):
+    """Options for controlling document retrieval process"""
+
+    # Maximum number of documents to retrieve
+    limit: Optional[int] = Field(
+        default=None, description="Maximum number of documents to retrieve"
+    )
+
+    # Minimum similarity score for retrieved documents
+    similarity_threshold: Optional[float] = Field(
+        default=None,
+        description="Minimum similarity score for retrieved documents",
+        ge=0,
+        le=1,
+    )
+
+    # Whether to include document metadata in results
+    include_metadata: Optional[bool] = Field(
+        default=None, description="Whether to include document metadata in results"
+    )
+
+    # Whether to include vector embeddings in results
+    include_embeddings: Optional[bool] = Field(
+        default=None, description="Whether to include vector embeddings in results"
+    )
+
+    # Container for retriever-specific extensions
+    extensions: Optional[dict[str, Any]] = Field(
+        default=None, description="Container for retriever-specific extensions"
+    )
+
+
+class DocumentResult(SchemaBase):
+    """A document retrieved from the index"""
+
+    # Identifier for the document
+    id: str = Field(..., description="Identifier for the document")
+
+    # Similarity score between query and document
+    score: float = Field(..., description="Similarity score between query and document")
+
+    # Text content of the document or chunk
+    content: str = Field(..., description="Text content of the document or chunk")
+
+    # Metadata associated with the document
+    metadata: Optional[dict[str, Any]] = Field(
+        default=None, description="Metadata associated with the document"
+    )
+
+    # Vector embedding of the document (if requested)
+    embedding: Optional[list[float]] = Field(
+        default=None, description="Vector embedding of the document (if requested)"
+    )
+
+
+class EmbeddingResponse(SchemaBase):
+    """The result of the document embedding operation"""
+
+    # Unique identifier for this embedding operation
+    id: UUID = Field(..., description="Unique identifier for this embedding operation")
+
+    # Status of the embedding operation
+    status: Literal["success", "partial_success", "failure"] = Field(
+        ..., description="Status of the embedding operation"
+    )
+
+    # Number of documents successfully processed
+    processed_count: int = Field(
+        ..., description="Number of documents successfully processed"
+    )
+
+    # Number of documents that failed processing
+    failed_count: Optional[int] = Field(
+        default=None, description="Number of documents that failed processing"
+    )
+
+    # Router-specific information
+    provider_info: Optional[dict[str, Any]] = Field(
+        default=None, description="Router-specific information"
+    )
+
+
+class RetrievalResponse(SchemaBase):
+    """The result of the document retrieval operation"""
+
+    # Unique identifier for this retrieval operation
+    id: UUID = Field(..., description="Unique identifier for this retrieval operation")
+
+    # The original search query
+    query: str = Field(..., description="The original search query")
+
+    # Retrieved documents matching the query
+    results: list[DocumentResult] = Field(
+        ..., description="Retrieved documents matching the query"
+    )
+
+    # Router-specific information
+    provider_info: Optional[dict[str, Any]] = Field(
+        default=None, description="Router-specific information"
+    )

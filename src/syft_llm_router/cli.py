@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Optional, Union
 
 from jinja2 import Template
-from typer import Option, Typer
+from typer import Abort, Option, Typer, confirm, prompt
 
 from syft_llm_router.publish_utils import ProjectMetadata, release_metadata
 
@@ -24,6 +24,7 @@ TEMPLATE_FILES = [
     "router.py.tmpl",
     "pyproject.toml.tmpl",
     "chat_test.py.tmpl",
+    "run.sh.tmpl",
 ]
 
 # Add this with other constants
@@ -132,15 +133,33 @@ def create_llmrouter_app(
 
 @app.command()
 def publish(
-    folder: Annotated[Path, PROJECT_DIR_OPTS],
-    description: Annotated[str, DESCRIPTION_OPTS],
-    tags: Annotated[str, TAGS_OPTS],
-    readme: Annotated[Path, README_OPTS],
+    folder: Annotated[Optional[Path], PROJECT_DIR_OPTS] = None,
+    description: Annotated[Optional[str], DESCRIPTION_OPTS] = None,
+    tags: Annotated[Optional[str], TAGS_OPTS] = None,
+    readme: Annotated[Optional[Path], README_OPTS] = None,
     client_config: Annotated[
         Optional[Path], Option(help="Path to Syft client config file")
     ] = None,
 ) -> None:
     """Release project metadata to make it publicly available in Syft."""
+
+    # If any required argument is not provided, prompt for it
+    if folder is None:
+        folder = Path(prompt("Enter project directory path"))
+
+    if description is None:
+        description = prompt("Enter project description")
+
+    if tags is None:
+        tags = prompt("Enter project tags (comma-separated)")
+
+    if readme is None:
+        readme = Path(prompt("Enter path to README file"))
+
+    # Optional confirmation
+    if not confirm("Do you want to proceed with publishing?"):
+        raise Abort()
+
     from syft_core import Client
 
     # project name is the folder name
@@ -188,10 +207,11 @@ def publish(
         return
 
     # Release metadata
-    if release_metadata(metadata, client):
+    try:
+        release_metadata(metadata, client)
         print(f"Successfully released metadata for {name}")
-    else:
-        print("Error releasing metadata")
+    except Exception as e:
+        print(f"Error releasing metadata: {str(e)}")
 
 
 def main() -> None:
