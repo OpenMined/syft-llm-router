@@ -207,10 +207,11 @@ def publish(
         return
 
     # Release metadata
-    if release_metadata(metadata, client):
+    try:
+        release_metadata(metadata, client)
         print(f"Successfully released metadata for {name}")
-    else:
-        print("Error releasing metadata")
+    except Exception as e:
+        print(f"Error releasing metadata: {str(e)}")
 
 
 def main() -> None:
