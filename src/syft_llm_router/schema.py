@@ -172,21 +172,6 @@ class GenerateChatParams(SchemaBase):
     options: Optional[GenerationOptions] = None
 
 
-class Document(SchemaBase):
-    """Document structure for embedding and retrieval"""
-
-    # Unique identifier for the document
-    id: str = Field(..., description="Unique identifier for the document")
-
-    # Text content to be embedded
-    text: str = Field(..., description="Text content to be embedded")
-
-    # Additional metadata associated with the document
-    metadata: Optional[dict[str, Any]] = Field(
-        default=None, description="Additional metadata associated with the document"
-    )
-
-
 class EmbeddingOptions(SchemaBase):
     """Options for controlling document embedding process"""
 

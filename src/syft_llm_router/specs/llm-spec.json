@@ -298,29 +298,6 @@
                     }
                 }
             },
-            "Document": {
-                "type": "object",
-                "description": "Document structure for embedding and retrieval",
-                "required": [
-                    "id",
-                    "text"
-                ],
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "description": "Unique identifier for the document"
-                    },
-                    "text": {
-                        "type": "string",
-                        "description": "Text content to be embedded"
-                    },
-                    "metadata": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "Additional metadata associated with the document"
-                    }
-                }
-            },
             "GenerationOptions": {
                 "type": "object",
                 "description": "Options that control the text generation process",
