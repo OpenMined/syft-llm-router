@@ -1,31 +1,28 @@
 import argparse
-import os
 from pathlib import Path
-from pydantic import BaseModel
 from typing import Optional, Union
 
-from watchdog.events import FileSystemEvent
 from loguru import logger
+from pydantic import BaseModel
 from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 from syft_llm_router import BaseLLMRouter
 from syft_llm_router.error import (
-    EmbeddingServiceError,
-    IndexerServiceError,
-    InvalidRequestError,
-    FileProcessingError,
+    EndpointNotImplementedError,
     Error,
+    InvalidRequestError,
 )
 from syft_llm_router.schema import (
     ChatResponse,
     CompletionResponse,
+    EmbeddingOptions,
     GenerationOptions,
     Message,
     RetrievalOptions,
     RetrievalResponse,
-    EmbeddingOptions,
 )
+from watchdog.events import FileSystemEvent
 
 
 class ChatRequest(BaseModel):
@@ -63,30 +60,24 @@ def load_router() -> BaseLLMRouter:
     # provider = MyLLMProvider(*args, **kwargs)
     # return provider
 
-    raise NotImplementedError(
-        "You need to implement the load_router function to return your LLM provider."
-    )
+    from router import SyftRAGRouter
+
+    return SyftRAGRouter()
 
 
 def get_embedder_endpoint() -> str:
     """Get the embedder endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_embedder_endpoint function to return the embedder endpoint."
-    )
+    return "http://localhost:8000/embed"
 
 
 def get_indexer_endpoint() -> str:
     """Get the indexer endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_indexer_endpoint function to return the indexer endpoint."
-    )
+    return "http://localhost:8001/index"
 
 
 def get_retriever_endpoint() -> str:
     """Get the retriever endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_retriever_endpoint function to return the retriever endpoint."
-    )
+    return "http://localhost:8001/search"
 
 
 def create_server(project_name: str, config_path: Optional[Path] = None):
@@ -114,6 +105,9 @@ def handle_completion_request(
             prompt=request.prompt,
             options=request.options,
         )
+    except EndpointNotImplementedError as e:
+        logger.error(f"Error processing request: {e}")
+        response = EndpointNotImplementedError(message=str(e))
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))
@@ -163,9 +157,7 @@ def handle_document_retrieval_request(
 
 def handle_document_embeddings(event: FileSystemEvent) -> Optional[Error]:
     """Handle a document embeddings request."""
-    logger.info(
-        f"Processing document embeddings request: <{event.id}>from <{event.sender}>"
-    )
+    logger.info(f"Listening for changes to {event.src_path}")
     provider = load_router()
     embedder_endpoint = get_embedder_endpoint()
     indexer_endpoint = get_indexer_endpoint()
@@ -179,7 +171,7 @@ def handle_document_embeddings(event: FileSystemEvent) -> Optional[Error]:
 
     try:
         response = provider.embed_documents(
-            watch_path=Path(event.src_path),
+            watch_path=event.src_path,
             embedder_endpoint=embedder_endpoint,
             indexer_endpoint=indexer_endpoint,
             options=options,
@@ -190,6 +182,12 @@ def handle_document_embeddings(event: FileSystemEvent) -> Optional[Error]:
 
     return response
 
+
+def ping(ctx: Request) -> str:
+    """Ping the server."""
+    return "pong"
+
+
 def create_embedding_directory(datasite_path: Path):
     """Create a directory for embeddings."""
     # Create the embeddings directory
@@ -197,11 +195,6 @@ def create_embedding_directory(datasite_path: Path):
     embeddings_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Created embeddings directory at {embeddings_dir}")
     return embeddings_dir
-
-
-def ping(ctx: Request) -> str:
-    """Ping the server."""
-    return "pong"
 
 
 def register_routes(server):
@@ -237,11 +230,11 @@ if __name__ == "__main__":
     # Create server with config path
     box = create_server(project_name=args.project_name, config_path=args.config)
 
-    # Create the embeddings directory
-    create_embedding_directory(box.client.my_datasite)
-
     # Register routes
     register_routes(box)
+
+    # Create the embeddings directory
+    create_embedding_directory(box.client.my_datasite)
 
     try:
         print("Starting server...")

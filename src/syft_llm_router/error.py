@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -92,3 +92,6 @@ class EndpointNotImplementedError(RouterError):
         default="Endpoint not implemented",
         description="Error message for endpoint not implemented errors",
     )
+
+
+Error = TypeVar("Error", bound=RouterError)
