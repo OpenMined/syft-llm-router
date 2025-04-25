@@ -61,7 +61,7 @@ class BaseLLMRouter(ABC):
         self,
         query: str,
         embedder_endpoint: str,
-        indexer_endpoint: str,
+        retriever_endpoint: str,
         options: Optional[RetrievalOptions] = None,
     ) -> RetrievalResponse:
         """Retrieve documents from the index based on a search query.
@@ -69,7 +69,7 @@ class BaseLLMRouter(ABC):
         Args:
             query: Search query to find relevant documents
             embedder_endpoint: HTTP endpoint of the embedding service
-            indexer_endpoint: HTTP endpoint of the indexing service
+            retriever_endpoint: HTTP endpoint of the retriever service
             options: Additional parameters for retrieval configuration
 
         Returns:

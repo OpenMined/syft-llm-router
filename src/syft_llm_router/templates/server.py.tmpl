@@ -82,6 +82,13 @@ def get_indexer_endpoint() -> str:
     )
 
 
+def get_retriever_endpoint() -> str:
+    """Get the retriever endpoint."""
+    raise NotImplementedError(
+        "You need to implement the get_retriever_endpoint function to return the retriever endpoint."
+    )
+
+
 def create_server(project_name: str, config_path: Optional[Path] = None):
     """Create and return the SyftEvents server with the given config path."""
     if config_path:
@@ -146,13 +153,13 @@ def handle_document_retrieval_request(
     logger.info(f"Processing document retrieval request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
     embedder_endpoint = get_embedder_endpoint()
-    indexer_endpoint = get_indexer_endpoint()
+    retriever_endpoint = get_retriever_endpoint()
     try:
         response = provider.retrieve_documents(
             query=request.query,
             options=request.options,
             embedder_endpoint=embedder_endpoint,
-            indexer_endpoint=indexer_endpoint,
+            retriever_endpoint=retriever_endpoint,
         )
     except EndpointNotImplementedError as e:
         logger.error(f"Error processing request: {e}")
