@@ -107,6 +107,9 @@ def handle_completion_request(
             prompt=request.prompt,
             options=request.options,
         )
+    except EndpointNotImplementedError as e:
+        logger.error(f"Error processing request: {e}")
+        response = EndpointNotImplementedError(message=str(e))
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))
@@ -126,6 +129,9 @@ def handle_chat_completion_request(
             messages=request.messages,
             options=request.options,
         )
+    except EndpointNotImplementedError as e:
+        logger.error(f"Error processing request: {e}")
+        response = EndpointNotImplementedError(message=str(e))
     except Exception as e:
         logger.error(f"Error processing request: {e}")
         response = InvalidRequestError(message=str(e))
@@ -148,6 +154,9 @@ def handle_document_retrieval_request(
             embedder_endpoint=embedder_endpoint,
             indexer_endpoint=indexer_endpoint,
         )
+    except EndpointNotImplementedError as e:
+        logger.error(f"Error processing request: {e}")
+        response = EndpointNotImplementedError(message=str(e))
     except EmbeddingServiceError as e:
         logger.error(f"Error processing request: {e}")
         response = EmbeddingServiceError(message=str(e))
@@ -183,6 +192,9 @@ def handle_document_embeddings(event: FileSystemEvent) -> Optional[Error]:
             indexer_endpoint=indexer_endpoint,
             options=options,
         )
+    except EndpointNotImplementedError as e:
+        logger.error(f"Error processing request: {e}")
+        response = EndpointNotImplementedError(message=str(e))
     except FileProcessingError as e:
         logger.error(f"Error processing request: {e}")
         response = FileProcessingError(message=str(e))

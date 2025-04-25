@@ -82,3 +82,13 @@ class IndexerServiceError(RouterError):
         default="Indexer service error",
         description="Error message for indexer service errors",
     )
+
+
+class EndpointNotImplementedError(RouterError):
+    """Error when an endpoint is not implemented."""
+
+    code: int = 501
+    message: str = Field(
+        default="Endpoint not implemented",
+        description="Error message for endpoint not implemented errors",
+    )

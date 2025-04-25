@@ -33,7 +33,7 @@ class SyftLLMRouter(BaseLLMRouter):
         options: Optional[GenerationOptions] = None,
     ) -> CompletionResponse:
         """Generate a text completion based on a prompt."""
-        raise NotImplementedError
+        raise NotImplementedError("Generate completion method not implemented")
 
     def generate_chat(
         self,
@@ -42,7 +42,7 @@ class SyftLLMRouter(BaseLLMRouter):
         options: Optional[GenerationOptions] = None,
     ) -> ChatResponse:
         """Generate a chat response based on a conversation history."""
-        raise NotImplementedError
+        raise NotImplementedError("Generate chat method not implemented")
 
     def embed_documents(
         self,
@@ -62,7 +62,7 @@ class SyftLLMRouter(BaseLLMRouter):
         Returns:
             EmbeddingResponse: The result of the document embedding operation
         """
-        raise NotImplementedError
+        raise NotImplementedError("Embed documents method not implemented")
 
     def retrieve_documents(
         self,
@@ -82,4 +82,4 @@ class SyftLLMRouter(BaseLLMRouter):
         Returns:
             RetrievalResponse: The result of the document retrieval operation
         """
-        raise NotImplementedError
+        raise NotImplementedError("Retrieve documents method not implemented")

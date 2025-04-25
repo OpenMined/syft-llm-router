@@ -24,6 +24,7 @@ TEMPLATE_FILES = [
     "router.py.tmpl",
     "pyproject.toml.tmpl",
     "chat_test.py.tmpl",
+    "run.sh.tmpl",
 ]
 
 # Add this with other constants
