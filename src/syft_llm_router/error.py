@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -54,4 +54,31 @@ class RateLimitExceededError(RouterError):
     )
 
 
-Error = TypeVar("Error", bound=RouterError, covariant=True)
+class FileProcessingError(RouterError):
+    """Error when a file cannot be processed."""
+
+    code: int = 500
+    message: str = Field(
+        default="File processing error",
+        description="Error message for file processing errors",
+    )
+
+
+class EmbeddingServiceError(RouterError):
+    """Error when the embedding service fails."""
+
+    code: int = 502
+    message: str = Field(
+        default="Embedding service error",
+        description="Error message for embedding service errors",
+    )
+
+
+class IndexerServiceError(RouterError):
+    """Error when the indexer service fails."""
+
+    code: int = 503
+    message: str = Field(
+        default="Indexer service error",
+        description="Error message for indexer service errors",
+    )
