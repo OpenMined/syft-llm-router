@@ -1,6 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -9,6 +10,53 @@ from pydantic import BaseModel, Field, field_validator
 from rich import print as rprint
 from syft_core import Client
 from typer import Abort
+
+
+class PricingMethod(str, Enum):
+    """Pricing methods for the LLM Router."""
+
+    PER_REQUEST = "per-request"
+    PER_TOKENS = "per-tokens"
+    FREE = "free"
+
+    @classmethod
+    def get_choices(cls) -> list[str]:
+        """Return a list of choices for the pricing method."""
+        return [method.value for method in cls]
+
+    def __str__(self) -> str:
+        """Return a human-readable description of the pricing method."""
+        descriptions = {
+            "per-request": "Pay per API request",
+            "per-tokens": "Pay per token usage",
+            "free": "Free to use",
+        }
+        return f"{self.value} - {descriptions[self.value]}"
+
+
+class Pricing(BaseModel):
+    """Handles pricing generation and validation for LLM Router implementations."""
+
+    method: PricingMethod
+    price: float
+
+
+class PublishConfig(BaseModel):
+    """Configuration for publishing a project."""
+
+    folder: Path
+    description: str
+    tags: str
+    readme: Path
+    client_config: Optional[Path] = None
+    pricing: Pricing
+
+    @field_validator("folder", "readme", "client_config", mode="before")
+    def convert_to_path(cls, v: Optional[Union[str, Path]]) -> Optional[Path]:
+        """Convert string to Path if necessary."""
+        if v is None:
+            return None
+        return Path(v)
 
 
 class ProjectMetadata(BaseModel):
@@ -83,6 +131,7 @@ class ProjectMetadata(BaseModel):
         tags: list[str],
         readme_content: str,
         documented_endpoints: dict[str, Any],
+        pricing: Pricing,
     ) -> dict[str, Any]:
         """Generate metadata dictionary with all project information.
 
@@ -92,6 +141,8 @@ class ProjectMetadata(BaseModel):
             tags: List of tags for categorization
             readme_content: Content of the README file
             documented_endpoints: List of documented endpoints with their descriptions
+            pricing_method: Pricing method
+            price: Price of the router
 
         Returns:
             Dict: Complete metadata dictionary
@@ -118,24 +169,8 @@ class ProjectMetadata(BaseModel):
             "readme": readme_content,
             "documented_endpoints": documented_endpoints or {},
             "publish_date": datetime.now().isoformat(),
+            "pricing": f"{pricing.method.value} - {pricing.price}",
         }
-
-
-class PublishConfig(BaseModel):
-    """Configuration for publishing a project."""
-
-    folder: Path
-    description: str
-    tags: str
-    readme: Path
-    client_config: Optional[Path] = None
-
-    @field_validator("folder", "readme", "client_config", mode="before")
-    def convert_to_path(cls, v: Optional[Union[str, Path]]) -> Optional[Path]:
-        """Convert string to Path if necessary."""
-        if v is None:
-            return None
-        return Path(v)
 
 
 class PublishHandler:
@@ -147,6 +182,8 @@ class PublishHandler:
         description: str,
         tags: str,
         readme: Path,
+        pricing_method: PricingMethod,
+        price: float,
         client_config: Optional[Path] = None,
     ) -> None:
         """Initialize the publish handler with required parameters.
@@ -164,6 +201,7 @@ class PublishHandler:
             tags=tags,
             readme=readme,
             client_config=client_config,
+            pricing=Pricing(method=pricing_method, price=price),
         )
 
     def validate_paths(self) -> bool:
@@ -287,6 +325,7 @@ class PublishHandler:
                 tags=tag_list,
                 readme_content=self.get_readme_content(),
                 documented_endpoints=documented_endpoints,
+                pricing=self.config.pricing,
             )
 
             # Release metadata
@@ -303,6 +342,8 @@ if __name__ == "__main__":
         folder=Path("examples/rag-app"),
         description="RAG App",
         tags="llm,router,rag-app",
-        readme=Path("."),
+        readme=Path("examples/rag-app/README.md"),
+        pricing_method=PricingMethod.PER_REQUEST,
+        price=0.0001,
     )
     publish_handler.publish()

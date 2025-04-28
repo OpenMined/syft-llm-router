@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
+from click.types import Choice
 from jinja2 import Template
 from loguru import logger
 from typer import Abort, Option, Typer, confirm, prompt
 
-from syft_llm_router.publish import PublishHandler
+from syft_llm_router.publish import PricingMethod, PublishHandler
 
 app = Typer(
     name="syftrouter",
@@ -162,7 +163,20 @@ def publish(
     if readme is None:
         readme = prompt("Enter path to README file", type=Path)
 
-    # Optional confirmation
+    # Show pricing options
+    pricing_opts = prompt(
+        "Select pricing method",
+        type=Choice(PricingMethod.get_choices()),
+        show_choices=True,
+    )
+
+    if pricing_opts == PricingMethod.PER_REQUEST:
+        price = prompt("Enter price per request", type=float)
+    elif pricing_opts == PricingMethod.PER_TOKENS:
+        price = prompt("Enter price per tokens", type=float)
+    elif pricing_opts == PricingMethod.FREE:
+        price = 0
+
     if not confirm("Do you want to proceed with publishing?"):
         raise Abort()
 
@@ -172,6 +186,8 @@ def publish(
         description=description,
         tags=tags,
         readme=readme,
+        pricing_method=pricing_opts,
+        price=price,
         client_config=client_config,
     )
     handler.publish()
