@@ -1,11 +1,12 @@
-import json
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
+from click.types import Choice
 from jinja2 import Template
+from loguru import logger
 from typer import Abort, Option, Typer, confirm, prompt
 
-from syft_llm_router.publish_utils import ProjectMetadata, release_metadata
+from syft_llm_router.publish import PricingMethod, PublishHandler
 
 app = Typer(
     name="syftrouter",
@@ -80,7 +81,7 @@ def __copy_template(template_name: str, project_folder: Path) -> None:
 
     # Check if the template file exists
     if not src.exists():
-        print(f"Template file {src} does not exist.")
+        logger.error(f"Template file {src} does not exist.")
         return
 
     # Read the template content
@@ -91,7 +92,7 @@ def __copy_template(template_name: str, project_folder: Path) -> None:
     # Replace placeholders in the template content
     dest.write_text(content)
 
-    print(f"Created {dest_name} template at {dest}")
+    logger.info(f"Created {dest_name} template at {dest}")
 
 
 def __create_folder(folder: Union[str, Path]) -> Path:
@@ -100,7 +101,7 @@ def __create_folder(folder: Union[str, Path]) -> Path:
     """
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
-    print(f"Created folder: {folder}")
+    logger.info(f"Created folder: {folder}")
     return folder_path
 
 
@@ -128,15 +129,21 @@ def create_llmrouter_app(
     for filename in TEMPLATE_FILES:
         __copy_template(filename, project_folder)
 
-    print(f"Initialized project in {project_folder}")
+    logger.success(f"Initialized project in {project_folder}")
 
 
 @app.command()
 def publish(
-    folder: Annotated[Optional[Path], PROJECT_DIR_OPTS] = None,
+    folder: Annotated[
+        Optional[Path],
+        PROJECT_DIR_OPTS,
+    ] = None,
     description: Annotated[Optional[str], DESCRIPTION_OPTS] = None,
     tags: Annotated[Optional[str], TAGS_OPTS] = None,
-    readme: Annotated[Optional[Path], README_OPTS] = None,
+    readme: Annotated[
+        Optional[Path],
+        README_OPTS,
+    ] = None,
     client_config: Annotated[
         Optional[Path], Option(help="Path to Syft client config file")
     ] = None,
@@ -145,73 +152,45 @@ def publish(
 
     # If any required argument is not provided, prompt for it
     if folder is None:
-        folder = Path(prompt("Enter project directory path"))
+        folder = prompt("Enter project directory path", type=Path)
 
     if description is None:
-        description = prompt("Enter project description")
+        description = prompt("Enter project description", type=str)
 
     if tags is None:
-        tags = prompt("Enter project tags (comma-separated)")
+        tags = prompt("Enter project tags (comma-separated)", type=str)
 
     if readme is None:
-        readme = Path(prompt("Enter path to README file"))
+        readme = prompt("Enter path to README file", type=Path)
 
-    # Optional confirmation
+    # Show pricing options
+    pricing_opts = prompt(
+        "Select pricing method",
+        type=Choice(PricingMethod.get_choices()),
+        show_choices=True,
+    )
+
+    if pricing_opts == PricingMethod.PER_REQUEST:
+        price = prompt("Enter price per request", type=float)
+    elif pricing_opts == PricingMethod.PER_TOKENS:
+        price = prompt("Enter price per tokens", type=float)
+    elif pricing_opts == PricingMethod.FREE:
+        price = 0
+
     if not confirm("Do you want to proceed with publishing?"):
         raise Abort()
 
-    from syft_core import Client
-
-    # project name is the folder name
-    name = folder.name
-
-    # Validate required files
-    metadata_gen = ProjectMetadata(project_folder=folder)
-    if not metadata_gen.validate_project_structure():
-        print("Error: Invalid project structure")
-        return
-
-    # Read README content if provided
-    readme_content = ""
-    if readme and readme.exists():
-        readme_content = readme.read_text()
-    else:
-        print("Warning: No README file provided")
-
-    client = Client.load(client_config) if client_config else Client.load()
-
-    documented_endpoints = {}
-    # Load the RPC schema
-    app_name = f"llm/{name}"
-    rpc_schema_path = client.app_data(app_name) / RPC_SCHEMA_PATH
-    # Validate the RPC schema exists
-    if rpc_schema_path.exists():
-        documented_endpoints = json.loads(rpc_schema_path.read_text())
-    else:
-        print(f"Error: RPC schema file does not exist at: {rpc_schema_path}")
-
-    # Convert tags string to list
-    tag_list = [tag.strip() for tag in tags.split(",")] if tags else []
-
-    # Generate metadata
-    try:
-        metadata = metadata_gen.generate(
-            project_name=name,
-            description=description or f"{name} LLM Router Implementation",
-            tags=tag_list,
-            readme_content=readme_content,
-            documented_endpoints=documented_endpoints,
-        )
-    except Exception as e:
-        print(f"Error generating metadata: {str(e)}")
-        return
-
-    # Release metadata
-    try:
-        release_metadata(metadata, client)
-        print(f"Successfully released metadata for {name}")
-    except Exception as e:
-        print(f"Error releasing metadata: {str(e)}")
+    # Create and execute publish handler
+    handler = PublishHandler(
+        folder=folder,
+        description=description,
+        tags=tags,
+        readme=readme,
+        pricing_method=pricing_opts,
+        price=price,
+        client_config=client_config,
+    )
+    handler.publish()
 
 
 def main() -> None:
