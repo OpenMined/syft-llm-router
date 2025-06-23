@@ -247,11 +247,11 @@ class PublishHandler:
         Returns:
             dict: Documented endpoints or empty dict if schema doesn't exist
         """
-        if name.startswith("com.git.hub.openmined."):
-            name = name.replace("com.git.hub.openmined.", "")
+        if name.startswith("com.github.openmined."):
+            name = name.replace("com.github.openmined.", "")
         app_name = f"llm/{name}"
         rpc_schema_path = client.app_data(app_name) / "rpc/rpc.schema.json"
-
+        
         if not rpc_schema_path.exists():
             rprint(
                 f"[yellow]RPC schema file does not exist at: {rpc_schema_path}[/yellow]"
