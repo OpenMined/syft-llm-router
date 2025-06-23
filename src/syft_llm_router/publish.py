@@ -282,6 +282,11 @@ class PublishHandler:
         Raises:
             Exception: If metadata release fails
         """
+        if metadata["project_name"].startswith("com.github.openmined."):
+            metadata["project_name"] = metadata["project_name"].replace(
+                "com.github.openmined.", ""
+            )
+
         public_proj_path = (
             client.datasite_path / "public" / "llm_routers" / metadata["project_name"]
         )
