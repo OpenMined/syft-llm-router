@@ -314,7 +314,6 @@ class PublishHandler:
         try:
             # Get project name from folder
             folder_path = self.config.folder.resolve()
-            name = folder_path.name
 
             # Initialize client
             client = (
@@ -323,14 +322,16 @@ class PublishHandler:
                 else Client.load()
             )
 
-            # Get documented endpoints
-            documented_endpoints = self.get_documented_endpoints(client, name)
-
             # Process tags
             tag_list = self.process_tags()
 
             # Generate metadata
             metadata_gen = ProjectMetadata(project_folder=folder_path)
+            name = metadata_gen.get_project_name_from_pyproject(),
+
+            # Get documented endpoints
+            documented_endpoints = self.get_documented_endpoints(client, name)
+
             metadata = metadata_gen.generate(
                 project_name=name,
                 description=self.config.description,
