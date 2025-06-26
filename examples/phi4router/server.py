@@ -62,7 +62,7 @@ def create_server(project_name: str, config_path: Optional[Path] = None):
     else:
         client = Client.load()
 
-    server_name = f"llm/{project_name}"
+    server_name = f"routers/{project_name}"
     return SyftEvents(server_name, client=client)
 
 

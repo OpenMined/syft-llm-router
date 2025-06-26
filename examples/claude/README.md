@@ -1,11 +1,11 @@
-# Mixtral LLM Router Example
+# Claude LLM Router Example
 
-This example demonstrates how to create a Syft LLM Router for the Mixtral-8x22b-instruct model using the OpenRouter API. The example includes a complete implementation of a router server and client testing code, with integrated accounting functionality for transaction tracking and billing.
+This example demonstrates how to create a Syft LLM Router for Claude models using the Anthropic API. The example includes a complete implementation of a router server and client testing code, with integrated accounting functionality for transaction tracking and billing.
 
 ## Overview
 
 The example consists of four main components:
-1. `router.py` - Implements the Mixtral LLM Router using the OpenRouter API
+1. `router.py` - Implements the Claude LLM Router using the Anthropic API
 2. `server.py` - Sets up the SyftEvents server to handle LLM requests with accounting integration
 3. `accounting.py` - Handles accounting client initialization and configuration
 4. `chat_test.py` - Provides example code for testing both chat and completion endpoints with accounting tokens
@@ -13,7 +13,7 @@ The example consists of four main components:
 ## Prerequisites
 
 - Python 3.9 or higher
-- OpenRouter API key
+- Anthropic API key
 - SyftBox client configuration
 - Accounting service URL (set via `ACCOUNTING_SERVICE_URL` environment variable)
 - Required Python packages (installed via `uv`)
@@ -23,7 +23,7 @@ The example consists of four main components:
 1. Clone the repository:
 ```bash
 git clone https://github.com/OpenMined/syft-llm-router.git
-cd syft-llm-router/examples/mixtral
+cd syft-llm-router/examples/claude
 ```
 
 3. Create environment and Install dependencies:
@@ -33,9 +33,9 @@ uv sync
 
 ## Configuration
 
-1. Set your OpenRouter API key:
+1. Set your Anthropic API key:
 ```bash
-export OPENROUTER_API_KEY="your-api-key-here"
+export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
 2. Set your accounting service URL (optional, will use default if not set):
@@ -55,7 +55,7 @@ export ACCOUNTING_SERVICE_URL="your-accounting-service-url"
 ### Option 2: Manual execution
 1. Start the router server:
 ```bash
-uv run python server.py --project-name mixtral --api-key $OPENROUTER_API_KEY
+uv run python server.py --project-name claude --api-key $ANTHROPIC_API_KEY
 ```
 
 2. In a separate terminal, run the test script:
@@ -65,13 +65,22 @@ uv run python chat_test.py
 
 ## Features
 
-- **Chat Completion**: Supports chat-based interactions with the Mixtral model
+- **Chat Completion**: Supports chat-based interactions with Claude models
 - **Text Completion**: Supports text completion requests
+- **Multiple Claude Models**: Supports Claude 3 Opus, Sonnet, and Haiku
 - **Accounting Integration**: Automatic transaction tracking and billing for chat requests
 - **Configurable Pricing**: Pricing per request configurable via `pyproject.toml`
 - **Configurable Options**: Supports various generation parameters like temperature, max_tokens, and top_p
 - **Error Handling**: Comprehensive error handling and logging
 - **Logging**: Detailed logging using loguru
+
+## Supported Models
+
+The router supports the following Claude models:
+- `claude-3-opus` - Claude 3 Opus (most capable)
+- `claude-3-sonnet` - Claude 3 Sonnet (balanced)
+- `claude-3-haiku` - Claude 3 Haiku (fastest)
+- `claude` - Alias for Claude 3 Sonnet
 
 ## Accounting Functionality
 
@@ -79,7 +88,7 @@ The router includes integrated accounting functionality:
 
 - **Transaction Tokens**: Each chat request requires an accounting token for billing
 - **Automatic Billing**: Transactions are automatically created, confirmed, or cancelled based on request success
-- **Configurable Pricing**: Pricing is set in `pyproject.toml` under `[tool.mixtral.pricing_per_request]`
+- **Configurable Pricing**: Pricing is set in `pyproject.toml` under `[tool.claude.pricing_per_request]`
 - **Error Recovery**: Failed requests automatically cancel pending transactions
 
 ### Accounting Configuration
@@ -108,7 +117,7 @@ response = test_chat(
     datasite=datasite,
     user_message="How many legs does a spider have?",
     system_message="Limit your answer to the final result. Explain your answer.",
-    model="mixtral"
+    model="claude-3-sonnet"
 )
 
 # Completion example (no accounting required)
@@ -116,9 +125,18 @@ response = test_completion(
     client=client,
     datasite=datasite,
     prompt="What is 1+1?",
-    model="mixtral"
+    model="claude-3-sonnet"
 )
 ```
+
+## API Differences from OpenAI
+
+The Anthropic API has some differences from the OpenAI API:
+
+1. **System Messages**: System messages are handled differently and may be skipped in some contexts
+2. **Model Names**: Uses full model names with version suffixes
+3. **Response Format**: Slightly different response structure
+4. **Finish Reasons**: Different finish reason values (`end_turn`, `max_tokens`, `stop_sequence`)
 
 ## Error Handling
 
@@ -130,4 +148,4 @@ The router includes comprehensive error handling for:
 - Accounting transaction failures
 
 ## Publishing your Router
-For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](../../publish.md).
+For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](../../publish.md). 

@@ -1,8 +1,8 @@
 [project]
-name = "mixtral"
+name = "my-llm-router"
 version = "0.1.0"
 description = "Syft LLM Router Implementation"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 readme = "README.md"
 
 # Dependencies needed to run the server
@@ -11,7 +11,6 @@ dependencies = [
     "syft-event>=0.1.0",
     "syft-llm-router>=0.1.0",
     "pydantic>=2.0.0",
-    "requests>=2.32.3",
     "accounting-sdk",
 ]
 
@@ -22,7 +21,7 @@ accounting-sdk = { git = "https://github.com/OpenMined/accounting-sdk.git", rev 
 
 
 # Application configuration
-[tool.mixtral]
+[tool.my-llm-router]
 
 # Rate limiting settings
 enable_rate_limiting = true
@@ -32,3 +31,10 @@ requests_per_day = 1000
 
 # Accounting settings
 pricing_per_request = 0.1
+
+# Embedding settings
+embedder_endpoint = ""
+indexer_endpoint = ""
+
+# Retrieval settings
+retriever_endpoint = ""

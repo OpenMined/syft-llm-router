@@ -3,16 +3,20 @@ from syft_core import Client
 from syft_llm_router.error import RouterError
 from syft_llm_router.schema import ChatResponse, CompletionResponse
 from syft_rpc import rpc
+import accounting
+from accountingSDK import UserClient as AccountingUserClient
 
-APP_NAME = "routers/simple-ensemble"
+
+APP_NAME = "routers/my-llm-router"
 
 
 def test_chat(
     client: Client,
+    accounting_client: AccountingUserClient,
+    model: str,
     datasite: str,
     user_message: str,
     system_message: str = None,
-    model: str = "phi-4",
 ):
     """
     Send a simple chat request to an LLM through the Syft LLM Router.
@@ -45,12 +49,19 @@ def test_chat(
     # Add user message
     messages.append({"role": "user", "content": user_message})
 
+    token = accounting_client.create_transaction_token(recipientEmail=datasite)
+    print(f"Token: {token}")
     # Create request
     request_data = {
         "model": model,
+        "accounting_token": token,
         "messages": messages,
         "options": {"temperature": 0.7, "max_tokens": 150, "top_p": 1.0},
     }
+    print(f"Request data: {request_data}")
+
+    url = (rpc.make_url(datasite=datasite, app_name=APP_NAME, endpoint="chat"),)
+    logger.debug(url)
 
     try:
         # Send the request
@@ -130,9 +141,13 @@ def test_completion(client: Client, datasite: str, promt: str, model: str = "phi
 # Example usage
 if __name__ == "__main__":
     client = Client.load()
+    accounting_client: AccountingUserClient = accounting.get_or_init_user_client(
+        syftbox_config_path="~/.syftbox/config.json",
+        accounting_config_path="~/.syftbox/accounting-config.json",
+    )
 
     # This is the datasite where the LLM Routing service is running
-    datasite = "shubhamrouter2@openmined.org"
+    datasite = client.email
 
     print("Test chat....")
 
@@ -152,27 +167,30 @@ if __name__ == "__main__":
     st = time.time()
     response = test_chat(
         client=client,
+        accounting_client=accounting_client,
         datasite=datasite,
         user_message=question,
         system_message="Limit your answer to the final result. Explain your answer.",
+        model="",
     )
 
     et = time.time()
     print(f"Time taken: {et - st} seconds")
     print(f"Response: {response}")
 
-    print("\nTest completion....")
+    # print("\nTest completion....")
 
-    # Completion example
-    prompt = "What is 1+1 ?"
+    # # Completion example
+    # prompt = "What is 1+1 ?"
 
-    st = time.time()
-    # Send the request
-    completion_response = test_completion(
-        client=client,
-        datasite=datasite,
-        promt=prompt,
-    )
-    et = time.time()
-    print(f"Time taken: {et - st} seconds")
-    print(f"Completion Response: {completion_response}")
+    # st = time.time()
+    # # Send the request
+    # completion_response = test_completion(
+    #     client=client,
+    #     datasite=datasite,
+    #     promt=prompt,
+    #     model="",
+    # )
+    # et = time.time()
+    # print(f"Time taken: {et - st} seconds")
+    # print(f"Completion Response: {completion_response}")

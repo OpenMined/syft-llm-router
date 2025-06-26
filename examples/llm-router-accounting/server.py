@@ -1,8 +1,10 @@
 import argparse
 import os
+import accounting
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional, Union
+import tomllib
 
 from watchdog.events import FileSystemEvent
 from loguru import logger
@@ -34,6 +36,7 @@ class ChatRequest(BaseModel):
     model: str
     messages: list[Message]
     options: Optional[GenerationOptions] = None
+    accounting_token: str
 
 
 class DocumentRetrievalRequest(BaseModel):
@@ -62,31 +65,24 @@ def load_router() -> BaseLLMRouter:
     # kwargs = ...  # Load or define your provider keyword arguments here
     # provider = MyLLMProvider(*args, **kwargs)
     # return provider
+    from router import SyftLLMRouter
 
-    raise NotImplementedError(
-        "You need to implement the load_router function to return your LLM provider."
-    )
+    return SyftLLMRouter()
 
 
 def get_embedder_endpoint() -> str:
     """Get the embedder endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_embedder_endpoint function to return the embedder endpoint."
-    )
+    return os.getenv("EMBEDDER_ENDPOINT", "http://localhost:8000/embedder")
 
 
 def get_indexer_endpoint() -> str:
     """Get the indexer endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_indexer_endpoint function to return the indexer endpoint."
-    )
+    return os.getenv("INDEXER_ENDPOINT", "http://localhost:8000/indexer")
 
 
 def get_retriever_endpoint() -> str:
     """Get the retriever endpoint."""
-    raise NotImplementedError(
-        "You need to implement the get_retriever_endpoint function to return the retriever endpoint."
-    )
+    return os.getenv("RETRIEVER_ENDPOINT", "http://localhost:8000/retriever")
 
 
 def create_server(project_name: str, config_path: Optional[Path] = None):
@@ -100,6 +96,17 @@ def create_server(project_name: str, config_path: Optional[Path] = None):
     return SyftEvents(server_name, client=client)
 
 
+def get_pricing_per_request() -> float:
+    """Get the pricing per request from pyproject.toml."""
+    try:
+        with open("pyproject.toml", "rb") as f:
+            config = tomllib.load(f)
+        return config.get("tool", {}).get("my-llm-router", {}).get("pricing_per_request", 0.1)
+    except Exception as e:
+        logger.warning(f"Could not read pricing_per_request from pyproject.toml: {e}. Using default value 0.1")
+        return 0.1
+
+
 def handle_completion_request(
     request: CompletionRequest,
     ctx: Request,
@@ -108,6 +115,7 @@ def handle_completion_request(
 
     logger.info(f"Processing completion request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
+
     try:
         response = provider.generate_completion(
             model=request.model,
@@ -127,6 +135,15 @@ def handle_chat_completion_request(
     """Handle a chat completion request."""
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
+    accounting_client = accounting.get_or_init_user_client()
+
+    try:
+        transaction = accounting_client.create_delegated_transaction(
+            amount=get_pricing_per_request(), senderEmail=ctx.sender, token=request.accounting_token
+        )
+    except Exception as e:
+        return InvalidRequestError(message=str(e))
+
     try:
         response = provider.generate_chat(
             model=request.model,
@@ -135,7 +152,10 @@ def handle_chat_completion_request(
         )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
+        accounting_client.cancel_transaction(id=transaction.id)
         response = InvalidRequestError(message=str(e))
+
+    accounting_client.confirm_transaction(id=transaction.id)
     return response
 
 
@@ -190,6 +210,7 @@ def handle_document_embeddings(event: FileSystemEvent) -> Optional[Error]:
 
     return response
 
+
 def create_embedding_directory(datasite_path: Path):
     """Create a directory for embeddings."""
     # Create the embeddings directory
@@ -236,6 +257,8 @@ if __name__ == "__main__":
 
     # Create server with config path
     box = create_server(project_name=args.project_name, config_path=args.config)
+
+    accounting.get_or_init_user_client()
 
     # Create the embeddings directory
     create_embedding_directory(box.client.my_datasite)

@@ -4,7 +4,7 @@ from syft_llm_router.error import RouterError
 from syft_llm_router.schema import RetrievalResponse
 from syft_rpc import rpc
 
-APP_NAME = "llm/rag-app"
+APP_NAME = "routers/rag-app"
 
 
 def test_retrieval(client: Client, datasite: str, query: str):

@@ -1,7 +1,7 @@
 [project]
-name = "mixtral"
+name = "deepseek"
 version = "0.1.0"
-description = "Syft LLM Router Implementation"
+description = "Syft LLM Router Implementation for DeepSeek"
 requires-python = ">=3.9"
 readme = "README.md"
 
@@ -22,7 +22,7 @@ accounting-sdk = { git = "https://github.com/OpenMined/accounting-sdk.git", rev 
 
 
 # Application configuration
-[tool.mixtral]
+[tool.deepseek]
 
 # Rate limiting settings
 enable_rate_limiting = true
@@ -31,4 +31,4 @@ requests_per_hour = 10
 requests_per_day = 1000
 
 # Accounting settings
-pricing_per_request = 0.1
+pricing_per_request = 0.1 

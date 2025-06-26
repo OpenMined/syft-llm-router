@@ -3,15 +3,18 @@ from syft_core import Client
 from syft_llm_router.error import RouterError
 from syft_llm_router.schema import ChatResponse, CompletionResponse
 from syft_rpc import rpc
+import accounting
+from accountingSDK import UserClient as AccountingUserClient
 
-APP_NAME = "llm/mixtral"
+APP_NAME = "routers/mixtral"
 
 
 def test_chat(
     client: Client,
+    accounting_client: AccountingUserClient,
+    model: str,
     datasite: str,
     user_message: str,
-    model: str,
     system_message: str = None,
 ):
     """
@@ -21,14 +24,16 @@ def test_chat(
     ----------
     client : Client
         The Syft client instance.
+    accounting_client : AccountingUserClient
+        The accounting client instance.
+    model : str
+        The model to use.
     datasite : str
         The datasite to send the request to (e.g., "username@domain.org").
     user_message : str
         The message from the user to send to the model.
     system_message : str, optional
         An optional system message to include.
-    model : str, optional
-        The model to use.
 
     Returns
     -------
@@ -45,9 +50,12 @@ def test_chat(
     # Add user message
     messages.append({"role": "user", "content": user_message})
 
+    token = accounting_client.create_transaction_token(recipientEmail=datasite)
+    print(f"Token: {token}")
     # Create request
     request_data = {
         "model": model,
+        "accounting_token": token,
         "messages": messages,
         "options": {
             "temperature": 0.7,
@@ -57,6 +65,10 @@ def test_chat(
             "top_logprobs": 5,
         },
     }
+    print(f"Request data: {request_data}")
+
+    url = (rpc.make_url(datasite=datasite, app_name=APP_NAME, endpoint="chat"),)
+    logger.debug(url)
 
     try:
         # Send the request
@@ -136,6 +148,10 @@ def test_completion(client: Client, datasite: str, promt: str, model: str = "phi
 # Example usage
 if __name__ == "__main__":
     client = Client.load()
+    accounting_client: AccountingUserClient = accounting.get_or_init_user_client(
+        syftbox_config_path="~/.syftbox/config.json",
+        accounting_config_path="~/.syftbox/accounting-config.json",
+    )
 
     print("Client", client.email)
 
@@ -161,6 +177,7 @@ if __name__ == "__main__":
     st = time.time()
     response = test_chat(
         client=client,
+        accounting_client=accounting_client,
         datasite=datasite,
         user_message=question,
         system_message="Limit your answer to the final result. Explain your answer.",

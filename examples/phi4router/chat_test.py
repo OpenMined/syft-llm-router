@@ -4,7 +4,7 @@ from syft_llm_router.error import RouterError
 from syft_llm_router.schema import ChatResponse, CompletionResponse
 from syft_rpc import rpc
 
-APP_NAME = "llm/phi4router"
+APP_NAME = "routers/phi4router"
 
 
 def test_chat(

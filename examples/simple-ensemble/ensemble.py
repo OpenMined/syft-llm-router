@@ -50,12 +50,12 @@ DATASITE_2 = "shubhamrouter2@openmined.org"
 
 DATASITE_1_CONFIG = {
     "model": "mixtral",
-    "app_name": "llm/mixtral",
+    "app_name": "routers/mixtral",
 }
 
 DATASITE_2_CONFIG = {
     "model": "phi-4",
-    "app_name": "llm/phi4router",
+    "app_name": "routers/phi4router",
 }
 
 NAMESPACE = "ensemble"

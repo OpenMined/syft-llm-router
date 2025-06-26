@@ -1,5 +1,7 @@
 import argparse
 import os
+import accounting
+import tomllib
 from pathlib import Path
 from typing import Optional, Union
 
@@ -24,6 +26,7 @@ class ChatRequest(BaseModel):
     model: str
     messages: list[Message]
     options: Optional[GenerationOptions] = None
+    accounting_token: str
 
 
 class CompletionRequest(BaseModel):
@@ -58,8 +61,19 @@ def create_server(project_name: str, config_path: Optional[Path] = None):
     else:
         client = Client.load()
 
-    server_name = f"llm/{project_name}"
+    server_name = f"routers/{project_name}"
     return SyftEvents(server_name, client=client)
+
+
+def get_pricing_per_request() -> float:
+    """Get the pricing per request from pyproject.toml."""
+    try:
+        with open("pyproject.toml", "rb") as f:
+            config = tomllib.load(f)
+        return config.get("tool", {}).get("mixtral", {}).get("pricing_per_request", 0.1)
+    except Exception as e:
+        logger.warning(f"Could not read pricing_per_request from pyproject.toml: {e}. Using default value 0.1")
+        return 0.1
 
 
 def handle_completion_request(
@@ -89,6 +103,15 @@ def handle_chat_completion_request(
     """Handle a chat completion request."""
     logger.info(f"Processing chat request: <{ctx.id}>from <{ctx.sender}>")
     provider = load_router()
+    accounting_client = accounting.get_or_init_user_client()
+
+    try:
+        transaction = accounting_client.create_delegated_transaction(
+            amount=get_pricing_per_request(), senderEmail=ctx.sender, token=request.accounting_token
+        )
+    except Exception as e:
+        return InvalidRequestError(message=str(e))
+
     try:
         response = provider.generate_chat(
             model=request.model,
@@ -97,7 +120,10 @@ def handle_chat_completion_request(
         )
     except Exception as e:
         logger.error(f"Error processing request: {e}")
+        accounting_client.cancel_transaction(id=transaction.id)
         response = InvalidRequestError(message=str(e))
+
+    accounting_client.confirm_transaction(id=transaction.id)
     return response
 
 
@@ -141,6 +167,9 @@ if __name__ == "__main__":
 
     # Create server with config
     box = create_server(project_name=args.project_name, config_path=args.config)
+
+    # Initialize accounting client
+    accounting.get_or_init_user_client()
 
     # Register routes
     register_routes(box)
