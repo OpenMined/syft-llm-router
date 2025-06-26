@@ -124,6 +124,11 @@ class ProjectMetadata(BaseModel):
             rprint(f"[red]Error parsing pyproject.toml: {str(e)}[/red]")
             return {}
 
+    def get_project_name_from_pyproject(self) -> str:
+        """Extract the project name from pyproject.toml [project] section."""
+        metadata = self.read_project_metadata()
+        return metadata.get("project", {}).get("name", "")
+
     def generate(
         self,
         project_name: str,
@@ -249,7 +254,7 @@ class PublishHandler:
         """
         if name.startswith("com.github.openmined."):
             name = name.replace("com.github.openmined.", "")
-        app_name = f"llm/{name}"
+        app_name = f"routers/{name}"
         rpc_schema_path = client.app_data(app_name) / "rpc/rpc.schema.json"
         
         if not rpc_schema_path.exists():
