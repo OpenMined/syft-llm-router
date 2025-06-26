@@ -327,7 +327,10 @@ class PublishHandler:
 
             # Generate metadata
             metadata_gen = ProjectMetadata(project_folder=folder_path)
-            name = metadata_gen.get_project_name_from_pyproject(),
+            name = metadata_gen.get_project_name_from_pyproject()
+            if not name:
+                # Fallback to folder name if pyproject.toml doesn't have a name
+                name = folder_path.name
 
             # Get documented endpoints
             documented_endpoints = self.get_documented_endpoints(client, name)
