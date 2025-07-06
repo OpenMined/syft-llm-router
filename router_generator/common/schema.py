@@ -95,31 +95,6 @@ class LogProbs(SchemaBase):
     )
 
 
-class CompletionResponse(SchemaBase):
-    """Response from a text completion request."""
-
-    # Unique identifier for this completion
-    id: UUID
-
-    # Name of the model used for generation
-    model: str
-
-    # The generated text
-    text: str
-
-    # Reason why the generation stopped
-    finish_reason: Optional[FinishReason] = None
-
-    # Token usage information
-    usage: Usage
-
-    # Provider-specific information
-    provider_info: Optional[dict[str, Any]] = None
-
-    # Log probabilities for generated tokens
-    logprobs: Optional[LogProbs] = None
-
-
 class ChatResponse(SchemaBase):
     """Response from a chat completion request."""
 
@@ -143,20 +118,6 @@ class ChatResponse(SchemaBase):
 
     # Log probabilities for generated tokens
     logprobs: Optional[LogProbs] = None
-
-
-# Method parameter models
-class GenerateCompletionParams(SchemaBase):
-    """Parameters for text completion generation."""
-
-    # The model identifier to use for generation
-    model: str
-
-    # The input text to generate from
-    prompt: str
-
-    # Additional parameters for the generation
-    options: Optional[GenerationOptions] = None
 
 
 class GenerateChatParams(SchemaBase):
