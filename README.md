@@ -1,67 +1,120 @@
 # Syft LLM Router
 
-A simple router for Language Model applications built over SyftBox. This tool allows you to create, deploy, and share LLM routers that can be accessed through SyftBox.
+A modern, full-stack platform for creating, managing, and publishing Language Model (LLM) routers, built on SyftBox. Includes a Python backend (FastAPI, SyftBox) and a Preact/TypeScript/TailwindCSS frontend.
 
-## Installation
+---
 
-1. Install [uv](https://github.com/astral-sh/uv) (Python package manager):
+## Features
+- **Modern Dashboard UI**: Clean, responsive, and accessible frontend
+- **Router Management**: Create, list, and manage LLM routers
+- **Service Pricing**: Enable/disable services, set per-service pricing, and select charge type with modern toggle switches
+- **Real-time Feedback**: Loading states, error handling, and success animations
+- **Type Safety**: Full TypeScript support on frontend, Pydantic on backend
+- **Easy Deployment**: Static frontend build, simple backend launch
+
+---
+
+## Tech Stack
+- **Backend**: Python 3.12+, FastAPI, SyftBox, SQLModel, Uvicorn
+- **Frontend**: Preact, TypeScript, TailwindCSS, Vite, Bun
+
+---
+
+## Prerequisites
+- [Python 3.12+](https://www.python.org/)
+- [uv](https://github.com/astral-sh/uv) (Python package manager)
+- [Bun](https://bun.sh/) (for frontend)
+
+---
+
+## Quickstart
+
+### 1. Start the Backend
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+./backend/run.sh
+```
+- This sets up a virtual environment, installs dependencies, and starts the FastAPI server (default: http://localhost:8080)
+
+### 2. Start the Frontend
+```bash
+./run_frontend.sh
+```
+- This installs frontend dependencies (if needed) and starts the dev server (http://localhost:3000)
+- The frontend proxies API requests to the backend
+
+---
+
+## Project Structure
+```
+syft-llm-router/
+├── backend/
+│   ├── app.py                # FastAPI app entrypoint
+│   ├── run.sh                # Backend launch script
+│   ├── requirements.txt      # Python dependencies
+│   ├── router_generator/     # Router code generation logic
+│   └── ...                   # Other backend modules
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── router/       # Router management UI
+│   │   │   └── shared/       # Shared UI components
+│   │   ├── services/         # API service functions
+│   │   ├── types/            # TypeScript types
+│   │   ├── utils/            # Utilities
+│   │   ├── App.tsx           # Main app
+│   │   └── ...
+│   ├── run_frontend.sh       # Frontend launch script
+│   └── ...
+├── run_api.sh                # (Optional) API launch helper
+├── README.md                 # This file
+└── ...
 ```
 
-2. Clone the repository:
-```bash
-git clone https://github.com/OpenMined/syft-llm-router.git
-cd syft-llm-router
-```
+---
 
-3. Create a virtual environment and install dependencies:
-```bash
-uv sync -P syft-llm-router
-```
+## API Endpoints (Backend)
+- `GET /api/router/list` — List all routers
+- `POST /api/router/create` — Create a new router
+- `GET /api/router/exists` — Check if a router exists
+- `POST /api/router/publish` — Publish a router (with per-service pricing, enable/disable, charge type)
+- `GET /api/router/details` — Get router details
+- `POST /api/router/delete` — Delete a router
+- `GET /api/username` — Get current user info
 
-## Quick Start
+---
 
-1. Create a new router application:
-```bash
-uv run syftllm create-router-app -n my-llm-router
-cd my-llm-router
-```
-This creates a new directory with the basic router structure.
+## Modern Frontend Features
+- **Router List**: See all routers, their status, summary, and enabled services with pricing
+- **Router Details**: Spacious, two-column dashboard with summary, tags, meta info, and a modern services card
+- **Publish Modal**: Enable/disable services with toggle switches, set price (float input), and select charge type (dropdown)
+- **Type Safety**: All API data is strictly typed
+- **Responsive Design**: Works on desktop and mobile
 
-2. Implement your router logic in `my-llm-router/router.py`:
-   - Define your LLM provider
-   - Implement chat and completion endpoints
-   - Add any custom functionality
+---
 
-3. Configure the server in `my-llm-router/server.py`:
-   - Import your router implementation
-   - Set up the SyftEvents server
-   - Configure any required parameters
+## Development Tips
+- **TypeScript**: All frontend code is typed; use `src/types/` for shared types
+- **TailwindCSS**: Use utility classes for styling; custom styles in `src/index.css`
+- **Component Structure**: Add new UI in `src/components/`; keep logic in `src/services/` and `src/utils/`
+- **Backend**: Use Pydantic models for request/response validation
 
-4. Install additional dependencies:
-   - Add any required packages to `pyproject.toml`
-   - Run `uv sync` to install them
+---
 
-5. Start the router server:
-```bash
-cd my-llm-router
-uv run python server.py --project-name llm-router --api-key YOUR_API_KEY
-```
-This starts an RPC server over SyftBox that handles LLM requests.
+## Build & Deployment
+- **Frontend**: Build with `bun run build` (output in `frontend/dist/`)
+- **Backend**: Deploy with Uvicorn or your preferred ASGI server
+- **Static Assets**: Serve `frontend/dist/` with any static file server if needed
 
-## Examples
+---
 
-The [examples](./examples) folder contains complete implementations for different LLM providers:
-- [Phi-4 Router](./examples/phi4router) - Implementation using Microsoft's Phi-4 model
-- [Mixtral Router](./examples/mixtral) - Implementation using Mixtral-8x22b-instruct model
+## Contributing
+1. Use TypeScript and Preact best practices
+2. Write reusable, accessible components
+3. Add error handling and loading states
+4. Test on different screen sizes
+5. Keep backend and frontend types in sync
 
-Each example includes:
-- Router implementation
-- Server configuration
-- Test scripts
-- Documentation
+---
 
-## Publishing Your Router
-
-For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](./publish.md).
+## License
+This project is part of the Syft LLM Router ecosystem.
