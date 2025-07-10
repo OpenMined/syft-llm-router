@@ -39,7 +39,9 @@ app = FastSyftBox(
         "syftbox"
     ],  # endpoints with this tag are also available via Syft RPC
     include_syft_openapi=True,  # Create OpenAPI endpoints for syft-rpc routes
-    syftbox_config=SyftClientConfig.load("~/.syftbox/config.ben.local.json"),
+    syftbox_config=SyftClientConfig.load(
+        "/home/shubham/.syftbox/config.ben.local.json"
+    ),
 )
 
 ROUTER_APP_DIR = app.syftbox_client.workspace.data_dir / "apps"

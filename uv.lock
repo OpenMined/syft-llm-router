@@ -986,7 +986,7 @@ wheels = [
 
 [[package]]
 name = "syft-core"
-version = "0.2.5"
+version = "0.2.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", extra = ["email"] },
@@ -994,9 +994,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/6d/d7768967c367b4d4cdaf4e247c6ab76950fe81a8780d265d13a3a908efd0/syft_core-0.2.5.tar.gz", hash = "sha256:461c4f8d09ed4d9aad7d228e137bab772b194a91d6f36b4b8be2eda4b57fee85", size = 15997 }
+sdist = { url = "https://files.pythonhosted.org/packages/03/aa/ea7e230a3f590578f8c95cf61b4b8568cd1acf838cf90b94857886a8beeb/syft_core-0.2.7.tar.gz", hash = "sha256:4c37669883c8b536b55fe3ded911aa36f4e2c53df43cd51bc16dc22c12b8edaf", size = 16044 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/bc/c87e40c811ec74f9040e3d481690b18dcd65c77acd705a7f2f987e1bc9a9/syft_core-0.2.5-py3-none-any.whl", hash = "sha256:24127e34471e4b8e5b095b98f5b2a42140a2ba420196af2fa2b3574e39ce9718", size = 14346 },
+    { url = "https://files.pythonhosted.org/packages/cd/bf/984842011903faea3afc69da8b5a34001e169b3a7137a8b0cd55b173576a/syft_core-0.2.7-py3-none-any.whl", hash = "sha256:6150a797fa6d81254ea0ee1b92be682386e2b3f0220143a1b1f480981715124c", size = 14397 },
 ]
 
 [[package]]
@@ -1026,6 +1026,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "requests" },
     { name = "sqlmodel" },
+    { name = "syft-core" },
     { name = "typer" },
 ]
 
@@ -1042,6 +1043,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.2" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
+    { name = "syft-core", specifier = ">=0.2.7" },
     { name = "typer", specifier = ">=0.15.2" },
 ]
 

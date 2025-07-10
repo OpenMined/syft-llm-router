@@ -1,4 +1,4 @@
-syft-core==0.2.5
 syft-event==0.2.7
 fastsyftbox==0.1.18
+syft-core==0.2.7
 sqlmodel==0.0.24

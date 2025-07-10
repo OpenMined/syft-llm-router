@@ -33,14 +33,19 @@ A modern, full-stack platform for creating, managing, and publishing Language Mo
 ```bash
 ./backend/run.sh
 ```
-- This sets up a virtual environment, installs dependencies, and starts the FastAPI server (default: http://localhost:8080)
+- This sets up a virtual environment, installs dependencies, and starts the FastAPI server (default: http://localhost:8000)
 
 ### 2. Start the Frontend
 ```bash
+# Default backend port (8000)
 ./run_frontend.sh
+
+# Custom backend port
+./run_frontend.sh 8080
 ```
 - This installs frontend dependencies (if needed) and starts the dev server (http://localhost:3000)
-- The frontend proxies API requests to the backend
+- The frontend proxies API requests to the backend (default: http://localhost:8000)
+- You can specify a custom backend port as the first argument
 
 ---
 
