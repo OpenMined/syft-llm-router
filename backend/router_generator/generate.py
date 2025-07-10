@@ -109,7 +109,7 @@ from schema import (
     ChatResponse,
     GenerationOptions,
     Message,
-    RetrievalOptions,
+    SearchOptions,
     SearchResponse,
 )
 
@@ -170,7 +170,7 @@ class SyftLLMRouter:
     def search_documents(
         self,
         query: str,
-        options: Optional[RetrievalOptions] = None,
+        options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents from the index based on a search query."""
         if not self.search_service:
@@ -299,15 +299,12 @@ This router has the following services enabled: **{services_text}**
 
 ## Quick Start
 
-1. **Setup**:
-   ```bash
-   ./setup.sh
-   ```
+**Start the router**:
+```bash
+./run.sh
+```
 
-2. **Start**:
-   ```bash
-   ./run.sh
-   ```
+The script will automatically handle setup and start the router.
 
 3. **Test**:
    ```bash
@@ -382,17 +379,14 @@ A custom Syft LLM Router template. Implement your own chat and search services.
 
 ## Quick Start
 
-1. **Setup**:
+1. **Start the router**:
    ```bash
-   ./setup.sh
+   ./run.sh
    ```
 
 2. **Implement Services**: Edit the service files
 
-3. **Start**:
-   ```bash
-   ./run.sh
-   ```
+The script will automatically handle setup and start the router.
 
 4. **Test**:
    ```bash
@@ -436,89 +430,9 @@ This project uses `pyproject.toml` for dependency management:
     ) -> None:
         """Generate deployment scripts."""
         self._generate_run_script(output_path, config)
-        self._generate_setup_script(output_path, config)
 
     def _generate_run_script(self, output_path: Path, config: ProjectConfig) -> None:
-        """Generate intelligent run.sh script."""
-        if config.router_type == "default":
-            # Determine which optional dependencies to install
-            extras = []
-            if config.enable_chat:
-                extras.append("chat")
-            if config.enable_search:
-                extras.append("search")
-
-            if extras:
-                install_command = f"pip install -e .[{','.join(extras)}]"
-            else:
-                install_command = "pip install -e ."
-
-            run_script_content = f"""#!/bin/bash
-set -e
-
-# {config.project_name} Router Startup Script (Default)
-# Generated automatically
-
-echo "🚀 Starting {config.project_name} router..."
-
-# Check if virtual environment exists
-if [ ! -d ".venv" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv .venv
-fi
-
-# Activate virtual environment
-source .venv/bin/activate
-
-# Install dependencies
-echo "📥 Installing dependencies..."
-{install_command}
-
-# Service-specific setup based on enabled services
-{self._generate_conditional_setup_commands(config)}
-
-# Start the router
-echo "🎯 Starting router server..."
-python server.py --project-name {config.project_name}
-
-deactivate
-"""
-        else:  # custom
-            run_script_content = f"""#!/bin/bash
-set -e
-
-# {config.project_name} Router Startup Script (Custom)
-# Generated automatically
-
-echo "🚀 Starting {config.project_name} router..."
-
-# Check if virtual environment exists
-if [ ! -d ".venv" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv .venv
-fi
-
-# Activate virtual environment
-source .venv/bin/activate
-
-# Install dependencies
-echo "📥 Installing dependencies..."
-pip install -e .
-
-# Start the router
-echo "🎯 Starting router server..."
-python server.py --project-name {config.project_name}
-
-deactivate
-"""
-
-        run_script_path = output_path / "run.sh"
-        with open(run_script_path, "w") as f:
-            f.write(run_script_content)
-        run_script_path.chmod(0o755)
-
-    def _generate_setup_script(self, output_path: Path, config: ProjectConfig) -> None:
-        """Generate setup.sh script."""
+        """Generate intelligent run.sh script with integrated setup."""
         if config.router_type == "default":
             # Determine which optional dependencies to install
             extras = []
@@ -534,22 +448,32 @@ deactivate
                 install_command = "pip install -e ."
                 extras_info = " (base dependencies only)"
 
-            setup_script_content = f"""#!/bin/bash
+            run_script_content = f"""#!/bin/bash
 set -e
 
-# {config.project_name} Initial Setup Script (Default)
+# {config.project_name} Router Startup Script (Default)
+# Generated automatically - includes setup every time
 
-echo "🔧 Setting up {config.project_name} router..."
+echo "🚀 Starting {config.project_name} router..."
 
-# Create virtual environment
-python3 -m venv .venv
+# Setup phase (runs every time for consistency)
+echo "🔧 Running setup..."
+
+# Create virtual environment if needed
+if [ ! -d ".venv" ]; then
+    echo "📦 Creating virtual environment..."
+    python3 -m venv .venv
+fi
+
+# Activate virtual environment
 source .venv/bin/activate
 
-# Install dependencies{extras_info}
+# Install/update dependencies{extras_info}
+echo "📥 Installing/updating dependencies..."
 pip install --upgrade pip
 {install_command}
 
-# Copy environment file
+# Copy environment file if missing
 if [ ! -f ".env" ]; then
     cp .env.example .env
     echo "📝 Created .env file from template. Please edit with your configuration."
@@ -558,42 +482,59 @@ fi
 # Service-specific setup based on enabled services
 {self._generate_conditional_setup_commands(config)}
 
-echo "✅ Setup complete! Run './run.sh' to start the router."
-echo "💡 To install additional services later, run: pip install -e .[chat,search]"
+echo "✅ Setup complete!"
+
+# Start the router
+echo "🎯 Starting router server..."
+python server.py --project-name {config.project_name}
+
 deactivate
 """
         else:  # custom
-            setup_script_content = f"""#!/bin/bash
+            run_script_content = f"""#!/bin/bash
 set -e
 
-# {config.project_name} Initial Setup Script (Custom)
+# {config.project_name} Router Startup Script (Custom)
+# Generated automatically - includes setup every time
 
-echo "🔧 Setting up {config.project_name} router..."
+echo "🚀 Starting {config.project_name} router..."
 
-# Create virtual environment
-python3 -m venv .venv
+# Setup phase (runs every time for consistency)
+echo "🔧 Running setup..."
+
+# Create virtual environment if needed
+if [ ! -d ".venv" ]; then
+    echo "📦 Creating virtual environment..."
+    python3 -m venv .venv
+fi
+
+# Activate virtual environment
 source .venv/bin/activate
 
-# Install base dependencies
+# Install/update dependencies
+echo "📥 Installing/updating dependencies..."
 pip install --upgrade pip
 pip install -e .
 
-# Copy environment file
+# Copy environment file if missing
 if [ ! -f ".env" ]; then
     cp .env.example .env
     echo "📝 Created .env file from template. Please edit with your configuration."
 fi
 
-echo "✅ Setup complete! Run './run.sh' to start the router."
-echo "⚠️  Remember to implement your custom services before starting."
-echo "💡 Add your custom dependencies to pyproject.toml and run: pip install -e ."
+echo "✅ Setup complete!"
+
+# Start the router
+echo "🎯 Starting router server..."
+python server.py --project-name {config.project_name}
+
 deactivate
 """
 
-        setup_script_path = output_path / "setup.sh"
-        with open(setup_script_path, "w") as f:
-            f.write(setup_script_content)
-        setup_script_path.chmod(0o755)
+        run_script_path = output_path / "run.sh"
+        with open(run_script_path, "w") as f:
+            f.write(run_script_content)
+        run_script_path.chmod(0o755)
 
     def _generate_conditional_setup_commands(self, config: ProjectConfig) -> str:
         """Generate conditional setup commands based on enabled services."""
@@ -850,7 +791,6 @@ def main():
 
         print(f"\\n🚀 Next steps:")
         print(f"  cd {args.output_dir}")
-        print(f"  ./setup.sh")
         print(f"  ./run.sh")
 
     except Exception as e:

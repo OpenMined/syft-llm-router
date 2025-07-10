@@ -40,7 +40,7 @@ app = FastSyftBox(
     ],  # endpoints with this tag are also available via Syft RPC
     include_syft_openapi=True,  # Create OpenAPI endpoints for syft-rpc routes
     syftbox_config=SyftClientConfig.load(
-        "/home/shubham/.syftbox/config.ben.local.json"
+        "/home/shubham/.syftbox/config.alice.dev.json"
     ),
 )
 

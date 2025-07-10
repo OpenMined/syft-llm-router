@@ -8,8 +8,8 @@ from schema import (
     ChatResponse,
     GenerationOptions,
     Message,
-    RetrievalOptions,
-    RetrievalResponse,
+    SearchOptions,
+    SearchResponse,
 )
 
 
@@ -34,7 +34,7 @@ class SearchService(ABC):
     def search_documents(
         self,
         query: str,
-        options: Optional[RetrievalOptions] = None,
-    ) -> RetrievalResponse:
+        options: Optional[SearchOptions] = None,
+    ) -> SearchResponse:
         """Search documents based on a search query."""
         pass

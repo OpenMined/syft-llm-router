@@ -9,7 +9,7 @@ from uuid import UUID
 from loguru import logger
 
 from base_services import SearchService
-from schema import DocumentResult, RetrievalOptions, SearchResponse
+from schema import DocumentResult, SearchOptions, SearchResponse
 
 
 class CustomSearchService(SearchService):
@@ -27,7 +27,7 @@ class CustomSearchService(SearchService):
     def search_documents(
         self,
         query: str,
-        options: Optional[RetrievalOptions] = None,
+        options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents using your custom implementation."""
         # TODO: Implement your document retrieval logic here
@@ -55,8 +55,8 @@ class CustomSearchService(SearchService):
         #     )
         #     documents.append(document)
 
-        # 4. Return RetrievalResponse
-        # return RetrievalResponse(
+        # 4. Return SearchResponse
+        # return SearchResponse(
         #     id=UUID.uuid4(),
         #     query=query,
         #     results=documents,

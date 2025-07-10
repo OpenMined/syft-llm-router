@@ -17,8 +17,8 @@ from schema import (
     ChatResponse,
     GenerationOptions,
     Message,
-    RetrievalOptions,
-    RetrievalResponse,
+    SearchOptions,
+    SearchResponse,
 )
 
 
@@ -103,10 +103,10 @@ async def chat_completion(
         raise HTTPException(status_code=500, detail="Chat completion failed")
 
 
-@app.post("/search", response_model=RetrievalResponse)
+@app.post("/search", response_model=SearchResponse)
 async def search_documents(
     query: str,
-    options: Optional[RetrievalOptions] = None,
+    options: Optional[SearchOptions] = None,
 ):
     """Document retrieval endpoint."""
     if not router:

@@ -47,6 +47,14 @@ A modern, full-stack platform for creating, managing, and publishing Language Mo
 - The frontend proxies API requests to the backend (default: http://localhost:8000)
 - You can specify a custom backend port as the first argument
 
+### 3. Create a Router (Optional)
+```bash
+cd backend/router_generator
+python generate.py --project-name MyRouter --router-type default --output-dir ../../my_router
+cd ../../my_router
+./run.sh  # Automatically handles setup and starts the router
+```
+
 ---
 
 ## Project Structure

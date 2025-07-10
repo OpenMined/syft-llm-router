@@ -8,7 +8,7 @@ from loguru import logger
 import httpx
 
 from base_services import SearchService
-from schema import DocumentResult, RetrievalOptions, SearchResponse
+from schema import DocumentResult, SearchOptions, SearchResponse
 from config import load_config
 
 
@@ -40,7 +40,7 @@ class LocalSearchService(SearchService):
     def search_documents(
         self,
         query: str,
-        options: Optional[RetrievalOptions] = None,
+        options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents using local RAG."""
         try:

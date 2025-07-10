@@ -162,7 +162,7 @@ class EmbeddingOptions(SchemaBase):
     )
 
 
-class RetrievalOptions(SchemaBase):
+class SearchOptions(SchemaBase):
     """Options for controlling document retrieval process"""
 
     # Maximum number of documents to search

@@ -126,9 +126,9 @@ export function RouterDetailPage({ routerName, published, onBack, profile }: Rou
                 {/* Tags */}
                 {details.metadata?.tags && details.metadata.tags.length > 0 && (
                   <div className="flex flex-wrap gap-3 mt-2">
-                    {details.metadata.tags.map(tag => (
+                      {details.metadata.tags.map(tag => (
                       <span key={tag} className={`inline-block ${t.bg50} ${t.text600} px-3 py-1 rounded-full text-xs font-semibold border ${t.border600}`}>{tag}</span>
-                    ))}
+                      ))}
                   </div>
                 )}
                 {/* Meta Info */}
@@ -143,8 +143,8 @@ export function RouterDetailPage({ routerName, published, onBack, profile }: Rou
                     <div className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm px-4 py-2 flex items-center">
                       <span className="text-xs text-gray-500 mr-2">Code Hash:</span>
                       <span className={`font-mono text-xs ${t.text600} truncate`} title={details.metadata.code_hash}>{details.metadata.code_hash.slice(0, 8)}</span>
-                    </div>
-                  )}
+                  </div>
+                )}
                 </div>
                 {/* Publish Button (if provider and not published) */}
                 {profile === 'provider' && !details.published && (

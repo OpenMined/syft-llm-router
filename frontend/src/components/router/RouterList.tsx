@@ -79,10 +79,10 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
         ) : (
           <div className="space-y-6 py-4">
             {visibleRouters.map((router) => (
-              <div
-                key={router.name}
+            <div
+              key={router.name}
                 className="flex flex-row items-stretch justify-between bg-white rounded-lg shadow border border-gray-100 hover:shadow-md transition p-6 gap-4"
-              >
+            >
                 {/* Left: Main Content */}
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -129,15 +129,15 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                   <Button variant="ghost" size="sm" onClick={() => onRouterClick?.(router.name, router.published)}>
                     View Details
                   </Button>
-                  {profile === 'provider' && !router.published && (
+                {profile === 'provider' && !router.published && (
                     <Button variant="primary" size="sm" className="mt-2" onClick={() => setPublishModalRouter(router.name)}>
                       Publish
                     </Button>
-                  )}
+                )}
                 </div>
               </div>
             ))}
-          </div>
+            </div>
         )}
       </div>
 

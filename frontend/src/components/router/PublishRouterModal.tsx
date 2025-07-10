@@ -246,7 +246,7 @@ export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess }: P
                 </label>
                 <div className="flex items-center gap-1">
                   <span className="text-gray-500">$</span>
-                  <input
+              <input
                     type="text"
                     value={service.pricing}
                     onInput={e => handleServicePrice(service.type, (e.target as HTMLInputElement).value)}
@@ -254,7 +254,7 @@ export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess }: P
                     className="w-20 px-2 py-1 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:bg-gray-100"
                     placeholder="$ per request"
                   />
-                </div>
+            </div>
                 <select
                   value={service.charge_type}
                   onChange={e => handleServiceChargeType(service.type, e)}
@@ -264,7 +264,7 @@ export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess }: P
                   <option value={PricingChargeType.PER_REQUEST}>per request</option>
                   {/* Add more charge types here if needed */}
                 </select>
-              </div>
+            </div>
             ))}
           </div>
         </div>
