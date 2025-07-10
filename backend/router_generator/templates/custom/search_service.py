@@ -91,3 +91,6 @@ class CustomSearchService(SearchService):
             "Custom document indexing not implemented. "
             "Please implement the add_documents method in search_service.py"
         )
+
+
+SearchServiceImpl = CustomSearchService

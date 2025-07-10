@@ -73,3 +73,6 @@ class CustomChatService(ChatService):
             "Custom chat service not implemented. "
             "Please implement the generate_chat method in chat_service.py"
         )
+
+
+ChatServiceImpl = CustomChatService

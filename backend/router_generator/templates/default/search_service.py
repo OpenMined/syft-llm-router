@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional
-from uuid import UUID
+from uuid import uuid4
 
 from loguru import logger
 import httpx
@@ -43,12 +43,14 @@ class LocalSearchService(SearchService):
         options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents using local RAG."""
+
+        limit = options.limit if options else MAX_DOCUMENT_LIMIT_PER_QUERY
         try:
             response = self.rag_client.post(
                 "/api/search",
                 json={
                     "query": query,
-                    "limit": min(MAX_DOCUMENT_LIMIT_PER_QUERY, options.limit),
+                    "limit": limit,
                 },
             )
 
@@ -57,7 +59,7 @@ class LocalSearchService(SearchService):
             results = response_json["results"]
             documents = [
                 DocumentResult(
-                    id=result["id"],
+                    id=str(result["id"]),
                     score=result["similarity"],
                     content=result["content"],
                     metadata={
@@ -73,7 +75,7 @@ class LocalSearchService(SearchService):
 
             response.raise_for_status()
             return SearchResponse(
-                id=UUID.uuid4(),
+                id=uuid4(),
                 query=query,
                 results=documents,
                 provider_info={"provider": "local_rag", "db_path": self.db_path},
@@ -82,3 +84,6 @@ class LocalSearchService(SearchService):
         except Exception as e:
             logger.error(f"Document search failed: {e}")
             raise RuntimeError(f"Failed to search documents for query: {query}")
+
+
+SearchServiceImpl = LocalSearchService

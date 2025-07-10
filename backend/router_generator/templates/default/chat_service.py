@@ -2,7 +2,7 @@
 
 import os
 from typing import List, Optional
-from uuid import UUID
+from uuid import uuid4
 
 import requests
 from loguru import logger
@@ -49,7 +49,7 @@ class OllamaChatService(ChatService):
             response = requests.post(
                 f"{self.base_url}/api/chat",
                 json=payload,
-                timeout=30,
+                timeout=120,
             )
             response.raise_for_status()
 
@@ -73,11 +73,11 @@ class OllamaChatService(ChatService):
             )
 
             return ChatResponse(
-                id=UUID.uuid4(),
+                id=uuid4(),
                 model=model,
                 message=assistant_message,
                 usage=usage,
-                provider_info={"provider": "ollama", "response": ollama_response},
+                provider_info={"provider": "ollama", "model": model},
             )
 
         except requests.exceptions.RequestException as e:
@@ -86,3 +86,6 @@ class OllamaChatService(ChatService):
         except Exception as e:
             logger.error(f"Unexpected error in chat generation: {e}")
             raise RuntimeError(f"Chat generation failed: {e}")
+
+
+ChatServiceImpl = OllamaChatService

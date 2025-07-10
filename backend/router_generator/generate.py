@@ -124,7 +124,7 @@ class RouterFactory:
     def create_chat_service() -> ChatService:
         """Create chat service instance."""
         try:
-            from chat_service import ChatService as ChatServiceImpl
+            from chat_service import ChatServiceImpl
             return ChatServiceImpl()
         except ImportError:
             raise ImportError("Chat service implementation not found")
@@ -133,7 +133,7 @@ class RouterFactory:
     def create_search_service() -> SearchService:
         """Create search service instance."""
         try:
-            from search_service import SearchService as SearchServiceImpl
+            from search_service import SearchServiceImpl
             return SearchServiceImpl()
         except ImportError:
             raise ImportError("Search service implementation not found")
@@ -197,8 +197,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
+    "syft-core>=0.2.7",
+    "fastsyftbox>=0.1.18",
     "pydantic>=2.0.0",
     "loguru>=0.7.0",
     "requests>=2.31.0",
@@ -547,14 +547,14 @@ deactivate
 if ! command -v ollama &> /dev/null; then
     echo "⚠️  Ollama not found. Please install Ollama first:"
     echo "   curl -fsSL https://ollama.ai/install.sh | sh"
-    echo "   Then run: ollama pull llama2"
+    echo "   Then run: ollama pull tinyllama"
     exit 1
 fi
 
 # Check if required model is available
-if ! ollama list | grep -q "llama2"; then
-    echo "📥 Pulling llama2 model..."
-    ollama pull llama2
+if ! ollama list | grep -q "tinyllama"; then
+    echo "📥 Pulling tinyllama model..."
+    ollama pull tinyllama  
 fi
 """
             )

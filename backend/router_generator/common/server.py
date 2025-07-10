@@ -6,10 +6,11 @@ import os
 from typing import List, Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastsyftbox import FastSyftBox
+from fastapi import HTTPException
 from loguru import logger
 from pydantic import BaseModel
+from syft_core.config import SyftClientConfig
 
 from config import load_config
 from router import SyftLLMRouter
@@ -31,19 +32,15 @@ class HealthResponse(BaseModel):
 
 
 # Create FastAPI app
-app = FastAPI(
-    title="Syft LLM Router",
+app = FastSyftBox(
+    app_name="Syft LLM Router",
     description="A router for LLM services with consistent API",
     version="1.0.0",
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    syftbox_endpoint_tags=["syftbox"],
+    include_syft_openapi=True,
+    syftbox_config=SyftClientConfig.load(
+        "/home/shubham/.syftbox/config.alice.dev.json"
+    ),
 )
 
 # Global router instance
@@ -63,7 +60,7 @@ async def startup_event():
         raise
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health", response_model=HealthResponse, tags=["syftbox"])
 async def health_check():
     """Health check endpoint."""
     if not router:
@@ -84,7 +81,7 @@ async def health_check():
     )
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, tags=["syftbox"])
 async def chat_completion(
     model: str,
     messages: List[Message],
@@ -103,7 +100,7 @@ async def chat_completion(
         raise HTTPException(status_code=500, detail="Chat completion failed")
 
 
-@app.post("/search", response_model=SearchResponse)
+@app.post("/search", response_model=SearchResponse, tags=["syftbox"])
 async def search_documents(
     query: str,
     options: Optional[SearchOptions] = None,
