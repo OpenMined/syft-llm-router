@@ -16,8 +16,7 @@ from config import load_config
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
-    GenerationOptions,
-    Message,
+    GenerateChatParams,
     SearchOptions,
     SearchResponse,
 )
@@ -82,17 +81,13 @@ async def health_check():
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["syftbox"])
-async def chat_completion(
-    model: str,
-    messages: List[Message],
-    options: Optional[GenerationOptions] = None,
-):
+async def chat_completion(request: GenerateChatParams):
     """Chat completion endpoint."""
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
     try:
-        return router.generate_chat(model, messages, options)
+        return router.generate_chat(request.model, request.messages, request.options)
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:

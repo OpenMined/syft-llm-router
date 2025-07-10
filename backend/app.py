@@ -81,7 +81,7 @@ async def create_router(
     """
 
     config = ProjectConfig(
-        project_name=request.name,
+        project_name=request.name.strip(),
         router_type=request.router_type.value,
         enable_chat=RouterServiceType.CHAT in request.services,
         enable_search=RouterServiceType.SEARCH in request.services,

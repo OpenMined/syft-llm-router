@@ -6,7 +6,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from syft_core.config import SyftClientConfig
 
 RouterType = Literal["default", "custom"]
@@ -20,6 +20,13 @@ class ProjectConfig(BaseModel):
     enable_chat: bool = True
     enable_search: bool = True
     syftbox_config: SyftClientConfig
+
+    # add a pydantic validator to format the project name
+    # Replace spaces by dashes and convert to lowercase
+    # Remove leading and trailing spaces
+    @field_validator("project_name", mode="before")
+    def validate_project_name(cls, v):
+        return v.strip().replace(" ", "-").lower()
 
 
 class SimplifiedProjectGenerator:
@@ -567,8 +574,11 @@ echo "🔍 Setting up local RAG components..."
 
 
 # Install local-rag using syftbox
-syftbox app install https://github.com/OpenMined/local-rag --config {config.syftbox_config.path}
-"
+# Check if local-rag is already installed   
+if ! syftbox app list -c {config.syftbox_config.path} | grep -q "local-rag"; then
+    echo "📥 Installing local-rag..."
+    syftbox app install https://github.com/OpenMined/local-rag --config {config.syftbox_config.path}
+fi
 """
             )
 

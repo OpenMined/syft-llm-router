@@ -11,9 +11,9 @@ class RouterConfig:
     """Configuration for the router."""
 
     project_name: str
+    rag_url: str
     enable_chat: bool = True
     enable_search: bool = True
-    rag_url: str
 
 
 def load_config() -> RouterConfig:
