@@ -176,3 +176,6 @@ cython_debug/
 
 # Data files
 *   .db
+
+# Node modules
+node_modules/

@@ -10,7 +10,7 @@ const PROFILE_KEY = 'syftbox_profile';
 
 // Simple route state
 export function App() {
-  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean }>({ page: 'list' });
+  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string }>({ page: 'list' });
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -33,8 +33,8 @@ export function App() {
   }, [profile]);
 
   // Handler for clicking a router in the list
-  const handleRouterClick = (routerName: string, published: boolean) => {
-    setRoute({ page: 'detail', routerName, published });
+  const handleRouterClick = (routerName: string, published: boolean, author: string) => {
+    setRoute({ page: 'detail', routerName, published, author });
   };
 
   // Handler for going back to the list
@@ -58,7 +58,7 @@ export function App() {
         {/* Only render dashboard if profile is chosen */}
         {profile && !showOnboarding && (
           <div>
-            <Header profile={profile} profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />} />
+            <Header profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {route.page === 'list' ? (
                 <RouterList onRouterClick={handleRouterClick} profile={profile} />
@@ -66,6 +66,7 @@ export function App() {
                 <RouterDetailPage
                   routerName={route.routerName}
                   published={route.published}
+                  author={route.author}
                   onBack={handleBackToList}
                   profile={profile}
                 />

@@ -1,6 +1,3 @@
-import { h } from 'preact';
-import { useTheme } from './ThemeContext';
-
 export type ProfileType = 'provider' | 'client';
 
 interface ProfileToggleProps {
@@ -9,7 +6,6 @@ interface ProfileToggleProps {
 }
 
 export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
-  const { color } = useTheme();
   // Utility for active/inactive button
   const getButtonClasses = (isActive: boolean, type: ProfileType) => {
     const accent = type === 'provider' ? 'indigo' : 'teal';

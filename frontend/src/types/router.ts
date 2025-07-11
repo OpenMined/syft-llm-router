@@ -47,15 +47,91 @@ export interface PublishRouterRequest {
   services: ServiceOverview[];
 }
 
+// OpenAPI Specification Types
+export interface OpenAPISchema {
+  type?: string;
+  title?: string;
+  description?: string;
+  format?: string;
+  enum?: string[];
+  items?: OpenAPISchema;
+  properties?: Record<string, OpenAPISchema>;
+  required?: string[];
+  anyOf?: OpenAPISchema[];
+  additionalProperties?: boolean | OpenAPISchema;
+  maximum?: number;
+  minimum?: number;
+  $ref?: string;
+}
+
+export interface OpenAPIResponse {
+  description: string;
+  content?: {
+    'application/json': {
+      schema: OpenAPISchema;
+    };
+  };
+}
+
+export interface OpenAPIParameter {
+  name: string;
+  in: string;
+  required: boolean;
+  schema: OpenAPISchema;
+}
+
+export interface OpenAPIRequestBody {
+  content: {
+    'application/json': {
+      schema: OpenAPISchema;
+    };
+  };
+  required?: boolean;
+}
+
+export interface OpenAPIOperation {
+  tags: string[];
+  summary: string;
+  description: string;
+  operationId: string;
+  parameters?: OpenAPIParameter[];
+  requestBody?: OpenAPIRequestBody;
+  responses: Record<string, OpenAPIResponse>;
+}
+
+export interface OpenAPIPaths {
+  [path: string]: {
+    [method: string]: OpenAPIOperation;
+  };
+}
+
+export interface OpenAPIComponents {
+  schemas: Record<string, OpenAPISchema>;
+}
+
+export interface OpenAPIInfo {
+  title: string;
+  description: string;
+  version: string;
+}
+
+export interface OpenAPISpecification {
+  openapi: string;
+  info: OpenAPIInfo;
+  paths: OpenAPIPaths;
+  components: OpenAPIComponents;
+}
+
 export interface RouterMetadataResponse {
   summary: string;
   description: string;
   tags: string[];
   code_hash: string;
   author: string;
-  endpoints?: Record<string, any>;
+  endpoints?: OpenAPISpecification;
 }
 
+// Legacy endpoint info for backward compatibility
 export interface EndpointInfo {
   path: string;
   method: string;
@@ -69,7 +145,7 @@ export interface RouterDetails {
   published: boolean;
   services?: ServiceOverview[];
   metadata?: RouterMetadataResponse;
-  endpoints?: Record<string, EndpointInfo>;
+  endpoints?: OpenAPISpecification;
 }
 
 export interface RouterList {

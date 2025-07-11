@@ -1,14 +1,12 @@
 import { h } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { routerService } from '../../services/routerService';
-import type { ProfileType } from './ProfileToggle';
 
 interface HeaderProps {
-  profile: ProfileType;
   profileToggle: h.JSX.Element;
 }
 
-export function Header({ profile, profileToggle }: HeaderProps) {
+export function Header({ profileToggle }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
 
   useEffect(() => {

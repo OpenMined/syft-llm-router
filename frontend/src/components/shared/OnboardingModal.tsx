@@ -1,13 +1,8 @@
-import { h } from 'preact';
-import { useTheme, themeClass } from './ThemeContext';
-
 interface OnboardingModalProps {
   onSelect: (profile: 'provider' | 'client') => void;
 }
 
 export function OnboardingModal({ onSelect }: OnboardingModalProps) {
-  const { color } = useTheme();
-  const t = themeClass(color);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
       <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-xl w-full text-center">

@@ -109,6 +109,7 @@ async def create_router(
         router_type=request.router_type,
         services=router_services,
         published=False,
+        author=app.syftbox_client.email,
     )
 
     session.add(router)
@@ -216,7 +217,6 @@ async def publish_router(
         description=request.description,
         tags=request.tags,
         code_hash=metadata.code_hash,
-        author=metadata.author,
         router_id=router.id,
     )
     router.router_metadata = router_metadata
@@ -268,7 +268,7 @@ async def list_routers(session: SessionDep) -> RouterList:
 
     for router in routers:
         # Handle case where router_metadata might be None
-        author = router.router_metadata.author if router.router_metadata else ""
+        author = router.author
 
         all_routers.append(
             RouterOverview(
@@ -397,6 +397,7 @@ async def router_details(
 
     metadata = None
     services = []
+    endpoints = {}
 
     if author == app.syftbox_client.email:
         # Fetch router information from the database
@@ -421,7 +422,7 @@ async def router_details(
                 description=router.router_metadata.description,
                 tags=router.router_metadata.tags,
                 code_hash=router.router_metadata.code_hash,
-                author=router.router_metadata.author,
+                author=router.author,
             )
 
         if router.services:
@@ -436,11 +437,18 @@ async def router_details(
                 )
         published = router.published
 
+        endpoints_dir = ROUTER_APP_DIR / router_name / f"{router_name}.openapi.json"
+        if endpoints_dir.exists():
+            endpoints = json.loads(endpoints_dir.read_text())
+
     else:
         # Fetch router information from the `public` directory of the datasite
         router_dir = (
             app.syftbox_client.datasites / author / "public" / "routers" / router_name
         )
+
+        print(router_dir)
+        print(router_dir.exists())
 
         if not router_dir.exists():
             return JSONResponse(
@@ -450,15 +458,20 @@ async def router_details(
                 },
             )
 
-        metadata_json = json.load(router_dir / "metadata.json")
+        metadata_path = router_dir / "metadata.json"
 
-        metadata = RouterMetadataResponse(
-            summary=metadata_json["summary"],
-            description=metadata_json["description"],
-            tags=metadata_json["tags"],
-            code_hash=metadata_json["code_hash"],
-            author=metadata_json["author"],
-        )
+        if metadata_path.exists():
+            metadata_json = json.loads(metadata_path.read_text())
+
+            metadata = RouterMetadataResponse(
+                summary=metadata_json["summary"],
+                description=metadata_json["description"],
+                tags=metadata_json["tags"],
+                code_hash=metadata_json["code_hash"],
+                author=metadata_json["author"],
+            )
+
+            endpoints = metadata_json["documented_endpoints"]
 
         services = [
             ServiceOverview(
@@ -469,30 +482,6 @@ async def router_details(
             )
             for service in metadata_json["services"]
         ]
-
-    endpoints = {
-        "chat": {
-            "path": "/chat",
-            "method": "POST",
-            "description": "Chat with the router",
-            "parameters": {
-                "model": "str",
-                "messages": "list[Message]",
-                "options": "Optional[GenerationOptions]",
-            },
-            "response": "ChatResponse",
-        },
-        "search": {
-            "path": "/search",
-            "method": "POST",
-            "description": "Search the router",
-            "parameters": {
-                "query": "str",
-                "options": "Optional[SearchOptions]",
-            },
-            "response": "SearchResponse",
-        },
-    }
 
     return RouterDetails(
         name=router_name,

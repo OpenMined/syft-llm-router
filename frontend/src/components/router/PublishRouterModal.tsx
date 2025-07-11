@@ -6,7 +6,7 @@ import { useTheme, themeClass } from '../shared/ThemeContext';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { routerService } from '../../services/routerService';
-import { RouterServiceType, PricingChargeType, type ServiceOverview } from '../../types/router';
+import { RouterServiceType, PricingChargeType } from '../../types/router';
 
 // @ts-ignore
 // eslint-disable-next-line

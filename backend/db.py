@@ -27,6 +27,7 @@ class Router(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     published: bool = Field(default=False)
+    author: str
 
 
 class RouterMetadata(SQLModel, table=True):
@@ -37,7 +38,6 @@ class RouterMetadata(SQLModel, table=True):
     code_hash: str
     router_id: UUID = Field(foreign_key="router.id")
     router: "Router" = Relationship(back_populates="router_metadata")
-    author: str
 
 
 class RouterService(SQLModel, table=True):

@@ -7,7 +7,7 @@ import type { Router } from '../../types/router';
 import type { ProfileType } from '../shared/ProfileToggle';
 
 interface RouterListProps {
-  onRouterClick?: (routerName: string, published: boolean) => void;
+  onRouterClick?: (routerName: string, published: boolean, author: string) => void;
   profile: ProfileType;
 }
 
@@ -96,7 +96,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
-                    Published by {router.author}
+                    Author {router.author}
                   </div>
                   {router.summary && (
                     <div className="text-sm text-gray-700 max-w-md bg-gray-50 rounded px-3 py-2 mb-3 break-words">
@@ -126,7 +126,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                 </div>
                 {/* Right: Actions */}
                 <div className="flex flex-col items-end justify-between min-w-[120px] ml-4">
-                  <Button variant="ghost" size="sm" onClick={() => onRouterClick?.(router.name, router.published)}>
+                  <Button variant="ghost" size="sm" onClick={() => onRouterClick?.(router.name, router.published, router.author)}>
                     View Details
                   </Button>
                 {profile === 'provider' && !router.published && (

@@ -35,7 +35,6 @@ class LocalSearchService(SearchService):
             logger.info("RAG is ready")
         except Exception as e:
             logger.error(f"RAG is not ready: {e}")
-            raise RuntimeError("RAG is not ready")
 
     def search_documents(
         self,
@@ -83,7 +82,7 @@ class LocalSearchService(SearchService):
 
         except Exception as e:
             logger.error(f"Document search failed: {e}")
-            raise RuntimeError(f"Failed to search documents for query: {query}")
+            raise e
 
 
 SearchServiceImpl = LocalSearchService

@@ -5,15 +5,18 @@ import argparse
 import random
 import socket
 import os
+import json
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastsyftbox import FastSyftBox
 from fastapi import HTTPException
+from fastapi.openapi.utils import get_openapi
 from loguru import logger
 from pydantic import BaseModel
 from syft_core.config import SyftClientConfig
+from pathlib import Path
 
 from config import load_config
 from router import SyftLLMRouter
@@ -23,6 +26,24 @@ from schema import (
     SearchOptions,
     SearchResponse,
 )
+
+
+def generate_openapi_schema(app: FastSyftBox):
+    """Generate OpenAPI schema for the FastSyftBox application."""
+
+    app_name = app.app_name
+    with open(f"{app_name}.openapi.json", "w") as f:
+        f.write(
+            json.dumps(
+                get_openapi(
+                    title=app_name,
+                    version="1.0.0",
+                    routes=app._get_api_routes_with_tags(tags=["syftbox"]),
+                    description="This is a SyftBox application with RPC endpoints.",
+                ),
+                indent=2,
+            )
+        )
 
 
 class HealthResponse(BaseModel):
@@ -42,6 +63,7 @@ async def lifespan(app: FastSyftBox):
         global router
         router = SyftLLMRouter()
         logger.info(f"Router initialized for project: {config.project_name}")
+        generate_openapi_schema(app)
 
         yield  # This allows the application to run
 
@@ -55,15 +77,16 @@ async def lifespan(app: FastSyftBox):
         logger.info("Application shutting down")
 
 
-router_app_name = os.environ.get("PROJECT_NAME", "Syft LLM Router")
+app_name = Path(__file__).resolve().parent.name
 
 # Create FastAPI app
 app = FastSyftBox(
-    app_name=router_app_name,
+    app_name=app_name,
     description="A router for LLM services with consistent API",
     version="1.0.0",
     syftbox_endpoint_tags=["syftbox"],
     include_syft_openapi=True,
+    lifespan=lifespan,
     syftbox_config=SyftClientConfig.load(
         "/home/shubham/.syftbox/config.alice.dev.json"
     ),
@@ -73,7 +96,13 @@ app = FastSyftBox(
 router: Optional[SyftLLMRouter] = None
 
 
-@app.get("/health", response_model=HealthResponse, tags=["syftbox"])
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["syftbox"],
+    summary="Health check",
+    description="Health check",
+)
 async def health_check():
     """Health check endpoint.
 
@@ -98,7 +127,14 @@ async def health_check():
     )
 
 
-@app.post("/chat", response_model=ChatResponse, tags=["syftbox"])
+@app.post(
+    "/chat",
+    response_model=ChatResponse,
+    tags=["syftbox"],
+    summary="Chat with the router",
+    description="Chat with the router",
+    responses={200: {"model": ChatResponse}},
+)
 async def chat_completion(request: GenerateChatParams):
     """Chat completion endpoint.
 
@@ -126,7 +162,14 @@ def is_port_in_use(port: int) -> bool:
         return s.connect_ex(("localhost", port)) == 0
 
 
-@app.post("/search", response_model=SearchResponse, tags=["syftbox"])
+@app.post(
+    "/search",
+    response_model=SearchResponse,
+    tags=["syftbox"],
+    summary="Search documents",
+    description="Search documents",
+    responses={200: {"model": SearchResponse}},
+)
 async def search_documents(
     query: str,
     options: Optional[SearchOptions] = None,

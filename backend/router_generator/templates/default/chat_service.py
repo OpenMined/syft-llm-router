@@ -82,10 +82,10 @@ class OllamaChatService(ChatService):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Ollama API request failed: {e}")
-            raise RuntimeError(f"Failed to generate chat response: {e}")
+            raise e
         except Exception as e:
             logger.error(f"Unexpected error in chat generation: {e}")
-            raise RuntimeError(f"Chat generation failed: {e}")
+            raise e
 
 
 ChatServiceImpl = OllamaChatService

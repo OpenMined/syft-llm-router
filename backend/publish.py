@@ -59,6 +59,14 @@ class PublishService:
         schema_path = apps_data_dir / "rpc" / "rpc.schema.json"
         return str(schema_path) if schema_path.exists() else None
 
+    def _get_endpoint_details(
+        self, project_name: str, project_path: Path
+    ) -> dict[str, Any]:
+        """Get the endpoint details for the project."""
+        with open(project_path / f"{project_name}.openapi.json", "r") as f:
+            data = json.load(f)
+        return data
+
     def publish(
         self,
         project_name: str,
@@ -97,6 +105,7 @@ class PublishService:
         code_hash = self._calculate_code_hash(project_path)
         version = self._get_project_version(project_path)
         schema_path = self._get_schema_path(apps_data_dir)
+        endpoint_details = self._get_endpoint_details(project_name, project_path)
 
         # Create metadata
         metadata = ProjectMetadata(
@@ -107,7 +116,7 @@ class PublishService:
             services=services,
             code_hash=code_hash,
             version=version,
-            documented_endpoints={},  # Skip for now as per requirements
+            documented_endpoints=endpoint_details,
             publish_date=datetime.now(),
             author=str(self.client.email),
             schema_path=schema_path,
