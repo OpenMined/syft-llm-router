@@ -78,7 +78,7 @@ class LocalSearchService(SearchService):
                 id=uuid4(),
                 query=query,
                 results=documents,
-                provider_info={"provider": "local_rag", "db_path": self.db_path},
+                provider_info={"provider": "local_rag"},
             )
 
         except Exception as e:

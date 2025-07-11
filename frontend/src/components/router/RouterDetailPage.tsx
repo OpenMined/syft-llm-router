@@ -7,7 +7,7 @@ import { useTheme, themeClass } from '../shared/ThemeContext';
 import { PublishRouterModal } from './PublishRouterModal';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import type { RouterDetails as RouterDetailsType, ServiceOverview } from '../../types/router';
+import type { RouterDetails as RouterDetailsType, ServiceOverview, EndpointInfo } from '../../types/router';
 
 interface RouterDetailProps {
   routerName: string;
@@ -21,6 +21,7 @@ interface RouterDetails {
   published: boolean;
   services?: ServiceOverview[];
   metadata?: RouterDetailsType['metadata'];
+  endpoints?: Record<string, EndpointInfo>;
 }
 
 function getMarkdownHtml(md: string) {
@@ -176,9 +177,68 @@ export function RouterDetailPage({ routerName, published, onBack, profile }: Rou
 
           {/* Documentation Tab */}
           {activeTab === 'documentation' && (
-            <div className="bg-white rounded-xl shadow-sm border p-8 mt-10">
-              <h4 className="text-lg font-bold text-gray-700 mb-3">Description</h4>
-              <div className="prose prose-base max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getMarkdownHtml(details.metadata?.description || '')) }} />
+            <div className="space-y-8 mt-10">
+              {/* Description Section */}
+              <div className="bg-white rounded-xl shadow-sm border p-8">
+                <h4 className="text-lg font-bold text-gray-700 mb-3">Description</h4>
+                <div className="prose prose-base max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getMarkdownHtml(details.metadata?.description || '')) }} />
+              </div>
+
+              {/* API Endpoints Section */}
+              {details.endpoints && Object.keys(details.endpoints).length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border p-8">
+                  <h4 className="text-lg font-bold text-gray-700 mb-6">API Endpoints</h4>
+                  <div className="space-y-6">
+                    {Object.entries(details.endpoints).map(([endpointName, endpointData]) => {
+                      const endpoint = endpointData as EndpointInfo;
+                      return (
+                        <div key={endpointName} className="border border-gray-200 rounded-lg p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                              endpoint.method === 'POST' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {endpoint.method}
+                            </span>
+                            <code className="text-lg font-mono text-gray-800 bg-gray-100 px-3 py-1 rounded">
+                              {endpoint.path}
+                            </code>
+                            <span className="text-lg font-semibold text-gray-700 capitalize">
+                              {endpointName}
+                            </span>
+                          </div>
+                          
+                          <p className="text-gray-600 mb-4">{endpoint.description}</p>
+                          
+                          {/* Parameters */}
+                          {endpoint.parameters && Object.keys(endpoint.parameters).length > 0 && (
+                            <div className="mb-4">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-2">Parameters:</h5>
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                {Object.entries(endpoint.parameters).map(([paramName, paramType]) => (
+                                  <div key={paramName} className="flex justify-between items-center py-1">
+                                    <code className="text-sm font-mono text-blue-600">{paramName}</code>
+                                    <span className="text-sm text-gray-600">{paramType}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Response */}
+                          {endpoint.response && (
+                            <div>
+                              <h5 className="text-sm font-semibold text-gray-700 mb-2">Response:</h5>
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                <code className="text-sm font-mono text-green-600">{endpoint.response}</code>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>

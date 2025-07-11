@@ -56,11 +56,20 @@ export interface RouterMetadataResponse {
   endpoints?: Record<string, any>;
 }
 
+export interface EndpointInfo {
+  path: string;
+  method: string;
+  description: string;
+  parameters?: Record<string, string>;
+  response?: string;
+}
+
 export interface RouterDetails {
   name: string;
   published: boolean;
   services?: ServiceOverview[];
   metadata?: RouterMetadataResponse;
+  endpoints?: Record<string, EndpointInfo>;
 }
 
 export interface RouterList {

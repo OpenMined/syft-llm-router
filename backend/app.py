@@ -470,11 +470,36 @@ async def router_details(
             for service in metadata_json["services"]
         ]
 
+    endpoints = {
+        "chat": {
+            "path": "/chat",
+            "method": "POST",
+            "description": "Chat with the router",
+            "parameters": {
+                "model": "str",
+                "messages": "list[Message]",
+                "options": "Optional[GenerationOptions]",
+            },
+            "response": "ChatResponse",
+        },
+        "search": {
+            "path": "/search",
+            "method": "POST",
+            "description": "Search the router",
+            "parameters": {
+                "query": "str",
+                "options": "Optional[SearchOptions]",
+            },
+            "response": "SearchResponse",
+        },
+    }
+
     return RouterDetails(
         name=router_name,
         published=published,
         metadata=metadata,
         services=services,
+        endpoints=endpoints,
     )
 
 

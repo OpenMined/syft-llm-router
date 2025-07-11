@@ -574,11 +574,15 @@ echo "🔍 Setting up local RAG components..."
 
 
 # Install local-rag using syftbox
+
+
 # Check if local-rag is already installed   
 if ! syftbox app list -c {config.syftbox_config.path} | grep -q "local-rag"; then
     echo "📥 Installing local-rag..."
-    syftbox app install https://github.com/OpenMined/local-rag --config {config.syftbox_config.path}
+    SYFTBOX_ASSIGNED_PORT=9083 syftbox app install https://github.com/OpenMined/local-rag --config {config.syftbox_config.path}
 fi
+
+export RAG_URL=http://localhost:9083
 """
             )
 

@@ -36,8 +36,10 @@ export function Header({ profile, profileToggle }: HeaderProps) {
         {/* Navigation Tabs */}
         <nav className="flex items-center space-x-2">
           <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500">Routers</a>
-          <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500">Assets</a>
-          <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500">Chat</a>
+          <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center gap-2">
+            Chat
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Coming Soon</span>
+          </a>
         </nav>
         {/* User Info and Profile Toggle */}
         <div className="flex items-center space-x-4">
@@ -48,7 +50,7 @@ export function Header({ profile, profileToggle }: HeaderProps) {
           </div>
           <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
             <span className="text-xs text-gray-700">Balance:</span>
-            <span className="text-xs text-gray-500">Loading...</span>
+            <span className="text-xs text-gray-500">$20</span>
           </div>
         </div>
       </div>

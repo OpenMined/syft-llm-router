@@ -2,8 +2,11 @@
 """FastAPI server for Syft LLM Router with factory pattern for service loading."""
 
 import argparse
+import random
+import socket
 import os
 from typing import List, Optional
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastsyftbox import FastSyftBox
@@ -30,9 +33,33 @@ class HealthResponse(BaseModel):
     services: dict
 
 
+@asynccontextmanager
+async def lifespan(app: FastSyftBox):
+    """Custom lifespan method to initialize router and handle startup/shutdown."""
+    try:
+        # Startup logic
+        config = load_config()
+        global router
+        router = SyftLLMRouter()
+        logger.info(f"Router initialized for project: {config.project_name}")
+
+        yield  # This allows the application to run
+
+    except Exception as e:
+        logger.error(f"Failed to initialize router: {e}")
+        raise
+
+    finally:
+        # Optional cleanup logic if needed
+        # For example, closing any resources
+        logger.info("Application shutting down")
+
+
+router_app_name = os.environ.get("PROJECT_NAME", "Syft LLM Router")
+
 # Create FastAPI app
 app = FastSyftBox(
-    app_name="Syft LLM Router",
+    app_name=router_app_name,
     description="A router for LLM services with consistent API",
     version="1.0.0",
     syftbox_endpoint_tags=["syftbox"],
@@ -46,22 +73,13 @@ app = FastSyftBox(
 router: Optional[SyftLLMRouter] = None
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize router on startup."""
-    global router
-    try:
-        config = load_config()
-        router = SyftLLMRouter()
-        logger.info(f"Router initialized for project: {config.project_name}")
-    except Exception as e:
-        logger.error(f"Failed to initialize router: {e}")
-        raise
-
-
 @app.get("/health", response_model=HealthResponse, tags=["syftbox"])
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint.
+
+    Returns:
+        HealthResponse: The health check response from the router
+    """
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
@@ -82,7 +100,14 @@ async def health_check():
 
 @app.post("/chat", response_model=ChatResponse, tags=["syftbox"])
 async def chat_completion(request: GenerateChatParams):
-    """Chat completion endpoint."""
+    """Chat completion endpoint.
+
+    Args:
+        request (GenerateChatParams): The request body containing the chat completion parameters
+
+    Returns:
+        ChatResponse: The chat completion response from the router
+    """
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
@@ -95,12 +120,26 @@ async def chat_completion(request: GenerateChatParams):
         raise HTTPException(status_code=500, detail="Chat completion failed")
 
 
+def is_port_in_use(port: int) -> bool:
+    """Check if a port is in use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("localhost", port)) == 0
+
+
 @app.post("/search", response_model=SearchResponse, tags=["syftbox"])
 async def search_documents(
     query: str,
     options: Optional[SearchOptions] = None,
 ):
-    """Document retrieval endpoint."""
+    """Document retrieval endpoint.
+
+    Args:
+        query (str): The search query
+        options (Optional[SearchOptions]): The search options
+
+    Returns:
+        SearchResponse: The search response from the router
+    """
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
@@ -153,7 +192,17 @@ def main():
         level="INFO",
     )
 
+    app.app_name = os.environ["PROJECT_NAME"]
+
     logger.info("Starting Syft LLM Router server...")
+
+    # Check if port is already in use
+    if is_port_in_use(args.port):
+        # Choose a random port
+        args.port = random.randint(10000, 65535)
+        logger.warning(
+            f"Port {args.port} is already in use. Using random port: {args.port}"
+        )
 
     # Start server
     uvicorn.run(

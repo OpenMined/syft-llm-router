@@ -53,7 +53,7 @@ class RouterMetadataResponse(BaseModel):
     tags: list[str]
     code_hash: str
     author: str
-    endpoints: Optional[dict[str, Any]] = None
+    # endpoints: Optional[dict[str, Any]] = None
 
 
 class RouterDetails(BaseModel):
@@ -61,6 +61,7 @@ class RouterDetails(BaseModel):
     published: bool
     services: Optional[list[ServiceOverview]] = None
     metadata: Optional[RouterMetadataResponse] = None
+    endpoints: Optional[dict[str, Any]] = None
 
 
 class ProjectMetadata(BaseModel):
