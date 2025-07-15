@@ -82,3 +82,14 @@ class ProjectMetadata(BaseModel):
     publish_date: datetime = Field(..., description="Publication date")
     author: str = Field(..., description="Author email")
     schema_path: Optional[str] = Field(None, description="Path to RPC schema file")
+
+
+class RouterServiceStatus(BaseModel):
+    name: str
+    status: str
+
+
+class RouterRunStatus(BaseModel):
+    url: Optional[str] = None
+    status: str
+    services: list[RouterServiceStatus]

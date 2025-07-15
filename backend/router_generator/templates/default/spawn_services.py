@@ -101,14 +101,10 @@ class ServiceManager:
                 enable_chat=self.enable_chat,
                 enable_search=self.enable_search,
             )
-            router_state = RouterState(
-                status=RunStatus.STOPPED, started_at=None, depends_on=[]
-            )
             state = StateFile(
                 project=project_info,
                 configuration=router_configuration,
                 services={},
-                router=router_state,
             )
             state.save(self.state_file)
             return state
@@ -174,8 +170,8 @@ class ServiceManager:
 
                 if pull_result.returncode != 0:
                     logger.error(f"❌ Failed to pull tinyllama: {pull_result.stderr}")
-                    self._update_service_state(
-                        "ollama", status=RunStatus.FAILED, error="Model pull failed"
+                    self.state.update_service_state(
+                        "chat", status=RunStatus.FAILED, error="Model pull failed"
                     )
                     return False
 
@@ -280,7 +276,9 @@ class ServiceManager:
 
             # Check if app.pid and app.port are set
             client = Client.load(self.config_path)
-            app_folder = client.workspace.data_dir / "apps" / "local-rag"
+            app_folder = (
+                client.workspace.data_dir / "apps" / "com.github.openmined.local-rag"
+            )
             app_pid = app_folder / "data" / "app.pid"
             app_port = app_folder / "data" / "app.port"
 
@@ -338,9 +336,9 @@ class ServiceManager:
         # Determine service dependencies
         services_to_spawn = []
         if self.enable_chat:
-            services_to_spawn.append(("ollama", self.spawn_ollama))
+            services_to_spawn.append(("chat", self.spawn_ollama))
         if self.enable_search:
-            services_to_spawn.append(("local_rag", self.spawn_local_rag))
+            services_to_spawn.append(("search", self.spawn_local_rag))
 
         if not services_to_spawn:
             logger.info("ℹ️  No services enabled - skipping service spawning")
@@ -362,9 +360,9 @@ class ServiceManager:
         health_checks = []
 
         if self.enable_chat:
-            health_checks.append(("ollama", self.health_check_ollama))
+            health_checks.append(("chat", self.health_check_ollama))
         if self.enable_search:
-            health_checks.append(("local_rag", self.health_check_local_rag))
+            health_checks.append(("search", self.health_check_local_rag))
 
         for service_name, health_check_func in health_checks:
             if not health_check_func():

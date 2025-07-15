@@ -136,6 +136,25 @@ class PublishService:
 
         return metadata, metadata_path
 
+    def unpublish(self, project_name: str) -> None:
+        """Unpublish a project.
+
+        This function will unpublish a project by deleting the metadata.json file.
+        """
+        metadata_path = (
+            self.client.my_datasite
+            / "public"
+            / "routers"
+            / project_name
+            / "metadata.json"
+        )
+
+        metadata_path.unlink(missing_ok=True)
+
+        # Delete the project folder
+        project_path = self.client.my_datasite / "public" / "routers" / project_name
+        shutil.rmtree(project_path, ignore_errors=True)
+
 
 def publish_project(
     project_name: str,
@@ -171,3 +190,20 @@ def publish_project(
         tags=tags,
         services=services,
     )
+
+
+def unpublish_project(
+    project_name: str,
+    client_config_path: Union[str, Path],
+) -> None:
+    """Unpublish a project.
+
+    This function will unpublish a project by deleting the metadata.json file
+    and the project folder.
+
+    Args:
+        project_name: Name of the project
+        client_config_path: Path to client configuration file
+    """
+    service = PublishService(client_config_path)
+    service.unpublish(project_name)

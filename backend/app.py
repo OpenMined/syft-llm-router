@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from syft_core.config import SyftClientConfig
 from fastsyftbox import FastSyftBox
 from fastapi.responses import JSONResponse
-from publish import publish_project
+from publish import publish_project, unpublish_project
 from router_generator.generate import ProjectConfig, SimplifiedProjectGenerator
 from constant import RouterServiceType
 from db import (
@@ -27,6 +27,8 @@ from serializer import (
     ServiceOverview,
     RouterDetails,
     RouterMetadataResponse,
+    RouterRunStatus,
+    RouterServiceStatus,
 )
 
 from sqlmodel import select
@@ -212,14 +214,20 @@ async def publish_router(
         )
 
     # Save metadata to database
-    router_metadata = RouterMetadata(
-        summary=request.summary,
-        description=request.description,
-        tags=request.tags,
-        code_hash=metadata.code_hash,
-        router_id=router.id,
-    )
-    router.router_metadata = router_metadata
+    if router.router_metadata is None:
+        router_metadata = RouterMetadata(
+            summary=request.summary,
+            description=request.description,
+            tags=request.tags,
+            code_hash=metadata.code_hash,
+            router_id=router.id,
+        )
+        router.router_metadata = router_metadata
+    else:
+        router.router_metadata.summary = request.summary
+        router.router_metadata.description = request.description
+        router.router_metadata.tags = request.tags
+        router.router_metadata.code_hash = metadata.code_hash
 
     # Update existing services with pricing
     for service in request.services:
@@ -241,6 +249,52 @@ async def publish_router(
             "message": "Router published successfully.",
             "published_path": str(published_path),
         },
+    )
+
+
+@app.api_route(
+    path="/router/unpublish",
+    methods=["POST"],
+)
+async def unpublish_router(router_name: str, session: SessionDep) -> JSONResponse:
+    """Unpublish a router."""
+
+    current_user = app.syftbox_client.email
+
+    router = session.exec(
+        select(Router).where(Router.name == router_name, Router.author == current_user)
+    ).first()
+
+    if router is None:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "message": f"Router {router_name} not found or not owned by {current_user}"
+            },
+        )
+
+    if not router.published:
+        return JSONResponse(
+            status_code=400,
+            content={"message": f"Router {router_name} is not published"},
+        )
+
+    try:
+        unpublish_project(router_name, app.syftbox_client.config.path)
+        # Delete the router from the database
+        router.published = False
+        session.add(router)
+        session.commit()
+    except Exception as e:
+        print("Error", e)
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Error unpublishing router {router_name}. {e}"},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"message": "Router unpublished successfully."},
     )
 
 
@@ -500,6 +554,58 @@ async def user_details() -> JSONResponse:
     return JSONResponse(
         status_code=200,
         content={"username": app.syftbox_client.email},
+    )
+
+
+@app.api_route(
+    path="/router/status",
+    methods=["GET"],
+)
+async def router_status(router_name: str, session: SessionDep) -> RouterRunStatus:
+    """Get the status of the router.
+
+    This API will get the status of the router.
+    """
+
+    router = session.exec(select(Router).where(Router.name == router_name)).first()
+
+    if router is None:
+        return JSONResponse(
+            status_code=404,
+            content={"message": f"Router {router_name} not found"},
+        )
+
+    from router_generator.common.config import StateFile
+
+    state_file_path = ROUTER_APP_DIR / router_name / "state.json"
+
+    if not state_file_path.exists():
+        return RouterRunStatus(
+            status="stopped",
+            services=[],
+        )
+
+    state_file = StateFile.load(state_file_path)
+
+    services = []
+    for service_name, service_state in state_file.services.items():
+        services.append(
+            RouterServiceStatus(
+                name=service_name,
+                status=service_state.status.value,
+            )
+        )
+
+    if state_file.router.status is None:
+        return RouterRunStatus(
+            status="stopped",
+            services=services,
+        )
+
+    return RouterRunStatus(
+        url=state_file.router.url,
+        status=state_file.router.status.value,
+        services=services,
     )
 
 

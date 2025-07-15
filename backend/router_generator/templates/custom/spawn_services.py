@@ -76,14 +76,10 @@ class CustomServiceManager:
             enable_chat=self.enable_chat,
             enable_search=self.enable_search,
         )
-        router_state = RouterState(
-            status=RunStatus.STOPPED, started_at=None, depends_on=[]
-        )
         state = StateFile(
             project=project_info,
             configuration=router_configuration,
             services={},
-            router=router_state,
         )
 
         state.save(self.state_file)

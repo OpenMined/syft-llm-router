@@ -66,10 +66,11 @@ async def lifespan(app: FastSyftBox):
         generate_openapi_schema(app)
 
         app_port = os.environ.get("APP_PORT", 8000)
+        app_host = os.environ.get("APP_HOST", "0.0.0.0")
 
         config.state.update_router_state(
             status=RunStatus.RUNNING,
-            url=f"http://{app.host}:{app_port}",
+            url=f"http://{app_host}:{app_port}",
         )
 
         yield  # This allows the application to run
@@ -253,6 +254,7 @@ def main():
         )
 
     os.environ["APP_PORT"] = str(args.port)
+    os.environ["APP_HOST"] = args.host
 
     # Start server
     uvicorn.run(
