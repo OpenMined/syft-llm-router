@@ -37,15 +37,15 @@ from sqlmodel import select
 
 app_name = "SyftRouter"
 
+syftbox_config = SyftClientConfig.load("~/.syftbox/config.json")
+
 app = FastSyftBox(
     app_name=app_name,
     syftbox_endpoint_tags=[
         "syftbox"
     ],  # endpoints with this tag are also available via Syft RPC
     include_syft_openapi=True,  # Create OpenAPI endpoints for syft-rpc routes
-    syftbox_config=SyftClientConfig.load(
-        "/home/shubham/.syftbox/config.alice.dev.json"
-    ),
+    syftbox_config=syftbox_config,
 )
 
 ROUTER_APP_DIR = app.syftbox_client.workspace.data_dir / "apps"
