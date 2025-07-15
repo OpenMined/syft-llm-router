@@ -176,6 +176,7 @@ cython_debug/
 
 # Data files
 *   .db
+data/*
 
 # Node modules
 node_modules/

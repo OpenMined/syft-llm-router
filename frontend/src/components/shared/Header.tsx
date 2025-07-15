@@ -43,7 +43,7 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
         {/* Logo and App Name */}
         <div className="flex items-center space-x-3">
-          <img src="/syftbox-logo.svg" alt="SyftBox Logo" className="h-8 w-8" />
+          <img src="/static/syftbox-logo.svg" alt="SyftBox Logo" className="h-8 w-8" />
           <span className="text-xl font-bold text-gray-900 tracking-tight">SyftBox <span className="ml-1 text-xs font-semibold text-primary-600 align-top">ALPHA</span></span>
         </div>
         {/* Navigation Tabs */}

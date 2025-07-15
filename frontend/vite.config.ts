@@ -31,5 +31,10 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+  },
+  // Build configuration for production
+  base: '/',
+  preview: {
+    port: 3000
   }
 }) 

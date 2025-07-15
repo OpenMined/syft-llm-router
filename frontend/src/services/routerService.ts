@@ -9,7 +9,7 @@ import type {
   RouterRunStatus
 } from '../types/router';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = '';
 
 class RouterService {
   private async request<T>(

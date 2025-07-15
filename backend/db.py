@@ -3,6 +3,7 @@ from typing import Annotated, Optional
 from enum import Enum
 from uuid import uuid4, UUID
 from fastapi import Depends
+from pathlib import Path
 
 from sqlmodel import (
     Field,
@@ -52,7 +53,11 @@ class RouterService(SQLModel, table=True):
     charge_type: PricingChargeType = Field(default=PricingChargeType.PER_REQUEST)
 
 
-sqlite_file_name = "routers.db"
+project_root = Path(__file__).parent.parent
+data_dir = project_root / "data"
+data_dir.mkdir(parents=True, exist_ok=True)
+
+sqlite_file_name = data_dir / "routers.db"
 
 engine = create_engine(f"sqlite:///{sqlite_file_name}")
 

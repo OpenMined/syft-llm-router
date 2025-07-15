@@ -3,7 +3,9 @@ import shutil
 import json
 
 from pydantic import EmailStr
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi import HTTPException
 
 from syft_core.config import SyftClientConfig
 from fastsyftbox import FastSyftBox
@@ -48,9 +50,21 @@ app = FastSyftBox(
 
 ROUTER_APP_DIR = app.syftbox_client.workspace.data_dir / "apps"
 
+# Mount static files for frontend
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 @app.get("/", response_class=HTMLResponse)
 def root():
+    # Serve the frontend index.html for the root path
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+
+    # Fallback to simple HTML if frontend not built
     return HTMLResponse(
         content=f"<html><body><h1>Welcome to {app_name}</h1>"
         + f"{app.get_debug_urls()}"
@@ -619,6 +633,21 @@ async def sburl() -> JSONResponse:
         status_code=200,
         content={"url": str(app.syftbox_config.server_url)},
     )
+
+
+# Catch-all route for SPA routing - serve index.html for any frontend route
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    # Don't interfere with API routes
+    if full_path.startswith(("router/", "username", "sburl", "docs", "openapi")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Serve index.html for frontend routes
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 create_db_and_tables()
