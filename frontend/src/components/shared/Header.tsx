@@ -4,9 +4,11 @@ import { routerService } from '../../services/routerService';
 
 interface HeaderProps {
   profileToggle: h.JSX.Element;
+  onTabChange?: (tab: 'routers' | 'chat') => void;
+  activeTab?: 'routers' | 'chat';
 }
 
-export function Header({ profileToggle }: HeaderProps) {
+export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
   const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
 
@@ -46,11 +48,26 @@ export function Header({ profileToggle }: HeaderProps) {
         </div>
         {/* Navigation Tabs */}
         <nav className="flex items-center space-x-2">
-          <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500">Routers</a>
-          <a href="#" className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center gap-2">
+          <button
+            onClick={() => onTabChange?.('routers')}
+            className={`px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              activeTab === 'routers'
+                ? 'text-primary-700 bg-primary-50'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            Routers
+          </button>
+          <button
+            onClick={() => onTabChange?.('chat')}
+            className={`px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center gap-2 ${
+              activeTab === 'chat'
+                ? 'text-primary-700 bg-primary-50'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
             Chat
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Coming Soon</span>
-          </a>
+          </button>
         </nav>
         {/* SyftBox Server URL */}
         {syftBoxUrl && (

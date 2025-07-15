@@ -290,7 +290,7 @@ function RouterStatusCard({ routerStatus, loading, onRefresh }: { routerStatus: 
             {routerStatus.services.map((service) => (
               <div key={service.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 capitalize">{service.name}</span>
+                <span className="text-sm text-gray-600 capitalize">{service.name}</span>
                   {service.url && (
                     <a
                       href={service.url}
@@ -471,9 +471,9 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                 {profile === 'provider' && (
                   <div className="flex justify-end mt-6 gap-3">
                     {!details.published ? (
-                      <Button variant="primary" onClick={() => setShowPublishModal(true)}>
-                        Publish Router
-                      </Button>
+                    <Button variant="primary" onClick={() => setShowPublishModal(true)}>
+                      Publish Router
+                    </Button>
                     ) : currentUser && author === currentUser ? (
                       <Button 
                         variant="ghost" 

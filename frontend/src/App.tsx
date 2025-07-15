@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { RouterList } from './components/router/RouterList';
 import { RouterDetailPage } from './components/router/RouterDetailPage';
+import { ChatPage } from './components/chat/ChatPage';
 import { Header } from './components/shared/Header';
 import { ProfileToggle, ProfileType } from './components/shared/ProfileToggle';
 import { OnboardingModal } from './components/shared/OnboardingModal';
@@ -10,7 +11,8 @@ const PROFILE_KEY = 'syftbox_profile';
 
 // Simple route state
 export function App() {
-  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string }>({ page: 'list' });
+  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string } | { page: 'chat' }>({ page: 'list' });
+  const [activeTab, setActiveTab] = useState<'routers' | 'chat'>('routers');
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -40,6 +42,17 @@ export function App() {
   // Handler for going back to the list
   const handleBackToList = () => {
     setRoute({ page: 'list' });
+    setActiveTab('routers');
+  };
+
+  // Handler for tab changes
+  const handleTabChange = (tab: 'routers' | 'chat') => {
+    setActiveTab(tab);
+    if (tab === 'routers') {
+      setRoute({ page: 'list' });
+    } else if (tab === 'chat') {
+      setRoute({ page: 'chat' });
+    }
   };
 
   // Handler for onboarding modal
@@ -58,11 +71,15 @@ export function App() {
         {/* Only render dashboard if profile is chosen */}
         {profile && !showOnboarding && (
           <div>
-            <Header profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />} />
+            <Header 
+              profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />}
+              onTabChange={handleTabChange}
+              activeTab={activeTab}
+            />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {route.page === 'list' ? (
                 <RouterList onRouterClick={handleRouterClick} profile={profile} />
-              ) : (
+              ) : route.page === 'detail' ? (
                 <RouterDetailPage
                   routerName={route.routerName}
                   published={route.published}
@@ -70,6 +87,8 @@ export function App() {
                   onBack={handleBackToList}
                   profile={profile}
                 />
+              ) : (
+                <ChatPage onBack={handleBackToList} />
               )}
             </div>
           </div>

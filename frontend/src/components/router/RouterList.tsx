@@ -166,11 +166,11 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                   <Button variant="ghost" size="sm" onClick={() => onRouterClick?.(router.name, router.published, router.author)}>
                     View Details
                   </Button>
-                  {profile === 'provider' && !router.published && (
+                {profile === 'provider' && !router.published && (
                     <Button variant="primary" size="sm" className="mt-2" onClick={() => handlePublishClick(router.name)}>
                       Publish
                     </Button>
-                  )}
+                )}
                 </div>
               </div>
             ))}
