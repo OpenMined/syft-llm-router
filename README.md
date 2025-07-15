@@ -1,133 +1,317 @@
-# Syft LLM Router
+# Syft LLM Router 
 
-A modern, full-stack platform for creating, managing, and publishing Language Model (LLM) routers, built on SyftBox. Includes a Python backend (FastAPI, SyftBox) and a Preact/TypeScript/TailwindCSS frontend.
+A modern, full-stack platform for creating, managing, and publishing Language Model (LLM) routers on SyftBox. Built with a Python backend (FastAPI, SyftBox) and a sleek Preact/TypeScript frontend.
+
+<div align="center">
+
+![SyftBox Logo](frontend/public/syftbox-logo.svg)
+
+**Create • Manage • Publish • Monetize**
+
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Preact](https://img.shields.io/badge/Preact-10.19+-purple.svg)](https://preactjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+
+</div>
 
 ---
 
-## Features
-- **Modern Dashboard UI**: Clean, responsive, and accessible frontend
-- **Router Management**: Create, list, and manage LLM routers
-- **Service Pricing**: Enable/disable services, set per-service pricing, and select charge type with modern toggle switches
+## ✨ Features
+
+### 🎯 **Dual User Experience**
+- **Provider Mode**: Create, manage, and publish routers with monetization
+- **Client Mode**: Discover and use published routers
+
+### 🛠️ **Router Management**
+- **Web-Based Creation**: Intuitive UI for creating routers through the dashboard
+- **Two-Path Generation**: Choose between "batteries included" (default) or "build from scratch" (custom)
+- **Service Configuration**: Enable/disable chat and search services
+- **Pricing Control**: Set per-service pricing with flexible charge types
+- **Real-time Status**: Monitor router health and service status
+
+### 🎨 **Modern UI/UX**
+- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Type Safety**: Full TypeScript support with strict typing
 - **Real-time Feedback**: Loading states, error handling, and success animations
-- **Type Safety**: Full TypeScript support on frontend, Pydantic on backend
-- **Easy Deployment**: Static frontend build, simple backend launch
+- **Accessible**: Built with accessibility best practices
+
+### 🚀 **Production Ready**
+- **Database Integration**: SQLite with SQLModel for data persistence
+- **Static Asset Serving**: Optimized frontend build with Vite
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs
+- **Easy Deployment**: Simple setup scripts and configuration
 
 ---
 
-## Tech Stack
-- **Backend**: Python 3.12+, FastAPI, SyftBox, SQLModel, Uvicorn
-- **Frontend**: Preact, TypeScript, TailwindCSS, Vite, Bun
+## 📁 Project Structure
 
----
-
-## Prerequisites
-- [Python 3.12+](https://www.python.org/)
-- [uv](https://github.com/astral-sh/uv) (Python package manager)
-- [Bun](https://bun.sh/) (for frontend)
-
----
-
-## Quickstart
-
-### 1. Start the Backend
-```bash
-./backend/run.sh
-```
-- This sets up a virtual environment, installs dependencies, and starts the FastAPI server (default: http://localhost:8000)
-
-### 2. Start the Frontend
-```bash
-# Default backend port (8000)
-./run_frontend.sh
-
-# Custom backend port
-./run_frontend.sh 8080
-```
-- This installs frontend dependencies (if needed) and starts the dev server (http://localhost:3000)
-- The frontend proxies API requests to the backend (default: http://localhost:8000)
-- You can specify a custom backend port as the first argument
-
-### 3. Create a Router (Optional)
-```bash
-cd backend/router_generator
-python generate.py --project-name MyRouter --router-type default --output-dir ../../my_router
-cd ../../my_router
-./run.sh  # Automatically handles setup and starts the router
-```
-
----
-
-## Project Structure
 ```
 syft-llm-router/
-├── backend/
-│   ├── app.py                # FastAPI app entrypoint
-│   ├── run.sh                # Backend launch script
-│   ├── requirements.txt      # Python dependencies
-│   ├── router_generator/     # Router code generation logic
-│   └── ...                   # Other backend modules
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── router/       # Router management UI
-│   │   │   └── shared/       # Shared UI components
-│   │   ├── services/         # API service functions
-│   │   ├── types/            # TypeScript types
-│   │   ├── utils/            # Utilities
-│   │   ├── App.tsx           # Main app
-│   │   └── ...
-│   ├── run_frontend.sh       # Frontend launch script
-│   └── ...
-├── run_api.sh                # (Optional) API launch helper
-├── README.md                 # This file
-└── ...
+├── backend/                    # FastAPI + SyftBox backend
+│   ├── app.py                 # Main application entry point
+│   ├── db.py                  # Database models and setup
+│   ├── requirements.txt       # Python dependencies
+│   ├── static/                # Served frontend assets
+│   └── router_generator/      # Router template generation
+├── frontend/                  # Preact + TypeScript frontend
+│   ├── src/                   # Source code
+│   ├── public/                # Static assets
+│   └── package.json           # Frontend dependencies
+├── data/                      # SQLite database
+├── run.sh                     # Full-stack startup script
+└── README.md                  # This file
+```
+
+### **Key Components**
+
+- **`backend/`**: FastAPI server with database and router generation
+- **`frontend/`**: Preact application with TypeScript and TailwindCSS
+- **`data/`**: SQLite database storage
+- **`run.sh`**: One-command startup script
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [Python 3.12+](https://www.python.org/)
+- [uv](https://github.com/astral-sh/uv) (Python package manager)
+- [Bun](https://bun.sh/) (JavaScript runtime)
+
+### Single Command Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd syft-llm-router
+
+# One command to start everything
+./run.sh
+```
+
+That's it! 🎉 The `run.sh` script handles everything:
+
+- ✅ **Environment Setup**: Creates Python virtual environment
+- ✅ **Dependencies**: Installs all Python and JavaScript packages
+- ✅ **Frontend Build**: Compiles the React application
+- ✅ **Database**: Initializes SQLite database with tables
+- ✅ **Server Start**: Launches the backend on `http://localhost:8080`
+
+### Access Your Application
+
+Once the script completes, open your browser and navigate to:
+
+**http://localhost:8080**
+
+You'll see the Syft LLM Router dashboard where you can:
+- Choose your profile (Provider/Client)
+- Create and manage routers
+- Publish and monetize your services
+
+### Custom Port (Optional)
+
+If you need to use a different port:
+
+```bash
+export SYFTBOX_ASSIGNED_PORT=9000
+./run.sh
 ```
 
 ---
 
-## API Endpoints (Backend)
-- `GET /api/router/list` — List all routers
-- `POST /api/router/create` — Create a new router
-- `GET /api/router/exists` — Check if a router exists
-- `POST /api/router/publish` — Publish a router (with per-service pricing, enable/disable, charge type)
-- `GET /api/router/details` — Get router details
-- `POST /api/router/delete` — Delete a router
-- `GET /api/username` — Get current user info
+## 👥 User Flows
+
+### 🔧 **Provider Flow** (Router Creator)
+
+1. **Onboarding**: Choose "Provider" profile during first visit
+2. **Create Router**: 
+   - Click "Create Router" button in the dashboard
+   - Enter router name and select type (Default/Custom)
+   - Choose services (Chat/Search)
+   - Router is generated and saved to database
+3. **Manage Router**:
+   - View router in dashboard
+   - Check status and health
+   - Edit configuration
+4. **Publish Router**:
+   - Click "Publish" button
+   - Add metadata (summary, description, tags)
+   - Configure pricing for each service
+   - Set charge type (per request, per token, etc.)
+   - Router becomes publicly available
+5. **Monitor & Monetize**:
+   - Track usage and revenue
+   - Update pricing as needed
+   - Unpublish if necessary
+
+### 👤 **Client Flow** (Router Consumer)
+
+1. **Onboarding**: Choose "Client" profile during first visit
+2. **Discover Routers**:
+   - Browse published routers in dashboard
+   - View summaries, pricing, and service details
+   - Filter by tags or services
+3. **Use Router**:
+   - Click "View Details" to see full documentation
+   - Access API endpoints
+   - Integrate into your applications
+4. **Chat Interface** (if available):
+   - Use built-in chat interface
+   - Test router capabilities
+   - View conversation history
 
 ---
 
-## Modern Frontend Features
-- **Router List**: See all routers, their status, summary, and enabled services with pricing
-- **Router Details**: Spacious, two-column dashboard with summary, tags, meta info, and a modern services card
-- **Publish Modal**: Enable/disable services with toggle switches, set price (float input), and select charge type (dropdown)
-- **Type Safety**: All API data is strictly typed
-- **Responsive Design**: Works on desktop and mobile
+## 🎯 Router Types
+
+### **Default Router** (Batteries Included)
+- **Chat Service**: Pre-configured Ollama integration
+- **Search Service**: Local RAG with ChromaDB
+- **Auto-setup**: Dependencies installed automatically
+- **Production Ready**: Includes validation and monitoring
+
+### **Custom Router** (Build from Scratch)
+- **Template Structure**: Clear TODO comments and examples
+- **Flexible Configuration**: Add your own config options
+- **Service Placeholders**: Implement your own logic
+- **Easy Extension**: Simple to add new service types
 
 ---
 
-## Development Tips
-- **TypeScript**: All frontend code is typed; use `src/types/` for shared types
-- **TailwindCSS**: Use utility classes for styling; custom styles in `src/index.css`
-- **Component Structure**: Add new UI in `src/components/`; keep logic in `src/services/` and `src/utils/`
-- **Backend**: Use Pydantic models for request/response validation
+## 🔌 API Endpoints
+
+### Router Management
+- `GET /router/list` - List all routers (filtered by user profile)
+- `POST /router/create` - Create a new router via web UI
+- `GET /router/exists` - Check if router name is available
+- `GET /router/details` - Get detailed router information
+- `POST /router/delete` - Delete a router
+
+### Publishing
+- `POST /router/publish` - Publish router with metadata and pricing
+- `POST /router/unpublish` - Unpublish a router
+
+### User & System
+- `GET /username` - Get current user information
+- `GET /sburl` - Get SyftBox server URL
+- `GET /router/status` - Get router runtime status
 
 ---
 
-## Build & Deployment
-- **Frontend**: Build with `bun run build` (output in `frontend/dist/`)
-- **Backend**: Deploy with Uvicorn or your preferred ASGI server
-- **Static Assets**: Serve `frontend/dist/` with any static file server if needed
+## 🎨 Frontend Features
+
+### **Modern Dashboard**
+- Clean, responsive interface with TailwindCSS
+- Real-time data updates
+- Loading states and error handling
+- Accessible design patterns
+
+### **Router Management**
+- **List View**: See all routers with status indicators
+- **Detail View**: Comprehensive router information
+- **Create Modal**: Step-by-step router creation via web UI
+- **Publish Modal**: Multi-step publishing with pricing
+
+### **Service Configuration**
+- Toggle switches for enabling/disabling services
+- Price input with validation
+- Charge type selection (per request, per token, etc.)
+- Real-time pricing preview
 
 ---
 
-## Contributing
-1. Use TypeScript and Preact best practices
-2. Write reusable, accessible components
-3. Add error handling and loading states
-4. Test on different screen sizes
-5. Keep backend and frontend types in sync
+## 🔧 Development
+
+### Backend Development
+
+```bash
+cd backend
+uv venv -p 3.12 .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+uvicorn app:app --reload --port 8080
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+bun install
+bun run dev
+```
+
+### Database
+
+The application uses SQLite with automatic table creation:
+
+```bash
+# Database is automatically created at data/routers.db
+# Tables are created on first startup
+```
 
 ---
 
-## License
-This project is part of the Syft LLM Router ecosystem.
+## 🚀 Deployment
+
+### Production Setup
+
+```bash
+# Build frontend for production
+cd frontend
+bun run build
+
+# Start backend with production settings
+cd backend
+uvicorn app:app --host 0.0.0.0 --port 8080 --workers 4
+```
+
+### Environment Variables
+
+```bash
+# Optional: Set custom port
+export SYFTBOX_ASSIGNED_PORT=8080
+```
+
+---
+
+## 🤝 Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- Use TypeScript for all frontend code
+- Follow Preact best practices
+- Write reusable, accessible components
+- Add proper error handling and loading states
+- Keep backend and frontend types in sync
+- Test on different screen sizes
+
+---
+
+## 📝 License
+
+This project is part of the Syft LLM Router ecosystem and is licensed under the same terms as the parent project.
+
+---
+
+## 🆘 Support
+
+- **Documentation**: Check the `backend/router_generator/README.md` for detailed router generation docs
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Discussions**: Join community discussions for questions and ideas
+
+---
+
+<div align="center">
+
+**Built with ❤️ by the OpenMined Community**
+
+[OpenMined](https://www.openmined.org/) • [SyftBox](https://syftbox.net/)
+</div>
