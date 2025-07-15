@@ -16,7 +16,12 @@ class OllamaChatService(ChatService):
 
     def __init__(self):
         """Initialize Ollama chat service."""
-        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        from config import load_config
+
+        config = load_config()
+        self.base_url = config.get_service_url("ollama") or os.getenv(
+            "OLLAMA_BASE_URL", "http://localhost:11434"
+        )
         logger.info(f"Initialized Ollama chat service with base URL: {self.base_url}")
 
     def generate_chat(

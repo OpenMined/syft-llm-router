@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 from pydantic import BaseModel, field_validator
 from syft_core.config import SyftClientConfig
+from syft_core import Client as SyftClient
 
 RouterType = Literal["default", "custom"]
 
@@ -65,7 +66,7 @@ class SimplifiedProjectGenerator:
 
     def _copy_common_files(self, output_path: Path) -> None:
         """Copy common files that are shared between all router types."""
-        common_files = ["base_services.py", "schema.py", "server.py"]
+        common_files = ["base_services.py", "schema.py", "server.py", "config.py"]
 
         for file_name in common_files:
             source = self.common_dir / file_name
@@ -257,8 +258,9 @@ python_functions = ["test_*"]
             env_vars.extend(
                 [
                     "# Default Router Configuration",
-                    "OLLAMA_BASE_URL=http://localhost:11434",
-                    "RAG_SERVICE_URL=http://localhost:9000",
+                    "# URLs will be discovered automatically when services are spawned",
+                    "# OLLAMA_BASE_URL=http://localhost:11434",
+                    "# RAG_SERVICE_URL=http://localhost:9000",
                 ]
             )
         else:  # custom
@@ -267,9 +269,10 @@ python_functions = ["test_*"]
                     "# Custom Router Configuration",
                     "# Add your custom configuration here",
                     "# CUSTOM_CHAT_API_KEY=your_api_key",
-                    "# CUSTOM_CHAT_BASE_URL=your_base_url",
                     "# CUSTOM_SEARCH_API_KEY=your_api_key",
-                    "# CUSTOM_SEARCH_BASE_URL=your_base_url",
+                    "# URLs will be discovered automatically when services are spawned",
+                    "# CUSTOM_CHAT_URL=your_chat_url",
+                    "# CUSTOM_SEARCH_URL=your_search_url",
                 ]
             )
 
@@ -297,6 +300,8 @@ A Syft LLM Router with default implementations for chat (Ollama) and search (Loc
 - ✅ **Chat Service**: Ollama integration for local LLM chat
 - ✅ **Search Service**: Local RAG for document retrieval
 - ✅ **FastAPI Server**: RESTful API endpoints
+- ✅ **Service Management**: Automated service spawning and monitoring
+- ✅ **State Tracking**: Service status tracking via config.json
 - ✅ **Health Monitoring**: Built-in health checks
 - ✅ **Validation**: Automated testing and validation
 
@@ -311,12 +316,44 @@ This router has the following services enabled: **{services_text}**
 ./run.sh
 ```
 
-The script will automatically handle setup and start the router.
+The script will:
+1. Set up the Python environment
+2. Install dependencies
+3. Spawn required services (Ollama, Local RAG)
+4. Start the router server
 
-3. **Test**:
-   ```bash
-   python validate.py
-   ```
+**Test the router**:
+```bash
+python validate.py
+```
+
+## Service Management
+
+### Service Spawning
+Services are automatically spawned by `spawn_services.py`:
+- **Ollama**: Local LLM service for chat
+- **Local RAG**: Document search and retrieval
+
+### State Tracking
+Service states are tracked in `config.json`:
+```json
+{{
+  "services": {{
+    "ollama": {{ "status": "running", "port": null }},
+    "local_rag": {{ "status": "running", "port": 9000 }}
+  }},
+  "router": {{ "status": "running" }}
+}}
+```
+
+### Manual Service Control
+```bash
+# Spawn services only
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json
+
+# Cleanup services
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json --cleanup
+```
 
 ## API Endpoints
 
@@ -361,7 +398,26 @@ pip install -e .[all]
 
 - Python 3.9+
 - Ollama (for chat service)
+- syftbox (for local-rag service)
 - 4GB+ RAM (for local models)
+
+## Troubleshooting
+
+### Service Failures
+If services fail to start:
+1. Check `spawn_services.log` for detailed error messages
+2. Verify `config.json` for service status
+3. Ensure dependencies are installed (Ollama, syftbox)
+4. Check `.env` configuration
+
+### Manual Recovery
+```bash
+# Clean up failed state
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json --cleanup
+
+# Retry spawning
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json
+```
 """
         else:  # custom
             readme_content = f"""# {config.project_name}
@@ -373,32 +429,84 @@ A custom Syft LLM Router template. Implement your own chat and search services.
 - 🔧 **Custom Chat Service**: Implement your own chat logic
 - 🔧 **Custom Search Service**: Implement your own RAG logic
 - ✅ **FastAPI Server**: RESTful API endpoints
+- ✅ **Service Management**: Automated service spawning and monitoring
+- ✅ **State Tracking**: Service status tracking via config.json
 - ✅ **Health Monitoring**: Built-in health checks
 - ✅ **Validation**: Automated testing and validation
 
 ## Implementation
 
-1. **Edit `chat_service.py`**: Implement your chat service
-2. **Edit `search_service.py`**: Implement your search service
-3. **Edit `config.py`**: Add your configuration options
-4. **Update `.env`**: Configure your environment variables
-5. **Add dependencies**: Update `pyproject.toml` with your service dependencies
+1. **Edit `spawn_services.py`**: Implement your service spawning logic
+2. **Edit `chat_service.py`**: Implement your chat service
+3. **Edit `search_service.py`**: Implement your search service
+4. **Edit `config.py`**: Add your configuration options
+5. **Update `.env`**: Configure your environment variables
+6. **Add dependencies**: Update `pyproject.toml` with your service dependencies
 
 ## Quick Start
 
-1. **Start the router**:
-   ```bash
-   ./run.sh
-   ```
+**Start the router**:
+```bash
+./run.sh
+```
 
-2. **Implement Services**: Edit the service files
+The script will:
+1. Set up the Python environment
+2. Install dependencies
+3. Spawn your custom services
+4. Start the router server
 
-The script will automatically handle setup and start the router.
+**Implement Services**: Edit the service files as needed
 
-4. **Test**:
-   ```bash
-   python validate.py
-   ```
+**Test the router**:
+```bash
+python validate.py
+```
+
+## Service Management
+
+### Service Spawning
+Custom services are spawned by `spawn_services.py`:
+- **Custom Chat**: Your chat service implementation
+- **Custom Search**: Your search service implementation
+
+### State Tracking
+Service states are tracked in `config.json`:
+```json
+{{
+  "services": {{
+    "custom_chat": {{ "status": "running", "port": 8001 }},
+    "custom_search": {{ "status": "running", "port": 8002 }}
+  }},
+  "router": {{ "status": "running" }}
+}}
+```
+
+### Manual Service Control
+```bash
+# Spawn services only
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json
+
+# Cleanup services
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json --cleanup
+```
+
+## Implementation Guide
+
+### 1. Service Spawning
+Edit `spawn_services.py` and implement:
+- `spawn_custom_chat()`: Set up your chat service
+- `spawn_custom_search()`: Set up your search service
+- `health_check_custom_chat()`: Verify chat service health
+- `health_check_custom_search()`: Verify search service health
+
+### 2. Service Implementation
+- `chat_service.py`: Implement `ChatServiceImpl` class
+- `search_service.py`: Implement `SearchServiceImpl` class
+
+### 3. Configuration
+- `.env`: Add your service configuration variables
+- `config.py`: Add configuration loading for your services
 
 ## API Endpoints
 
@@ -427,6 +535,24 @@ This project uses `pyproject.toml` for dependency management:
 
 - Python 3.9+
 - Your custom dependencies (add to pyproject.toml)
+
+## Troubleshooting
+
+### Service Failures
+If services fail to start:
+1. Check `spawn_services.log` for detailed error messages
+2. Verify `config.json` for service status
+3. Ensure your service implementations are complete
+4. Check `.env` configuration
+
+### Manual Recovery
+```bash
+# Clean up failed state
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json --cleanup
+
+# Retry spawning
+python spawn_services.py --project-name {config.project_name} --config-path ~/.syftbox/config.json
+```
 """
 
         with open(output_path / "README.md", "w") as f:
@@ -439,32 +565,31 @@ This project uses `pyproject.toml` for dependency management:
         self._generate_run_script(output_path, config)
 
     def _generate_run_script(self, output_path: Path, config: ProjectConfig) -> None:
-        """Generate intelligent run.sh script with integrated setup."""
-        if config.router_type == "default":
-            # Determine which optional dependencies to install
-            extras = []
-            if config.enable_chat:
-                extras.append("chat")
-            if config.enable_search:
-                extras.append("search")
+        """Generate simplified run.sh script that delegates to spawn_services.py."""
+        # Determine which optional dependencies to install
+        extras = []
+        if config.enable_chat:
+            extras.append("chat")
+        if config.enable_search:
+            extras.append("search")
 
-            if extras:
-                install_command = f"pip install -e .[{','.join(extras)}]"
-                extras_info = f" with extras: {', '.join(extras)}"
-            else:
-                install_command = "pip install -e ."
-                extras_info = " (base dependencies only)"
+        if extras:
+            install_command = f"pip install -e .[{','.join(extras)}]"
+            extras_info = f" with extras: {', '.join(extras)}"
+        else:
+            install_command = "pip install -e ."
+            extras_info = " (base dependencies only)"
 
-            run_script_content = f"""#!/bin/bash
+        run_script_content = f"""#!/bin/bash
 set -e
 
-# {config.project_name} Router Startup Script (Default)
-# Generated automatically - includes setup every time
+# {config.project_name} Router Startup Script
+# Generated automatically - simplified version with service spawning
 
 echo "🚀 Starting {config.project_name} router..."
 
-# Setup phase (runs every time for consistency)
-echo "🔧 Running setup..."
+# Basic environment setup
+echo "🔧 Running basic setup..."
 
 # Create virtual environment if needed
 if [ ! -d ".venv" ]; then
@@ -486,54 +611,20 @@ if [ ! -f ".env" ]; then
     echo "📝 Created .env file from template. Please edit with your configuration."
 fi
 
-# Service-specific setup based on enabled services
-{self._generate_conditional_setup_commands(config)}
+echo "✅ Basic setup complete!"
 
-echo "✅ Setup complete!"
-
-# Start the router
-echo "🎯 Starting router server..."
-python server.py --project-name {config.project_name}
-
-deactivate
-"""
-        else:  # custom
-            run_script_content = f"""#!/bin/bash
-set -e
-
-# {config.project_name} Router Startup Script (Custom)
-# Generated automatically - includes setup every time
-
-echo "🚀 Starting {config.project_name} router..."
-
-# Setup phase (runs every time for consistency)
-echo "🔧 Running setup..."
-
-# Create virtual environment if needed
-if [ ! -d ".venv" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv .venv
+# Spawn services using Python script
+echo "🔄 Spawning services..."
+if python spawn_services.py --project-name {config.project_name} --config-path {config.syftbox_config.path}; then
+    echo "✅ Services spawned successfully"
+    
+    # Start the router
+    echo "🎯 Starting router server..."
+    python server.py --project-name {config.project_name}
+else
+    echo "❌ Service spawning failed - router will not start"
+    exit 1
 fi
-
-# Activate virtual environment
-source .venv/bin/activate
-
-# Install/update dependencies
-echo "📥 Installing/updating dependencies..."
-pip install --upgrade pip
-pip install -e .
-
-# Copy environment file if missing
-if [ ! -f ".env" ]; then
-    cp .env.example .env
-    echo "📝 Created .env file from template. Please edit with your configuration."
-fi
-
-echo "✅ Setup complete!"
-
-# Start the router
-echo "🎯 Starting router server..."
-python server.py --project-name {config.project_name}
 
 deactivate
 """
@@ -542,59 +633,6 @@ deactivate
         with open(run_script_path, "w") as f:
             f.write(run_script_content)
         run_script_path.chmod(0o755)
-
-    def _generate_conditional_setup_commands(self, config: ProjectConfig) -> str:
-        """Generate conditional setup commands based on enabled services."""
-        setup_commands = []
-
-        if config.enable_chat:
-            setup_commands.append(
-                """
-# Ollama setup (for chat service)
-if ! command -v ollama &> /dev/null; then
-    echo "⚠️  Ollama not found. Please install Ollama first:"
-    echo "   curl -fsSL https://ollama.ai/install.sh | sh"
-    echo "   Then run: ollama pull tinyllama"
-    exit 1
-fi
-
-# Check if required model is available
-if ! ollama list | grep -q "tinyllama"; then
-    echo "📥 Pulling tinyllama model..."
-    ollama pull tinyllama  
-fi
-"""
-            )
-
-        if config.enable_search:
-            setup_commands.append(
-                f"""
-# Local RAG setup (for search service)
-echo "🔍 Setting up local RAG components..."
-
-
-# Install local-rag using syftbox
-
-
-# Check if local-rag is already installed   
-if ! syftbox app list -c {config.syftbox_config.path} | grep -q "local-rag"; then
-    echo "📥 Installing local-rag..."
-    SYFTBOX_ASSIGNED_PORT=9083 syftbox app install https://github.com/OpenMined/local-rag --config {config.syftbox_config.path}
-fi
-
-export RAG_URL=http://localhost:9083
-"""
-            )
-
-        if not setup_commands:
-            setup_commands.append(
-                """
-# No services enabled - skipping service-specific setup
-echo "ℹ️  No services enabled - skipping service-specific setup"
-"""
-            )
-
-        return "\n".join(setup_commands)
 
     def _generate_validation_script(
         self, output_path: Path, config: ProjectConfig
