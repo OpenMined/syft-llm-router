@@ -87,6 +87,7 @@ class ProjectMetadata(BaseModel):
 class RouterServiceStatus(BaseModel):
     name: str
     status: str
+    url: Optional[str] = None
 
 
 class RouterRunStatus(BaseModel):

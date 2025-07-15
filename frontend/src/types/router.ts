@@ -155,6 +155,7 @@ export interface RouterList {
 export interface RouterServiceStatus {
   name: string;
   status: string;
+  url?: string;
 }
 
 export interface RouterRunStatus {

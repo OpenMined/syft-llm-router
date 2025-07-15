@@ -593,6 +593,7 @@ async def router_status(router_name: str, session: SessionDep) -> RouterRunStatu
             RouterServiceStatus(
                 name=service_name,
                 status=service_state.status.value,
+                url=service_state.url,
             )
         )
 
