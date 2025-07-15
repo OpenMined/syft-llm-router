@@ -5,7 +5,8 @@ import type {
   PublishRouterRequest,
   RouterDetails,
   RouterList,
-  ApiResponse 
+  ApiResponse,
+  RouterRunStatus
 } from '../types/router';
 
 const API_BASE_URL = '/api';
@@ -77,6 +78,13 @@ class RouterService {
     });
   }
 
+  async unpublishRouter(routerName: string): Promise<ApiResponse<any>> {
+    return this.request<any>('/router/unpublish', {
+      method: 'POST',
+      body: JSON.stringify({ router_name: routerName }),
+    });
+  }
+
   async getRouterDetails(routerName: string, author: string, published: boolean): Promise<ApiResponse<RouterDetails>> {
     const params = new URLSearchParams({ 
       router_name: routerName, 
@@ -84,6 +92,13 @@ class RouterService {
       published: String(published) 
     });
     return this.request<RouterDetails>(`/router/details?${params.toString()}`);
+  }
+
+  async getRouterStatus(routerName: string): Promise<ApiResponse<RouterRunStatus>> {
+    const params = new URLSearchParams({ 
+      router_name: routerName
+    });
+    return this.request<RouterRunStatus>(`/router/status?${params.toString()}`);
   }
 
   async deleteRouter(routerName: string, published: boolean): Promise<ApiResponse<any>> {

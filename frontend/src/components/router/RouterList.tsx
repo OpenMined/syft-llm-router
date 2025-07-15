@@ -17,6 +17,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [publishModalRouter, setPublishModalRouter] = useState<string | null>(null);
+  const [publishModalDetails, setPublishModalDetails] = useState<any>(null);
 
   const fetchRouters = async () => {
     setLoading(true);
@@ -42,6 +43,42 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
   const handleCreateSuccess = () => {
     fetchRouters(); // Refresh the list
   };
+
+  const handlePublishClick = async (routerName: string) => {
+    try {
+      // Get current user to determine if this is their router
+      const userResponse = await routerService.getUsername();
+      if (userResponse.success && userResponse.data) {
+        const currentUser = userResponse.data.username;
+        
+        // Find the router in the list to get the author
+        const router = routers.find(r => r.name === routerName);
+        if (router && router.author === currentUser) {
+          // Fetch router details for pre-filling
+          const detailsResponse = await routerService.getRouterDetails(routerName, currentUser, false);
+          if (detailsResponse.success && detailsResponse.data) {
+            setPublishModalDetails({
+              summary: detailsResponse.data.metadata?.summary,
+              description: detailsResponse.data.metadata?.description,
+              tags: detailsResponse.data.metadata?.tags,
+              services: detailsResponse.data.services?.map(service => ({
+                type: service.type,
+                pricing: service.pricing.toString(),
+                charge_type: service.charge_type,
+                enabled: service.enabled
+              }))
+            });
+          }
+        }
+      }
+      setPublishModalRouter(routerName);
+    } catch (error) {
+      console.error('Error fetching router details:', error);
+      setPublishModalRouter(routerName); // Still open modal even if details fetch fails
+    }
+  };
+
+
 
   // Filter routers for client profile
   const visibleRouters = profile === 'client' ? routers.filter(r => r.published) : routers;
@@ -129,11 +166,11 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                   <Button variant="ghost" size="sm" onClick={() => onRouterClick?.(router.name, router.published, router.author)}>
                     View Details
                   </Button>
-                {profile === 'provider' && !router.published && (
-                    <Button variant="primary" size="sm" className="mt-2" onClick={() => setPublishModalRouter(router.name)}>
+                  {profile === 'provider' && !router.published && (
+                    <Button variant="primary" size="sm" className="mt-2" onClick={() => handlePublishClick(router.name)}>
                       Publish
                     </Button>
-                )}
+                  )}
                 </div>
               </div>
             ))}
@@ -155,9 +192,11 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
           isOpen={!!publishModalRouter}
           onClose={() => {
             setPublishModalRouter(null);
+            setPublishModalDetails(null);
             fetchRouters();
           }}
           routerName={publishModalRouter}
+          routerDetails={publishModalDetails}
         />
       )}
     </div>

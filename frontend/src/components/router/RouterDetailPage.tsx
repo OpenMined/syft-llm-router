@@ -7,7 +7,7 @@ import { useTheme, themeClass } from '../shared/ThemeContext';
 import { PublishRouterModal } from './PublishRouterModal';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import type { RouterDetails as RouterDetailsType, ServiceOverview, OpenAPISpecification, OpenAPIOperation } from '../../types/router';
+import type { RouterDetails as RouterDetailsType, ServiceOverview, OpenAPISpecification, OpenAPIOperation, RouterRunStatus } from '../../types/router';
 
 interface RouterDetailProps {
   routerName: string;
@@ -204,14 +204,153 @@ function OperationRenderer({ path, method, operation }: { path: string; method: 
   );
 }
 
+// Component to render router status
+function RouterStatusCard({ routerStatus, loading, onRefresh }: { routerStatus: RouterRunStatus | null; loading: boolean; onRefresh: () => void }) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'running':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'stopped':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'failed':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">Router Status</h3>
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="text-center text-gray-500 py-4">Loading status...</div>
+      </div>
+    );
+  }
+
+  if (!routerStatus) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">Router Status</h3>
+          <button
+            onClick={onRefresh}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="text-center text-gray-500 py-4">No status available</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-gray-800">Router Status</h3>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+        >
+          Refresh
+        </button>
+      </div>
+      
+      {/* Router Status */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-gray-700">Router</span>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(routerStatus.status)}`}>
+            {routerStatus.status}
+          </span>
+        </div>
+        {routerStatus.url && (
+          <div className="text-sm text-gray-600">
+            <span className="font-mono">{routerStatus.url}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Services Status */}
+      {routerStatus.services && routerStatus.services.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Services</h4>
+          <div className="space-y-2">
+            {routerStatus.services.map((service) => (
+              <div key={service.name} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 capitalize">{service.name}</span>
+                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(service.status)}`}>
+                  {service.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RouterDetailPage({ routerName, published, author, onBack, profile }: RouterDetailProps) {
   const [details, setDetails] = useState<RouterDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'documentation'>('overview');
+  const [routerStatus, setRouterStatus] = useState<RouterRunStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
   const { color } = useTheme();
   const t = themeClass(color);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
+
+  // Get current user to check if router belongs to them
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get current user
+    routerService.getUsername()
+      .then((resp) => {
+        if (resp.success && resp.data) {
+          setCurrentUser(resp.data.username);
+        }
+      })
+      .catch(() => {
+        // Silently fail, status won't be shown
+      });
+  }, []);
+
+  const handleUnpublish = async () => {
+    if (!confirm('Are you sure you want to unpublish this router? This action cannot be undone.')) {
+      return;
+    }
+    
+    setUnpublishing(true);
+    try {
+      const response = await routerService.unpublishRouter(routerName);
+      if (response.success) {
+        // Refresh the page to show updated published status
+        window.location.reload();
+      } else {
+        alert(`Failed to unpublish router: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('Error unpublishing router:', error);
+      alert('An error occurred while unpublishing the router');
+    } finally {
+      setUnpublishing(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -227,6 +366,23 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
       .catch(() => setError('Failed to load router details.'))
       .finally(() => setLoading(false));
   }, [routerName, author, published]);
+
+  // Fetch router status if router belongs to current user
+  useEffect(() => {
+    if (currentUser && author === currentUser) {
+      setStatusLoading(true);
+      routerService.getRouterStatus(routerName)
+        .then((resp) => {
+          if (resp.success && resp.data) {
+            setRouterStatus(resp.data);
+          }
+        })
+        .catch(() => {
+          // Silently fail, status won't be shown
+        })
+        .finally(() => setStatusLoading(false));
+    }
+  }, [currentUser, author, routerName, published]);
 
   // If client tries to access a draft, show error
   if (profile === 'client' && !published) {
@@ -296,16 +452,27 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                       ))}
                   </div>
                 )}
-                {/* Publish Button (if provider and not published) */}
-                {profile === 'provider' && !details.published && (
-                  <div className="flex justify-end mt-6">
-                    <Button variant="primary" onClick={() => setShowPublishModal(true)}>
-                      Publish Router
-                    </Button>
+                {/* Publish/Unpublish Buttons (if provider) */}
+                {profile === 'provider' && (
+                  <div className="flex justify-end mt-6 gap-3">
+                    {!details.published ? (
+                      <Button variant="primary" onClick={() => setShowPublishModal(true)}>
+                        Publish Router
+                      </Button>
+                    ) : currentUser && author === currentUser ? (
+                      <Button 
+                        variant="ghost" 
+                        onClick={handleUnpublish}
+                        loading={unpublishing}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                      >
+                        Unpublish Router
+                      </Button>
+                    ) : null}
                   </div>
                 )}
               </div>
-              {/* Right Column: Services Card */}
+              {/* Right Column: Services Card and Status */}
               <div className="w-full md:w-96 flex-shrink-0 space-y-4">
                 {details.services && details.services.length > 0 && (
                   <div className={`bg-white border ${t.border600} rounded-2xl shadow-lg p-8 space-y-4`}>
@@ -320,12 +487,30 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     ))}
                   </div>
                 )}
+                
                 {/* Code Hash Card (moved here) */}
                 {details.metadata?.code_hash && (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm px-4 py-2 flex items-center">
                     <span className="text-xs text-gray-500 mr-2">Code Hash:</span>
                     <span className={`font-mono text-xs ${t.text600} truncate`} title={details.metadata.code_hash}>{details.metadata.code_hash.slice(0, 8)}</span>
                   </div>
+                )}
+                
+                {/* Router Status Card - only show if router belongs to current user */}
+                {currentUser && author === currentUser && (
+                  <RouterStatusCard routerStatus={routerStatus} loading={statusLoading} onRefresh={() => {
+                    setStatusLoading(true);
+                    routerService.getRouterStatus(routerName)
+                      .then((resp) => {
+                        if (resp.success && resp.data) {
+                          setRouterStatus(resp.data);
+                        }
+                      })
+                      .catch(() => {
+                        // Silently fail, status won't be shown
+                      })
+                      .finally(() => setStatusLoading(false));
+                  }} />
                 )}
               </div>
             </div>
@@ -412,6 +597,17 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
           isOpen={showPublishModal}
           onClose={() => setShowPublishModal(false)}
           routerName={details.name}
+          routerDetails={{
+            summary: details.metadata?.summary,
+            description: details.metadata?.description,
+            tags: details.metadata?.tags,
+            services: details.services?.map(service => ({
+              type: service.type,
+              pricing: service.pricing.toString(),
+              charge_type: service.charge_type,
+              enabled: service.enabled
+            }))
+          }}
           onSuccess={() => {
             setShowPublishModal(false);
             // Refresh the page to show updated published status

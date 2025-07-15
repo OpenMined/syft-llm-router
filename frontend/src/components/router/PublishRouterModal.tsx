@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Modal } from '../shared/Modal';
 import { Button } from '../shared/Button';
 import { useTheme, themeClass } from '../shared/ThemeContext';
@@ -16,6 +16,17 @@ interface PublishRouterModalProps {
   onClose: () => void;
   routerName: string;
   onSuccess?: (publishedPath: string) => void;
+  routerDetails?: {
+    summary?: string;
+    description?: string;
+    tags?: string[];
+    services?: Array<{
+      type: RouterServiceType;
+      pricing: string;
+      charge_type: PricingChargeType;
+      enabled: boolean;
+    }>;
+  };
 }
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -58,7 +69,7 @@ const ALL_SERVICES: ModalServiceOverview[] = [
   },
 ];
 
-export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess }: PublishRouterModalProps) {
+export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess, routerDetails }: PublishRouterModalProps) {
   const { color } = useTheme();
   const t = themeClass(color);
   const [step, setStep] = useState<Step>(1);
@@ -72,6 +83,34 @@ export function PublishRouterModal({ isOpen, onClose, routerName, onSuccess }: P
   const [error, setError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  // Pre-fill form with router details when modal opens
+  useEffect(() => {
+    if (isOpen && routerDetails) {
+      if (routerDetails.summary) {
+        setSummary(routerDetails.summary);
+      }
+      if (routerDetails.description) {
+        setDescription(routerDetails.description);
+      }
+      if (routerDetails.tags) {
+        setTags(routerDetails.tags);
+      }
+      if (routerDetails.services) {
+        // Merge existing services with router details services
+        const updatedServices = ALL_SERVICES.map(defaultService => {
+          const detailService = routerDetails.services?.find(s => s.type === defaultService.type);
+          return detailService ? {
+            type: detailService.type,
+            pricing: detailService.pricing,
+            charge_type: detailService.charge_type,
+            enabled: detailService.enabled
+          } : defaultService;
+        });
+        setServices(updatedServices);
+      }
+    }
+  }, [isOpen, routerDetails]);
 
   // Stepper
   const stepLabels = ['Router Name', 'Summary', 'Description', 'Tags', 'Pricing', 'Review', 'Success'];

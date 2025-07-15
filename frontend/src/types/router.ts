@@ -152,6 +152,17 @@ export interface RouterList {
   routers: Router[];
 }
 
+export interface RouterServiceStatus {
+  name: string;
+  status: string;
+}
+
+export interface RouterRunStatus {
+  url?: string;
+  status: string;
+  services: RouterServiceStatus[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
