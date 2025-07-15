@@ -44,6 +44,7 @@ class RouterState(BaseModel):
     depends_on: list[str] = Field(
         default_factory=list, description="Service dependencies"
     )
+    url: Optional[str] = Field(None, description="Router URL")
 
 
 class ProjectInfo(BaseModel):
@@ -99,51 +100,43 @@ class StateFile(BaseModel):
             return cls.model_validate(json.load(f))
 
 
-class RouterConfig(BaseModel):
-    """Unified router configuration."""
+class RouterConfig:
+    """Simplified router configuration that wraps StateFile for easy access."""
 
-    project_name: str = Field(..., description="Project name")
-    enable_chat: bool = Field(default=True, description="Enable chat service")
-    enable_search: bool = Field(default=True, description="Enable search service")
-    service_urls: Dict[str, str] = Field(
-        default_factory=dict, description="Service URLs"
-    )
+    def __init__(self, state_file: StateFile):
+        """Initialize with a StateFile instance."""
+        self._state = state_file
 
-    @classmethod
-    def from_state_file(cls, state_file: str = "state.json") -> "RouterConfig":
-        """Load configuration from state.json file."""
-        state_path = Path(state_file)
+    @property
+    def project_name(self) -> str:
+        """Get project name."""
+        return self._state.project.name
 
-        load_dotenv(override=True)
+    @property
+    def enable_chat(self) -> bool:
+        """Check if chat is enabled."""
+        return self._state.configuration.enable_chat
 
-        if not state_path.exists():
-            # Fallback to environment variables
-            return cls.from_env()
+    @property
+    def enable_search(self) -> bool:
+        """Check if search is enabled."""
+        return self._state.configuration.enable_search
 
-        try:
-            state = StateFile.load(state_path)
-
-            # Extract service URLs from running services
-            service_urls = {}
-            for service_name, service_state in state.services.items():
-                if service_state.status == "running" and service_state.url:
-                    service_urls[service_name] = service_state.url
-
-            return cls(
-                project_name=state.project.name,
-                enable_chat=state.configuration.enable_chat,
-                enable_search=state.configuration.enable_search,
-                service_urls=service_urls,
-            )
-
-        except Exception as e:
-            print(f"Warning: Failed to load state file {state_file}: {e}")
-            # Fallback to environment variables
-            return cls.from_env()
+    @property
+    def service_urls(self) -> Dict[str, str]:
+        """Get URLs of running services."""
+        urls = {}
+        for service_name, service_state in self._state.services.items():
+            if service_state.status == RunStatus.RUNNING and service_state.url:
+                urls[service_name] = service_state.url
+        return urls
 
     def get_service_url(self, service_name: str) -> Optional[str]:
         """Get URL for a specific service."""
-        return self.service_urls.get(service_name)
+        service_state = self._state.services.get(service_name)
+        if service_state and service_state.status == RunStatus.RUNNING:
+            return service_state.url
+        return None
 
     def is_service_enabled(self, service_name: str) -> bool:
         """Check if a service is enabled."""
@@ -152,6 +145,29 @@ class RouterConfig(BaseModel):
         elif service_name == "search":
             return self.enable_search
         return False
+
+    @property
+    def state(self) -> StateFile:
+        """Get the underlying StateFile for advanced operations."""
+        return self._state
+
+    @classmethod
+    def from_state_file(cls, state_file: str = "state.json") -> "RouterConfig":
+        """Load configuration from state.json file."""
+        state_path = Path(state_file)
+        load_dotenv(override=True)
+
+        if not state_path.exists():
+            # Fallback to environment variables
+            return cls.from_env()
+
+        try:
+            state = StateFile.load(state_path)
+            return cls(state)
+        except Exception as e:
+            print(f"Warning: Failed to load state file {state_file}: {e}")
+            # Fallback to environment variables
+            return cls.from_env()
 
     @classmethod
     def from_env(cls) -> "RouterConfig":
@@ -170,22 +186,30 @@ class RouterConfig(BaseModel):
         enable_chat = os.getenv("ENABLE_CHAT", "true").lower() == "true"
         enable_search = os.getenv("ENABLE_SEARCH", "true").lower() == "true"
 
-        # Extract service URLs from environment variables
-        service_urls = {}
+        # Create a minimal StateFile from environment
+        state = StateFile(
+            project=ProjectInfo(name=project_name, version="1.0.0"),
+            configuration=RouterConfiguration(
+                enable_chat=enable_chat, enable_search=enable_search
+            ),
+            services={},
+            router=RouterState(status=RunStatus.STOPPED),
+        )
+
+        # Add service URLs from environment if available
         ollama_url = os.getenv("OLLAMA_BASE_URL")
         if ollama_url:
-            service_urls["ollama"] = ollama_url
+            state.services["chat"] = ServiceState(
+                status=RunStatus.RUNNING, url=ollama_url
+            )
 
         rag_url = os.getenv("RAG_SERVICE_URL")
         if rag_url:
-            service_urls["local_rag"] = rag_url
+            state.services["search"] = ServiceState(
+                status=RunStatus.RUNNING, url=rag_url
+            )
 
-        return cls(
-            project_name=project_name,
-            enable_chat=enable_chat,
-            enable_search=enable_search,
-            service_urls=service_urls,
-        )
+        return cls(state)
 
 
 def load_config() -> RouterConfig:

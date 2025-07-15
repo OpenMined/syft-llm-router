@@ -9,6 +9,10 @@ from loguru import logger
 
 from base_services import ChatService
 from schema import ChatResponse, GenerationOptions, Message, Usage
+from config import load_config
+
+
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
 
 
 class OllamaChatService(ChatService):
@@ -16,12 +20,9 @@ class OllamaChatService(ChatService):
 
     def __init__(self):
         """Initialize Ollama chat service."""
-        from config import load_config
 
         config = load_config()
-        self.base_url = config.get_service_url("ollama") or os.getenv(
-            "OLLAMA_BASE_URL", "http://localhost:11434"
-        )
+        self.base_url = config.get_service_url("chat") or DEFAULT_OLLAMA_URL
         logger.info(f"Initialized Ollama chat service with base URL: {self.base_url}")
 
     def generate_chat(

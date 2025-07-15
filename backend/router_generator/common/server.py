@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from syft_core.config import SyftClientConfig
 from pathlib import Path
 
-from config import load_config
+from config import load_config, RunStatus
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
@@ -65,6 +65,13 @@ async def lifespan(app: FastSyftBox):
         logger.info(f"Router initialized for project: {config.project_name}")
         generate_openapi_schema(app)
 
+        app_port = os.environ.get("APP_PORT", 8000)
+
+        config.state.update_router_state(
+            status=RunStatus.RUNNING,
+            url=f"http://{app.host}:{app_port}",
+        )
+
         yield  # This allows the application to run
 
     except Exception as e:
@@ -75,6 +82,7 @@ async def lifespan(app: FastSyftBox):
         # Optional cleanup logic if needed
         # For example, closing any resources
         logger.info("Application shutting down")
+        config.state.update_router_state(status=RunStatus.STOPPED)
 
 
 app_name = Path(__file__).resolve().parent.name
@@ -115,10 +123,7 @@ async def health_check():
     config = load_config()
 
     # Check service availability
-    services = {
-        "chat": router.chat_service is not None,
-        "search": router.search_service is not None,
-    }
+    services = config.state.services.model_dump()
 
     return HealthResponse(
         status="healthy",
@@ -246,6 +251,8 @@ def main():
         logger.warning(
             f"Port {args.port} is already in use. Using random port: {args.port}"
         )
+
+    os.environ["APP_PORT"] = str(args.port)
 
     # Start server
     uvicorn.run(

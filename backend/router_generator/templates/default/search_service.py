@@ -20,12 +20,10 @@ class LocalSearchService(SearchService):
 
     def __init__(self):
         """Initialize local RAG service."""
-        from config import load_config
-
         config = load_config()
-        self.rag_url = config.get_service_url("local_rag")
+        self.rag_url = config.get_service_url("search")
         if not self.rag_url:
-            raise ValueError("RAG service URL not found in configuration")
+            raise ValueError("Search service URL not found in configuration")
         logger.info(f"Initialized local RAG service with URL: {self.rag_url}")
 
         self.rag_client = httpx.Client(base_url=self.rag_url)
