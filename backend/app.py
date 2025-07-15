@@ -610,4 +610,15 @@ async def router_status(router_name: str, session: SessionDep) -> RouterRunStatu
     )
 
 
+@app.api_route(
+    path="/sburl",
+    methods=["GET"],
+)
+async def sburl() -> JSONResponse:
+    return JSONResponse(
+        status_code=200,
+        content={"url": str(app.syftbox_config.server_url)},
+    )
+
+
 create_db_and_tables()

@@ -8,6 +8,7 @@ interface HeaderProps {
 
 export function Header({ profileToggle }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
+  const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -20,6 +21,18 @@ export function Header({ profileToggle }: HeaderProps) {
         }
       }
     }).catch(() => setUsername('Unknown User'));
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    routerService.getSyftBoxUrl().then((resp) => {
+      if (mounted && resp.success && resp.data) {
+        setSyftBoxUrl(resp.data.url);
+      }
+    }).catch(() => {
+      // Silently fail, URL won't be shown
+    });
     return () => { mounted = false; };
   }, []);
 
@@ -39,6 +52,29 @@ export function Header({ profileToggle }: HeaderProps) {
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Coming Soon</span>
           </a>
         </nav>
+        {/* SyftBox Server URL */}
+        {syftBoxUrl && (
+          <div className="flex items-center bg-blue-50 px-3 py-1 rounded-md border border-blue-200">
+            <svg 
+              className="h-4 w-4 text-blue-500 mr-2" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+              title="SyftBox Server URL"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <a 
+              href={syftBoxUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-mono truncate max-w-32"
+              title="SyftBox Server URL"
+            >
+              {syftBoxUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+            </a>
+          </div>
+        )}
         {/* User Info and Profile Toggle */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">

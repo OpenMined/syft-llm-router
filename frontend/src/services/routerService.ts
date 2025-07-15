@@ -111,6 +111,10 @@ class RouterService {
   async getUsername(): Promise<ApiResponse<{ username: string }>> {
     return this.request<{ username: string }>('/username');
   }
+
+  async getSyftBoxUrl(): Promise<ApiResponse<{ url: string }>> {
+    return this.request<{ url: string }>('/sburl');
+  }
 }
 
 export const routerService = new RouterService(); 
