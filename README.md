@@ -1,67 +1,317 @@
-# Syft LLM Router
+# Syft LLM Router 
 
-A simple router for Language Model applications built over SyftBox. This tool allows you to create, deploy, and share LLM routers that can be accessed through SyftBox.
+A modern, full-stack platform for creating, managing, and publishing Language Model (LLM) routers on SyftBox. Built with a Python backend (FastAPI, SyftBox) and a sleek Preact/TypeScript frontend.
 
-## Installation
+<div align="center">
 
-1. Install [uv](https://github.com/astral-sh/uv) (Python package manager):
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+![SyftBox Logo](frontend/public/syftbox-logo.svg)
+
+**Create • Manage • Publish • Monetize**
+
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Preact](https://img.shields.io/badge/Preact-10.19+-purple.svg)](https://preactjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+
+</div>
+
+---
+
+## ✨ Features
+
+### 🎯 **Dual User Experience**
+- **Provider Mode**: Create, manage, and publish routers with monetization
+- **Client Mode**: Discover and use published routers
+
+### 🛠️ **Router Management**
+- **Web-Based Creation**: Intuitive UI for creating routers through the dashboard
+- **Two-Path Generation**: Choose between "batteries included" (default) or "build from scratch" (custom)
+- **Service Configuration**: Enable/disable chat and search services
+- **Pricing Control**: Set per-service pricing with flexible charge types
+- **Real-time Status**: Monitor router health and service status
+
+### 🎨 **Modern UI/UX**
+- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Type Safety**: Full TypeScript support with strict typing
+- **Real-time Feedback**: Loading states, error handling, and success animations
+- **Accessible**: Built with accessibility best practices
+
+### 🚀 **Production Ready**
+- **Database Integration**: SQLite with SQLModel for data persistence
+- **Static Asset Serving**: Optimized frontend build with Vite
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs
+- **Easy Deployment**: Simple setup scripts and configuration
+
+---
+
+## 📁 Project Structure
+
+```
+syft-llm-router/
+├── backend/                    # FastAPI + SyftBox backend
+│   ├── app.py                 # Main application entry point
+│   ├── db.py                  # Database models and setup
+│   ├── requirements.txt       # Python dependencies
+│   ├── static/                # Served frontend assets
+│   └── router_generator/      # Router template generation
+├── frontend/                  # Preact + TypeScript frontend
+│   ├── src/                   # Source code
+│   ├── public/                # Static assets
+│   └── package.json           # Frontend dependencies
+├── data/                      # SQLite database
+├── run.sh                     # Full-stack startup script
+└── README.md                  # This file
 ```
 
-2. Clone the repository:
+### **Key Components**
+
+- **`backend/`**: FastAPI server with database and router generation
+- **`frontend/`**: Preact application with TypeScript and TailwindCSS
+- **`data/`**: SQLite database storage
+- **`run.sh`**: One-command startup script
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [Python 3.12+](https://www.python.org/)
+- [uv](https://github.com/astral-sh/uv) (Python package manager)
+- [Bun](https://bun.sh/) (JavaScript runtime)
+
+### Single Command Setup
+
 ```bash
-git clone https://github.com/OpenMined/syft-llm-router.git
+# Clone the repository
+git clone <repository-url>
 cd syft-llm-router
+
+# One command to start everything
+./run.sh
 ```
 
-3. Create a virtual environment and install dependencies:
+That's it! 🎉 The `run.sh` script handles everything:
+
+- ✅ **Environment Setup**: Creates Python virtual environment
+- ✅ **Dependencies**: Installs all Python and JavaScript packages
+- ✅ **Frontend Build**: Compiles the React application
+- ✅ **Database**: Initializes SQLite database with tables
+- ✅ **Server Start**: Launches the backend on `http://localhost:8080`
+
+### Access Your Application
+
+Once the script completes, open your browser and navigate to:
+
+**http://localhost:8080**
+
+You'll see the Syft LLM Router dashboard where you can:
+- Choose your profile (Provider/Client)
+- Create and manage routers
+- Publish and monetize your services
+
+### Custom Port (Optional)
+
+If you need to use a different port:
+
 ```bash
-uv sync -P syft-llm-router
+export SYFTBOX_ASSIGNED_PORT=9000
+./run.sh
 ```
 
-## Quick Start
+---
 
-1. Create a new router application:
+## 👥 User Flows
+
+### 🔧 **Provider Flow** (Router Creator)
+
+1. **Onboarding**: Choose "Provider" profile during first visit
+2. **Create Router**: 
+   - Click "Create Router" button in the dashboard
+   - Enter router name and select type (Default/Custom)
+   - Choose services (Chat/Search)
+   - Router is generated and saved to database
+3. **Manage Router**:
+   - View router in dashboard
+   - Check status and health
+   - Edit configuration
+4. **Publish Router**:
+   - Click "Publish" button
+   - Add metadata (summary, description, tags)
+   - Configure pricing for each service
+   - Set charge type (per request, per token, etc.)
+   - Router becomes publicly available
+5. **Monitor & Monetize**:
+   - Track usage and revenue
+   - Update pricing as needed
+   - Unpublish if necessary
+
+### 👤 **Client Flow** (Router Consumer)
+
+1. **Onboarding**: Choose "Client" profile during first visit
+2. **Discover Routers**:
+   - Browse published routers in dashboard
+   - View summaries, pricing, and service details
+   - Filter by tags or services
+3. **Use Router**:
+   - Click "View Details" to see full documentation
+   - Access API endpoints
+   - Integrate into your applications
+4. **Chat Interface** (if available):
+   - Use built-in chat interface
+   - Test router capabilities
+   - View conversation history
+
+---
+
+## 🎯 Router Types
+
+### **Default Router** (Batteries Included)
+- **Chat Service**: Pre-configured Ollama integration
+- **Search Service**: Local RAG with ChromaDB
+- **Auto-setup**: Dependencies installed automatically
+- **Production Ready**: Includes validation and monitoring
+
+### **Custom Router** (Build from Scratch)
+- **Template Structure**: Clear TODO comments and examples
+- **Flexible Configuration**: Add your own config options
+- **Service Placeholders**: Implement your own logic
+- **Easy Extension**: Simple to add new service types
+
+---
+
+## 🔌 API Endpoints
+
+### Router Management
+- `GET /router/list` - List all routers (filtered by user profile)
+- `POST /router/create` - Create a new router via web UI
+- `GET /router/exists` - Check if router name is available
+- `GET /router/details` - Get detailed router information
+- `POST /router/delete` - Delete a router
+
+### Publishing
+- `POST /router/publish` - Publish router with metadata and pricing
+- `POST /router/unpublish` - Unpublish a router
+
+### User & System
+- `GET /username` - Get current user information
+- `GET /sburl` - Get SyftBox server URL
+- `GET /router/status` - Get router runtime status
+
+---
+
+## 🎨 Frontend Features
+
+### **Modern Dashboard**
+- Clean, responsive interface with TailwindCSS
+- Real-time data updates
+- Loading states and error handling
+- Accessible design patterns
+
+### **Router Management**
+- **List View**: See all routers with status indicators
+- **Detail View**: Comprehensive router information
+- **Create Modal**: Step-by-step router creation via web UI
+- **Publish Modal**: Multi-step publishing with pricing
+
+### **Service Configuration**
+- Toggle switches for enabling/disabling services
+- Price input with validation
+- Charge type selection (per request, per token, etc.)
+- Real-time pricing preview
+
+---
+
+## 🔧 Development
+
+### Backend Development
+
 ```bash
-uv run syftllm create-router-app -n my-llm-router
-cd my-llm-router
+cd backend
+uv venv -p 3.12 .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+uvicorn app:app --reload --port 8080
 ```
-This creates a new directory with the basic router structure.
 
-2. Implement your router logic in `my-llm-router/router.py`:
-   - Define your LLM provider
-   - Implement chat and completion endpoints
-   - Add any custom functionality
+### Frontend Development
 
-3. Configure the server in `my-llm-router/server.py`:
-   - Import your router implementation
-   - Set up the SyftEvents server
-   - Configure any required parameters
-
-4. Install additional dependencies:
-   - Add any required packages to `pyproject.toml`
-   - Run `uv sync` to install them
-
-5. Start the router server:
 ```bash
-cd my-llm-router
-uv run python server.py --project-name llm-router --api-key YOUR_API_KEY
+cd frontend
+bun install
+bun run dev
 ```
-This starts an RPC server over SyftBox that handles LLM requests.
 
-## Examples
+### Database
 
-The [examples](./examples) folder contains complete implementations for different LLM providers:
-- [Phi-4 Router](./examples/phi4router) - Implementation using Microsoft's Phi-4 model
-- [Mixtral Router](./examples/mixtral) - Implementation using Mixtral-8x22b-instruct model
+The application uses SQLite with automatic table creation:
 
-Each example includes:
-- Router implementation
-- Server configuration
-- Test scripts
-- Documentation
+```bash
+# Database is automatically created at data/routers.db
+# Tables are created on first startup
+```
 
-## Publishing Your Router
+---
 
-For instructions on how to publish your router to make it available to other users through your datasite's public folder, please see the [Publishing Guide](./publish.md).
+## 🚀 Deployment
+
+### Production Setup
+
+```bash
+# Build frontend for production
+cd frontend
+bun run build
+
+# Start backend with production settings
+cd backend
+uvicorn app:app --host 0.0.0.0 --port 8080 --workers 4
+```
+
+### Environment Variables
+
+```bash
+# Optional: Set custom port
+export SYFTBOX_ASSIGNED_PORT=8080
+```
+
+---
+
+## 🤝 Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- Use TypeScript for all frontend code
+- Follow Preact best practices
+- Write reusable, accessible components
+- Add proper error handling and loading states
+- Keep backend and frontend types in sync
+- Test on different screen sizes
+
+---
+
+## 📝 License
+
+This project is part of the Syft LLM Router ecosystem and is licensed under the same terms as the parent project.
+
+---
+
+## 🆘 Support
+
+- **Documentation**: Check the `backend/router_generator/README.md` for detailed router generation docs
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Discussions**: Join community discussions for questions and ideas
+
+---
+
+<div align="center">
+
+**Built with ❤️ by the OpenMined Community**
+
+[OpenMined](https://www.openmined.org/) • [SyftBox](https://syftbox.net/)
+</div>
