@@ -364,12 +364,24 @@ async def list_routers(session: SessionDep) -> RouterList:
         if datasite.name == app.syftbox_client.email:
             continue
 
-        metadata_path = datasite / "public" / "routers" / "metadata.json"
-        if metadata_path.exists():
-            metadata = json.load(metadata_path.read_text())
+        routers_dir = datasite / "public" / "routers"
+
+        # If the routers directory does not exist, skip the datasite
+        if not routers_dir.exists():
+            continue
+
+        # Iterate through all the routers in the datasite
+        for router_dir in routers_dir.iterdir():
+            metadata_path = Path(router_dir) / "metadata.json"
+
+            # If the metadata.json file does not exist, skip the router
+            if not metadata_path.exists():
+                continue
+
+            metadata = json.loads(metadata_path.read_text())
             all_routers.append(
                 RouterOverview(
-                    name=metadata["name"],
+                    name=metadata["project_name"],
                     published=True,
                     author=metadata["author"],
                     summary=metadata["summary"],
