@@ -1,20 +1,10 @@
 from datetime import datetime
-from typing import Annotated, Optional
-from enum import Enum
+from typing import Optional
 from uuid import uuid4, UUID
-from fastapi import Depends
-from pathlib import Path
-
-from sqlmodel import (
-    Field,
-    Session,
-    SQLModel,
-    create_engine,
-    Relationship,
-)
+from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import JSON
 
-from constant import RouterType, RouterServiceType, PricingChargeType
+from .constants import RouterType, RouterServiceType, PricingChargeType
 
 
 class Router(SQLModel, table=True):
@@ -51,24 +41,3 @@ class RouterService(SQLModel, table=True):
 
     pricing: float = Field(default=0.0, ge=0.0)
     charge_type: PricingChargeType = Field(default=PricingChargeType.PER_REQUEST)
-
-
-project_root = Path(__file__).parent.parent
-data_dir = project_root / "data"
-data_dir.mkdir(parents=True, exist_ok=True)
-
-sqlite_file_name = data_dir / "routers.db"
-
-engine = create_engine(f"sqlite:///{sqlite_file_name}")
-
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
-
-
-def get_session():
-    with Session(engine) as session:
-        yield session
-
-
-SessionDep = Annotated[Session, Depends(get_session)]

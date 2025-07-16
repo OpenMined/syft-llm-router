@@ -1,0 +1,107 @@
+from pathlib import Path
+from fastapi import HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+
+from syft_core.config import SyftClientConfig
+from fastsyftbox import FastSyftBox
+
+from router.api import build_router_api
+from router.service import RouterManager
+from router.repository import RouterRepository
+from shared.database import Database
+
+# Initialize FastAPI app with SyftBox
+syftbox_config = SyftClientConfig.load("~/.syftbox/config.json")
+
+app = FastSyftBox(
+    app_name="SyftRouter",
+    syftbox_endpoint_tags=["syftbox"],
+    include_syft_openapi=True,
+    syftbox_config=syftbox_config,
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize database
+db = Database(db_path=Path(__file__).parent.parent / "data" / "routers.db")
+db.create_db_and_tables()
+
+
+def init_router_manager() -> RouterManager:
+    """Initialize the router manager."""
+    router_repository = RouterRepository(db)
+    router_manager = RouterManager(
+        repository=router_repository,
+        syftbox_config=syftbox_config,
+        syftbox_client=app.syftbox_client,
+        router_app_dir=app.syftbox_client.workspace.data_dir / "apps",
+        template_dir=Path(__file__).parent / "generator",
+    )
+    return router_manager
+
+
+# Include router API
+app.include_router(build_router_api(init_router_manager()))
+
+# Mount static files for frontend
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+def root():
+    """Serve the frontend index.html for the root path"""
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+
+    # Fallback to simple HTML if frontend not built
+    return HTMLResponse(
+        content="<html><body><h1>Welcome to SyftRouter</h1>"
+        + f"{app.get_debug_urls()}"
+        + "</body></html>"
+    )
+
+
+@app.get("/username")
+async def user_details():
+    """Get current user details"""
+    return {"username": app.syftbox_client.email}
+
+
+@app.get("/sburl")
+async def sburl():
+    """Get SyftBox URL"""
+    return {"url": str(app.syftbox_config.server_url)}
+
+
+# Catch-all route for SPA routing - serve index.html for any frontend route
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    # Don't interfere with API routes
+    if full_path.startswith(("router/", "username", "sburl", "docs", "openapi")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Serve index.html for frontend routes
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+
+    raise HTTPException(status_code=404, detail="Not found")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
