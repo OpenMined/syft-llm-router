@@ -1,6 +1,7 @@
 import type { ApiResponse } from '../types/router';
 
-const SYFTBOX_BASE_URL = 'https://dev.syftbox.net';
+// Remove hardcoded URL - will be fetched dynamically
+let SYFTBOX_BASE_URL: string | null = null;
 
 interface SearchResult {
   content: string;
@@ -55,13 +56,50 @@ interface PollResponse {
   message?: string;
 }
 
+interface SbUrlResponse {
+  url: string;
+}
+
 class ChatService {
+  private joinUrls(baseUrl: string, endpoint: string): string {
+    // Remove trailing slash from base URL and leading slash from endpoint
+    const cleanBase = baseUrl.replace(/\/$/, '');
+    const cleanEndpoint = endpoint.replace(/^\//, '');
+    return `${cleanBase}/${cleanEndpoint}`;
+  }
+
+  private async getServerUrl(): Promise<string> {
+    if (SYFTBOX_BASE_URL) {
+      return SYFTBOX_BASE_URL;
+    }
+
+    try {
+      // Get the server URL from our backend
+      const response = await fetch('/sburl');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch server URL: ${response.status}`);
+      }
+      
+      const data: SbUrlResponse = await response.json();
+      // Trim trailing slash to prevent double slashes
+      SYFTBOX_BASE_URL = data.url.replace(/\/$/, '');
+      return SYFTBOX_BASE_URL;
+    } catch (error) {
+      console.error('Failed to fetch server URL, using fallback:', error);
+      // Fallback to a default URL if the endpoint fails
+      SYFTBOX_BASE_URL = 'https://dev.syftbox.net';
+      return SYFTBOX_BASE_URL;
+    }
+  }
+
   private async request<T>(
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${SYFTBOX_BASE_URL}${endpoint}`, {
+      const serverUrl = await this.getServerUrl();
+      const fullUrl = this.joinUrls(serverUrl, endpoint);
+      const response = await fetch(fullUrl, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
@@ -91,9 +129,12 @@ class ChatService {
   }
 
   private async pollForResponse<T>(pollUrl: string, maxAttempts: number = 20): Promise<ApiResponse<T>> {
+    const serverUrl = await this.getServerUrl();
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await fetch(`${SYFTBOX_BASE_URL}${pollUrl}`);
+        const fullUrl = this.joinUrls(serverUrl, pollUrl);
+        const response = await fetch(fullUrl);
         const data = await response.json();
 
         // Check if the response has a status_code of 200 (resolved response)
@@ -131,7 +172,7 @@ class ChatService {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/search?query="${encodedQuery}"`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
-    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=syft@guest.org`;
+    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
     
     const response = await this.request<SearchResponse>(endpoint, {
       method: 'POST',
@@ -149,7 +190,7 @@ class ChatService {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/chat`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
-    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=syft@guest.org`;
+    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
     
     const payload: ChatRequest = {
       model: "tinyllama:latest",
