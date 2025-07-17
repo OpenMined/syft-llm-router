@@ -5,6 +5,7 @@ import { Button } from '../shared/Button';
 import type { ProfileType } from '../shared/ProfileToggle';
 import { useTheme, themeClass } from '../shared/ThemeContext';
 import { PublishRouterModal } from './PublishRouterModal';
+import { ConfirmationModal } from '../shared/ConfirmationModal';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import type { RouterDetails as RouterDetailsType, ServiceOverview, OpenAPISpecification, OpenAPIOperation, RouterRunStatus } from '../../types/router';
@@ -327,6 +328,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const { color } = useTheme();
   const t = themeClass(color);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
 
   // Get current user to check if router belongs to them
@@ -346,14 +348,11 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   }, []);
 
   const handleUnpublish = async () => {
-    if (!confirm('Are you sure you want to unpublish this router? This action cannot be undone.')) {
-      return;
-    }
-    
     setUnpublishing(true);
     try {
       const response = await routerService.unpublishRouter(routerName);
       if (response.success) {
+        setShowUnpublishModal(false);
         // Refresh the page to show updated published status
         window.location.reload();
       } else {
@@ -477,8 +476,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     ) : currentUser && author === currentUser ? (
                       <Button 
                         variant="ghost" 
-                        onClick={handleUnpublish}
-                        loading={unpublishing}
+                        onClick={() => setShowUnpublishModal(true)}
                         className="text-red-600 hover:text-red-800 hover:bg-red-50"
                       >
                         Unpublish Router
@@ -630,6 +628,19 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
           }}
         />
       )}
+      
+      {/* Unpublish Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showUnpublishModal}
+        onClose={() => setShowUnpublishModal(false)}
+        onConfirm={handleUnpublish}
+        title="Unpublish Router"
+        message="Are you sure you want to unpublish this router? This will make the router private and only you will be able to access it."
+        confirmText="Unpublish"
+        cancelText="Cancel"
+        confirmVariant="error"
+        loading={unpublishing}
+      />
     </div>
   );
 } 
