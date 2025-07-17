@@ -4,7 +4,8 @@ rm -rf backend/.venv
 
 cd backend
 uv venv -p 3.12 .venv
-uv pip install -r requirements.txt -U
+# install dependencies from pyproject.toml
+uv sync
 cd ..
 
 # Build frontend static files
