@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Generator
+from contextlib import contextmanager
 from sqlmodel import SQLModel, Session, create_engine
 
 
@@ -11,15 +12,13 @@ class Database:
     def create_db_and_tables(self):
         SQLModel.metadata.create_all(self.engine)
 
-    def get_session(self) -> Session:
-        return Session(self.engine)
+    @contextmanager
+    def get_session(self) -> Generator[Session, None, None]:
+        with Session(self.engine) as session:
+            yield session
 
 
 # Optional: Base repository for shared CRUD logic
 class BaseRepository:
     def __init__(self, db: Database):
         self.db = db
-        self.engine = db.engine
-
-    def get_session(self) -> Session:
-        return self.db.get_session()

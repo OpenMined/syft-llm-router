@@ -8,7 +8,7 @@ from .schemas import (
     RouterDetails,
     RouterRunStatus,
 )
-from .service import RouterManager
+from .manager import RouterManager
 from .exceptions import HTTPException
 
 
@@ -52,7 +52,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         except HTTPException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
-    @router.post("/unpublish")
+    @router.put("/unpublish")
     async def unpublish_router(
         router_name: str, service: RouterManager = Depends(get_router_service)
     ):
@@ -68,7 +68,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         """List current datasite routers + all published routers from other datasites."""
         return service.list_routers()
 
-    @router.post("/delete")
+    @router.delete("/delete")
     async def delete_router(
         router_name: str,
         published: bool,

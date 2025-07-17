@@ -79,9 +79,8 @@ class RouterService {
   }
 
   async unpublishRouter(routerName: string): Promise<ApiResponse<any>> {
-    return this.request<any>('/router/unpublish', {
-      method: 'POST',
-      body: JSON.stringify({ router_name: routerName }),
+    return this.request<any>(`/router/unpublish?router_name=${encodeURIComponent(routerName)}`, {
+      method: 'PUT',
     });
   }
 
@@ -102,9 +101,12 @@ class RouterService {
   }
 
   async deleteRouter(routerName: string, published: boolean): Promise<ApiResponse<any>> {
-    return this.request<any>('/router/delete', {
-      method: 'POST',
-      body: JSON.stringify({ router_name: routerName, published }),
+    const params = new URLSearchParams({ 
+      router_name: routerName, 
+      published: String(published) 
+    });
+    return this.request<any>(`/router/delete?${params.toString()}`, {
+      method: 'DELETE',
     });
   }
 

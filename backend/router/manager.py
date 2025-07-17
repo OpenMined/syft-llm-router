@@ -1,6 +1,6 @@
 from pathlib import Path
 from .repository import RouterRepository
-from .models import Router, RouterServiceType, RouterMetadata
+from .models import RouterServiceType
 from .schemas import (
     CreateRouterRequest,
     CreateRouterResponse,
@@ -12,6 +12,11 @@ from .schemas import (
     RouterMetadataResponse,
     RouterRunStatus,
     RouterServiceStatus,
+    RouterUpdate,
+    RouterMetadata,
+    RouterService,
+    RouterCreate,
+    PricingChargeType,
 )
 from generator.service import ProjectConfig, SimplifiedProjectGenerator
 from generator.common.config import StateFile
@@ -54,29 +59,34 @@ class RouterManager:
         output_dir = self.router_app_dir / config.project_name
         generator.generate_project(config, output_dir=output_dir)
 
-        # Create router services
+        # Create router services as Pydantic DTOs
         router_services = []
         for service_type in RouterServiceType.all_types():
             enabled = RouterServiceType(service_type) in request.services
             router_services.append(
-                RouterServiceType(type=service_type, enabled=enabled)
+                RouterService(
+                    type=RouterServiceType(service_type),
+                    enabled=enabled,
+                    pricing=0.0,  # Default pricing
+                    charge_type=PricingChargeType.PER_REQUEST,
+                )
             )
 
-        # Save router information to database
-        router = Router(
+        # Create router as Pydantic DTO
+        router_data = RouterCreate(
             name=config.project_name,
             router_type=request.router_type,
+            author=author,
             services=router_services,
             published=False,
-            author=author,
         )
 
-        self.repository.add_or_update_router(router)
+        # Let repository handle ORM conversion and persistence
+        router = self.repository.create_router(router_data)
 
         return CreateRouterResponse(
-            router_name=config.project_name,
+            router=router,
             output_dir=output_dir,
-            router_type=request.router_type,
         )
 
     def publish_router(self, request: PublishRouterRequest) -> dict:
@@ -109,33 +119,31 @@ class RouterManager:
                 f"Error publishing router {request.router_name}: {e}", 500
             )
 
-        # Save metadata to database
-        if router.router_metadata is None:
-            router_metadata = RouterMetadata(
+        # Update router using Pydantic DTO
+        router_update = RouterUpdate(
+            published=True,
+            router_metadata=RouterMetadata(
                 summary=request.summary,
                 description=request.description,
                 tags=request.tags,
                 code_hash=metadata.code_hash,
-                router_id=router.id,
-            )
-            router.router_metadata = router_metadata
-        else:
-            router.router_metadata.summary = request.summary
-            router.router_metadata.description = request.description
-            router.router_metadata.tags = request.tags
-            router.router_metadata.code_hash = metadata.code_hash
+            ),
+            services=[
+                RouterService(
+                    type=service.type,
+                    enabled=service.enabled,
+                    pricing=service.pricing,
+                    charge_type=service.charge_type,
+                )
+                for service in request.services
+            ],
+        )
 
-        # Update existing services with pricing
-        for service in request.services:
-            for router_service in router.services:
-                if router_service.type == service.type:
-                    router_service.pricing = service.pricing
-                    router_service.charge_type = service.charge_type
-                    router_service.enabled = service.enabled
-                    break
-
-        router.published = True
-        self.repository.add_or_update_router(router)
+        updated_router = self.repository.create_or_update_router(
+            request.router_name, router_update
+        )
+        if updated_router is None:
+            raise HTTPException(f"Failed to update router {request.router_name}", 500)
 
         return {
             "message": "Router published successfully.",
@@ -160,8 +168,10 @@ class RouterManager:
 
         try:
             unpublish_project(router_name, self.syftbox_config.path)
-            router.published = False
-            self.repository.add_or_update_router(router)
+
+            updated_router = self.repository.set_published_status(router_name, False)
+            if updated_router is None:
+                raise HTTPException(f"Failed to update router {router_name}", 500)
         except Exception as e:
             raise HTTPException(f"Error unpublishing router {router_name}: {e}", 500)
 
@@ -193,8 +203,8 @@ class RouterManager:
                 )
             )
 
-        # TODO: Fetch published routers from other datasites (requires syftbox client)
-        # This would involve iterating through datasites and reading metadata.json files
+        # Fetch published routers from other datasites (requires syftbox client)
+        # This involves iterating through datasites and reading metadata.json files
         for datasite in self.syftbox_client.datasites.iterdir():
 
             # Skip current datasite

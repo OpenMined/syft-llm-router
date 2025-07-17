@@ -8,7 +8,7 @@ from syft_core.config import SyftClientConfig
 from fastsyftbox import FastSyftBox
 
 from router.api import build_router_api
-from router.service import RouterManager
+from router.manager import RouterManager
 from router.repository import RouterRepository
 from shared.database import Database
 
@@ -38,7 +38,7 @@ db.create_db_and_tables()
 
 def init_router_manager() -> RouterManager:
     """Initialize the router manager."""
-    router_repository = RouterRepository(db)
+    router_repository = RouterRepository(db=db)
     router_manager = RouterManager(
         repository=router_repository,
         syftbox_config=syftbox_config,

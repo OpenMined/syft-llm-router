@@ -180,3 +180,7 @@ data/*
 
 # Node modules
 node_modules/
+
+# Frontend build artifacts in backend/static/
+backend/static/assets/
+backend/static/index.html
