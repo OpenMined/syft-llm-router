@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 import tomllib
 from rich import print as rprint
 from syft_core import Client
+from syft_core.permissions import PERM_FILE, SyftPermission
 from typer import Abort
 
 from .schemas import ProjectMetadata, ServiceOverview
@@ -55,6 +56,18 @@ class PublishService:
         """Get the path to the RPC schema file."""
         schema_path = apps_data_dir / "rpc" / "rpc.schema.json"
         return str(schema_path) if schema_path.exists() else None
+
+    def _set_rpc_endpoints_visibility(self, apps_data_dir: Path, make_private: bool):
+        """Set the visibility of the RPC endpoints.
+
+        If make_private is True, the RPC endpoints will be private, only visible to the owner.
+        If make_private is False, the RPC endpoints will be public, visible to all users.
+        """
+        rpc_path = apps_data_dir / PERM_FILE
+        if rpc_path.exists():
+            syft_perms = SyftPermission.from_file(rpc_path, apps_data_dir)
+            syft_perms.terminal = make_private
+            syft_perms.save(apps_data_dir)
 
     def _get_endpoint_details(
         self, project_name: str, project_path: Path
@@ -119,6 +132,9 @@ class PublishService:
             schema_path=schema_path,
         )
 
+        # Make RPC endpoints public i.e. visible to all users
+        self._set_rpc_endpoints_visibility(apps_data_dir, make_private=False)
+
         # Write metadata.json
         metadata_path = (
             self.client.my_datasite
@@ -151,6 +167,11 @@ class PublishService:
         # Delete the project folder
         project_path = self.client.my_datasite / "public" / "routers" / project_name
         shutil.rmtree(project_path, ignore_errors=True)
+
+        # Make RPC endpoints private i.e. only visible to the owner
+        self._set_rpc_endpoints_visibility(
+            self.client.app_data(project_name), make_private=True
+        )
 
 
 def publish_project(

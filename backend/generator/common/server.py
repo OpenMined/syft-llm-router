@@ -26,6 +26,15 @@ from schema import (
     SearchOptions,
     SearchResponse,
 )
+from syft_core.permissions import (
+    SyftPermission,
+    PermissionRule,
+    PermissionType,
+    PERM_FILE,
+)
+
+
+app_name = Path(__file__).resolve().parent.name
 
 
 def generate_openapi_schema(app: FastSyftBox):
@@ -54,6 +63,56 @@ class HealthResponse(BaseModel):
     services: dict
 
 
+def setup_default_rpc_permissions(app: FastSyftBox):
+    """Set up default permissions to make RPC endpoints private by default.
+
+    This function creates a permissions file that restricts access to RPC endpoints
+    to only the owner (current user). If a permissions file already exists,
+    no action is taken to preserve existing configurations.
+
+    The function uses a "terminal" permission approach, which means:
+    - Only the owner can access RPC endpoints by default
+    - Child folder permissions are ignored (terminal = True)
+    - This provides a secure default while allowing future permission changes
+
+    Args:
+        app (FastSyftBox): The FastSyftBox application instance
+    """
+
+    # Get the application data directory path
+    app_data_path = app.syftbox_client.app_data(app_name)
+
+    # Check if permissions file already exists
+    perm_file = app_data_path / PERM_FILE
+
+    # If permissions file exists, don't overwrite it
+    if perm_file.exists():
+        return
+
+    # Create new permissions object for the app directory
+    syft_perms = SyftPermission.create(
+        context=app.syftbox_client,
+        dir=app_data_path,
+    )
+
+    # Add a rule that gives access to all paths (**) for the current user only
+    syft_perms.add_rule(
+        path="**",
+        user=str(app.syftbox_client.email),
+    )
+
+    # Set terminal=True to make this permission override child folder permissions
+    # This ensures RPC endpoints remain private by default
+    syft_perms.terminal = True
+
+    # Save the permissions file to disk
+    syft_perms.save(app_data_path)
+
+
+# Global router instance
+router: Optional[SyftLLMRouter] = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastSyftBox):
     """Custom lifespan method to initialize router and handle startup/shutdown."""
@@ -64,7 +123,7 @@ async def lifespan(app: FastSyftBox):
         router = SyftLLMRouter()
         logger.info(f"Router initialized for project: {config.project_name}")
         generate_openapi_schema(app)
-
+        setup_default_rpc_permissions(app)
         app_port = os.environ.get("APP_PORT", 8000)
         app_host = os.environ.get("APP_HOST", "0.0.0.0")
 
@@ -86,8 +145,6 @@ async def lifespan(app: FastSyftBox):
         config.state.update_router_state(status=RunStatus.STOPPED)
 
 
-app_name = Path(__file__).resolve().parent.name
-
 # Create FastAPI app
 app = FastSyftBox(
     app_name=app_name,
@@ -98,9 +155,6 @@ app = FastSyftBox(
     lifespan=lifespan,
     syftbox_config=SyftClientConfig.load("~/.syftbox/config.json"),
 )
-
-# Global router instance
-router: Optional[SyftLLMRouter] = None
 
 
 @app.get(

@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,8 +32,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Initialize database
-db = Database(db_path=Path(__file__).parent.parent / "data" / "routers.db")
+def get_db_name() -> str:
+    db_name = f"{app.syftbox_config.email}-{app.syftbox_config.data_dir.resolve()}"
+    return hashlib.md5(db_name.encode()).hexdigest()
+
+
+db_name = get_db_name()
+db = Database(db_path=Path(__file__).parent.parent / "data" / f"{db_name}.db")
 db.create_db_and_tables()
 
 
