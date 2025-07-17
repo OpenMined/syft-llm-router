@@ -96,6 +96,7 @@ app = FastSyftBox(
     syftbox_endpoint_tags=["syftbox"],
     include_syft_openapi=True,
     lifespan=lifespan,
+    syftbox_config=SyftClientConfig.load("~/.syftbox/config.json"),
 )
 
 # Global router instance
