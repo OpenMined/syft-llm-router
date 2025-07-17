@@ -49,11 +49,24 @@ A modern, full-stack platform for creating, managing, and publishing Language Mo
 ```
 syft-llm-router/
 ├── backend/                    # FastAPI + SyftBox backend
-│   ├── app.py                 # Main application entry point
-│   ├── db.py                  # Database models and setup
-│   ├── requirements.txt       # Python dependencies
-│   ├── static/                # Served frontend assets
-│   └── router_generator/      # Router template generation
+│   ├── main.py                # Main application entry point
+│   ├── router/                # Router management module
+│   │   ├── api.py             # FastAPI routes and endpoints
+│   │   ├── manager.py         # Business logic and orchestration
+│   │   ├── repository.py      # Data access layer (Repository pattern)
+│   │   ├── models.py          # SQLAlchemy ORM models
+│   │   ├── schemas.py         # Pydantic DTOs and validation
+│   │   ├── constants.py       # Application constants
+│   │   ├── exceptions.py      # Custom exception classes
+│   │   └── publish.py         # Publishing logic and metadata
+│   ├── generator/             # Router template generation
+│   │   ├── service.py         # Router generation service
+│   │   ├── common/            # Shared generation utilities
+│   │   └── templates/         # Router templates (default/custom)
+│   ├── shared/                # Shared utilities and configuration
+│   │   └── database.py        # Database configuration and session management
+│   ├── static/                # Served frontend assets (generated)
+│   └── build_frontend.sh      # Frontend build script
 ├── frontend/                  # Preact + TypeScript frontend
 │   ├── src/                   # Source code
 │   ├── public/                # Static assets
@@ -65,10 +78,23 @@ syft-llm-router/
 
 ### **Key Components**
 
-- **`backend/`**: FastAPI server with database and router generation
+- **`backend/router/`**: Core router management with Repository pattern and DTOs
+- **`backend/generator/`**: Router template generation and customization
+- **`backend/shared/`**: Shared utilities and database configuration
 - **`frontend/`**: Preact application with TypeScript and TailwindCSS
 - **`data/`**: SQLite database storage
 - **`run.sh`**: One-command startup script
+
+### **Backend Architecture**
+
+The backend follows modern architectural patterns:
+
+- **Repository Pattern**: Data access layer in `router/repository.py` with proper separation of concerns
+- **DTO Pattern**: Pydantic models in `router/schemas.py` for API contracts and validation
+- **Manager Layer**: Business logic orchestration in `router/manager.py`
+- **API Layer**: FastAPI routes in `router/api.py` with RESTful design
+- **Shared Database**: Centralized database configuration in `shared/database.py`
+- **Eager Loading**: Optimized database queries with `selectinload` to prevent N+1 problems
 
 ---
 
@@ -187,11 +213,11 @@ export SYFTBOX_ASSIGNED_PORT=9000
 - `POST /router/create` - Create a new router via web UI
 - `GET /router/exists` - Check if router name is available
 - `GET /router/details` - Get detailed router information
-- `POST /router/delete` - Delete a router
+- `DELETE /router/delete` - Delete a router (RESTful DELETE method)
 
 ### Publishing
 - `POST /router/publish` - Publish router with metadata and pricing
-- `POST /router/unpublish` - Unpublish a router
+- `PUT /router/unpublish` - Unpublish a router (RESTful PUT method)
 
 ### User & System
 - `GET /username` - Get current user information
@@ -231,7 +257,7 @@ cd backend
 uv venv -p 3.12 .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -r requirements.txt
-uvicorn app:app --reload --port 8080
+uvicorn main:app --reload --port 8080
 ```
 
 ### Frontend Development
@@ -264,7 +290,7 @@ bun run build
 
 # Start backend with production settings
 cd backend
-uvicorn app:app --host 0.0.0.0 --port 8080 --workers 4
+uvicorn main:app --host 0.0.0.0 --port 8080 --workers 4
 ```
 
 ### Environment Variables
@@ -292,6 +318,10 @@ export SYFTBOX_ASSIGNED_PORT=8080
 - Add proper error handling and loading states
 - Keep backend and frontend types in sync
 - Test on different screen sizes
+- Follow Repository pattern for data access
+- Use Pydantic DTOs for API contracts
+- Implement proper separation of concerns
+- Use eager loading for database queries to avoid N+1 problems
 
 ---
 
