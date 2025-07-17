@@ -26,12 +26,7 @@ from schema import (
     SearchOptions,
     SearchResponse,
 )
-from syft_core.permissions import (
-    SyftPermission,
-    PermissionRule,
-    PermissionType,
-    PERM_FILE,
-)
+from syft_core.permissions import SyftPermission, PERM_FILE
 
 
 app_name = Path(__file__).resolve().parent.name
@@ -99,6 +94,7 @@ def setup_default_rpc_permissions(app: FastSyftBox):
     syft_perms.add_rule(
         path="**",
         user=str(app.syftbox_client.email),
+        permission=[],
     )
 
     # Set terminal=True to make this permission override child folder permissions
