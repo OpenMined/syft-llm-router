@@ -20,7 +20,7 @@ else
     # Else, for MacOS and Linux, install bun
     if ! command -v bun &> /dev/null; then
         echo "Bun is not installed. Installing..."
-        curl -fsSL https://bun.com/install | bash
+        curl -fsSL https://bun.sh/install | bash
     fi
 fi
 
