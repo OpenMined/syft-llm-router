@@ -62,9 +62,16 @@ app.include_router(build_router_api(init_router_manager()))
 
 # Mount static files for frontend
 static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+assets_dir = static_dir / "assets"
+
+# Create assets directory if it doesn't exist
+assets_dir.mkdir(parents=True, exist_ok=True)
+
+# Mount assets directory
+app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+# Mount static directory
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -11,6 +11,20 @@ cd ..
 # Build frontend static files
 echo "Building frontend..."
 cd frontend
+
+# Install bun if not installed
+if [[ "$OSTYPE" == "msys" ]]; then
+    echo "Windows detected. Installing bun..."
+    powershell -c "irm bun.sh/install.ps1 | iex"
+else
+    # Else, for MacOS and Linux, install bun
+    if ! command -v bun &> /dev/null; then
+        echo "Bun is not installed. Installing..."
+        curl -fsSL https://bun.com/install | bash
+    fi
+fi
+
+# Install bun dependencies
 bun install
 bun run build
 cd ..
