@@ -244,6 +244,16 @@ class EmbeddingResponse(SchemaBase):
     )
 
 
+class SearchDocumentsParams(SchemaBase):
+    """Parameters for document search request."""
+
+    # The search query
+    query: str = Field(..., description="The search query")
+
+    # Additional parameters for the search
+    options: Optional[SearchOptions] = None
+
+
 class SearchResponse(SchemaBase):
     """The result of the document search operation"""
 
