@@ -11,6 +11,7 @@ interface HeaderProps {
 export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
   const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
+  const [balance, setBalance] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +36,20 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
     }).catch(() => {
       // Silently fail, URL won't be shown
     });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    routerService.getAccountInfo().then((resp) => {
+      if (mounted) {
+        if (resp.success && resp.data?.balance !== undefined) {
+          setBalance(resp.data.balance.toFixed(2));
+        } else {
+          setBalance(null);
+        }
+      }
+    }).catch(() => setBalance(null));
     return () => { mounted = false; };
   }, []);
 
@@ -109,6 +124,12 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
               </div>
             </div>
             {profileToggle}
+          </div>
+          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
+            <span className="text-xs text-gray-700">Balance:</span>
+            <span className="text-xs text-gray-500">
+              {balance === null ? '...' : `$${balance}`}
+            </span>
           </div>
         </div>
       </div>

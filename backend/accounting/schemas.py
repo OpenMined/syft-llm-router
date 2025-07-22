@@ -1,6 +1,4 @@
-from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from accountingSDK.core import TransactionStatus
 
 
 class AccountingConfig(BaseModel):
@@ -11,7 +9,7 @@ class AccountingConfig(BaseModel):
     url: str
 
 
-class User(BaseModel):
+class UserAccount(BaseModel):
     """User account."""
 
     id: str
@@ -26,3 +24,10 @@ class UserAccountView(BaseModel):
     id: str
     email: EmailStr
     balance: float = Field(ge=0.0, default=0.0)
+
+
+class TransactionToken(BaseModel):
+    """Transaction token."""
+
+    token: str
+    recipient_email: str

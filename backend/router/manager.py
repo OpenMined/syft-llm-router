@@ -23,7 +23,7 @@ from generator.common.config import StateFile
 from .publish import publish_project, unpublish_project
 import json
 import shutil
-from .exceptions import HTTPException
+from shared.exceptions import APIException
 from syft_core.config import SyftClientConfig
 from syft_core import Client as SyftClient
 
@@ -93,14 +93,14 @@ class RouterManager:
         """Publish a router app"""
         router = self.repository.get_router_by_name(request.router_name)
         if router is None:
-            raise HTTPException(f"Router {request.router_name} not found", 404)
+            raise APIException(f"Router {request.router_name} not found", 404)
 
         if router.published:
-            raise HTTPException(f"Router {request.router_name} already published", 400)
+            raise APIException(f"Router {request.router_name} already published", 400)
 
         router_dir = self.router_app_dir / request.router_name
         if not router_dir.exists():
-            raise HTTPException(
+            raise APIException(
                 f"Router {request.router_name} not found in apps directory", 404
             )
 
@@ -115,7 +115,7 @@ class RouterManager:
                 client_config_path=self.syftbox_config.path,
             )
         except Exception as e:
-            raise HTTPException(
+            raise APIException(
                 f"Error publishing router {request.router_name}: {e}", 500
             )
 
@@ -143,7 +143,7 @@ class RouterManager:
             request.router_name, router_update
         )
         if updated_router is None:
-            raise HTTPException(f"Failed to update router {request.router_name}", 500)
+            raise APIException(f"Failed to update router {request.router_name}", 500)
 
         return {
             "message": "Router published successfully.",
@@ -158,22 +158,22 @@ class RouterManager:
         """Unpublish a router"""
         router = self.repository.get_router_by_name(router_name)
         if router is None or router.author != self.get_current_user():
-            raise HTTPException(
+            raise APIException(
                 f"Router {router_name} not found or not owned by {self.get_current_user()}",
                 404,
             )
 
         if not router.published:
-            raise HTTPException(f"Router {router_name} is not published", 400)
+            raise APIException(f"Router {router_name} is not published", 400)
 
         try:
             unpublish_project(router_name, self.syftbox_config.path)
 
             updated_router = self.repository.set_published_status(router_name, False)
             if updated_router is None:
-                raise HTTPException(f"Failed to update router {router_name}", 500)
+                raise APIException(f"Failed to update router {router_name}", 500)
         except Exception as e:
-            raise HTTPException(f"Error unpublishing router {router_name}: {e}", 500)
+            raise APIException(f"Error unpublishing router {router_name}: {e}", 500)
 
         return {"message": "Router unpublished successfully."}
 
@@ -251,7 +251,7 @@ class RouterManager:
         """Delete a router app"""
         router = self.repository.get_router_by_name(router_name)
         if router is None:
-            raise HTTPException(f"Router {router_name} not found", 404)
+            raise APIException(f"Router {router_name} not found", 404)
 
         if router.published:
             public_metadata_path = (
@@ -269,7 +269,7 @@ class RouterManager:
 
         deleted = self.repository.delete_router(router_name)
         if not deleted:
-            raise HTTPException(f"Failed to delete router {router_name}", 500)
+            raise APIException(f"Failed to delete router {router_name}", 500)
 
         return {"message": "Router deleted successfully."}
 
@@ -285,7 +285,7 @@ class RouterManager:
             # Fetch router information from the database
             router = self.repository.get_router_by_name(router_name, published)
             if router is None:
-                raise HTTPException(f"Router {router_name} not found", 404)
+                raise APIException(f"Router {router_name} not found", 404)
 
             if router.router_metadata:
                 metadata = RouterMetadataResponse(
@@ -325,7 +325,7 @@ class RouterManager:
                 / router_name
             )
             if not router_dir.exists():
-                raise HTTPException(f"Router {router_name} not found", 404)
+                raise APIException(f"Router {router_name} not found", 404)
 
             metadata_path = router_dir / "metadata.json"
 
@@ -366,7 +366,7 @@ class RouterManager:
         """Get the status of the router"""
         router = self.repository.get_router_by_name(router_name)
         if router is None:
-            raise HTTPException(f"Router {router_name} not found", 404)
+            raise APIException(f"Router {router_name} not found", 404)
 
         state_file_path = self.router_app_dir / router_name / "state.json"
         if not state_file_path.exists():

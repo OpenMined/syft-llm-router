@@ -12,12 +12,16 @@ from router.api import build_router_api
 from router.manager import RouterManager
 from router.repository import RouterRepository
 from shared.database import Database
+from accounting.api import build_accounting_api
+from accounting.manager import AccountingManager
+from accounting.schemas import AccountingConfig
+from settings.app_settings import settings
 
 # Initialize FastAPI app with SyftBox
-syftbox_config = SyftClientConfig.load("~/.syftbox/config.json")
+syftbox_config = SyftClientConfig.load(settings.syftbox_config_path)
 
 app = FastSyftBox(
-    app_name="SyftRouter",
+    app_name=settings.app_name,
     syftbox_endpoint_tags=["syftbox"],
     include_syft_openapi=True,
     syftbox_config=syftbox_config,
@@ -57,8 +61,25 @@ def init_router_manager() -> RouterManager:
     return router_manager
 
 
+def init_accounting_manager() -> AccountingManager:
+    """Initialize the accounting manager."""
+
+    accounting_config = AccountingConfig(
+        email=settings.accounting_email,
+        password=settings.accounting_password,
+        url=settings.accounting_url,
+    )
+    accounting_manager = AccountingManager(
+        syftbox_config=app.syftbox_config,
+        accounting_config=accounting_config,
+    )
+    accounting_manager.get_or_create_user_account()
+    return accounting_manager
+
+
 # Include router API
 app.include_router(build_router_api(init_router_manager()))
+app.include_router(build_accounting_api(init_accounting_manager()))
 
 # Mount static files for frontend
 static_dir = Path(__file__).parent / "static"
