@@ -11,6 +11,7 @@ interface HeaderProps {
 export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
   const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{ id: string; email: string; balance: number } | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,13 +44,18 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
     let mounted = true;
     routerService.getAccountInfo().then((resp) => {
       if (mounted) {
-        if (resp.success && resp.data?.balance !== undefined) {
+        if (resp.success && resp.data) {
+          setAccountInfo(resp.data);
           setBalance(resp.data.balance.toFixed(2));
         } else {
+          setAccountInfo(null);
           setBalance(null);
         }
       }
-    }).catch(() => setBalance(null));
+    }).catch(() => {
+      setAccountInfo(null);
+      setBalance(null);
+    });
     return () => { mounted = false; };
   }, []);
 
@@ -114,22 +120,25 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
           <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                <span className="text-xs text-gray-700">User: <span className="font-medium">{username}</span></span>
+                {/* User icon */}
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-xs text-gray-700">
+                  User: <span className="font-medium">{accountInfo?.email || username}</span>
+                </span>
               </div>
               <div className="flex items-center space-x-2 mt-1">
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>
-                <span className="text-xs text-gray-700">Balance:</span>
-                <span className="text-xs text-gray-500">$20</span>
+                {/* Dollar icon */}
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                <span className="text-xs text-gray-700">
+                  Balance: <span className="text-gray-500">{balance === null ? '...' : `$${balance}`}</span>
+                </span>
               </div>
             </div>
             {profileToggle}
-          </div>
-          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
-            <span className="text-xs text-gray-700">Balance:</span>
-            <span className="text-xs text-gray-500">
-              {balance === null ? '...' : `$${balance}`}
-            </span>
           </div>
         </div>
       </div>
