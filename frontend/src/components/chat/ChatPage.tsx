@@ -303,6 +303,35 @@ export function ChatPage({ onBack }: ChatPageProps) {
   // Add a ref to keep track of the latest searchResults for tooltips
   const [lastSearchResults, setLastSearchResults] = useState<SearchResult[]>([]);
 
+  // Calculate total price for selected items
+  const calculateTotalPrice = () => {
+    let total = 0;
+    
+    // Add pricing for selected data sources (search services)
+    selectedDataSources.forEach(sourceName => {
+      const router = searchRouters.find(r => r.name === sourceName);
+      if (router) {
+        const searchService = router.services.find(s => s.type === 'search');
+        if (searchService) {
+          total += searchService.pricing || 0;
+        }
+      }
+    });
+    
+    // Add pricing for selected chat source
+    if (selectedChatSource) {
+      const router = chatRouters.find(r => r.name === selectedChatSource);
+      if (router) {
+        const chatService = router.services.find(s => s.type === 'chat');
+        if (chatService) {
+          total += chatService.pricing || 0;
+        }
+      }
+    }
+    
+    return total;
+  };
+
   // Load available routers
   useEffect(() => {
     const loadRouters = async () => {
@@ -470,8 +499,23 @@ Use the provided sources to answer the user's question accurately and comprehens
           <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200">
-              <h1 className="text-2xl font-bold text-gray-900">Chat</h1>
-              <p className="text-gray-600 mt-1">Discover insights from the data sources that matter to you</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Chat</h1>
+                  <p className="text-gray-600 mt-1">Discover insights from the data sources that matter to you</p>
+                </div>
+                <div className="text-right">
+                  {(selectedDataSources.length > 0 || selectedChatSource) && (
+                    <div className="text-sm text-gray-500">
+                      <div>Cost per request: {calculateTotalPrice() === 0 ? (
+                        <span className="text-green-600 font-medium">Free</span>
+                      ) : (
+                        <span className="text-gray-700 font-medium">${calculateTotalPrice().toFixed(2)}</span>
+                      )}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Chat Messages */}
