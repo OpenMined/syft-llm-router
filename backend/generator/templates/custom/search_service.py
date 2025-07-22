@@ -9,7 +9,13 @@ from uuid import UUID
 from loguru import logger
 
 from base_services import SearchService
-from schema import DocumentResult, SearchOptions, SearchResponse
+from schema import (
+    DocumentResult,
+    SearchOptions,
+    SearchResponse,
+    PublishedMetadata,
+    RouterServiceType,
+)
 from pydantic import EmailStr
 from config import RouterConfig
 
@@ -48,7 +54,7 @@ class CustomSearchService(SearchService):
         # 2. Search your document index/database
         # with self.accounting_client.delegated_transfer(
         #     user_email,
-        #     amount=0.1,
+        #     amount=self.pricing,
         #     token=transaction_token,
         # ) as payment_txn:
         #   results = your_search_function(search_params)
@@ -101,6 +107,14 @@ class CustomSearchService(SearchService):
             "Custom document indexing not implemented. "
             "Please implement the add_documents method in search_service.py"
         )
+
+    @property
+    def pricing(self) -> float:
+        """Get the pricing for the search service."""
+        if not self.config.metadata_path.exists():
+            return 0.0
+        metadata = PublishedMetadata.from_path(self.config.metadata_path)
+        return metadata.services[RouterServiceType.SEARCH].pricing
 
 
 SearchServiceImpl = CustomSearchService

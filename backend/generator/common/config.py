@@ -125,6 +125,7 @@ class RouterConfig(BaseModel):
     state: StateFile
     accounting: AccountingConfig
     syft_config: SyftClientConfig
+    metadata_path: Path
 
     @property
     def project_name(self) -> str:
@@ -166,6 +167,7 @@ class RouterConfig(BaseModel):
     def load(
         cls,
         syft_config_path: Path,
+        metadata_path: Path,
         state_file: str = "state.json",
         env_file: str = ".env",
     ) -> "RouterConfig":
@@ -214,12 +216,25 @@ class RouterConfig(BaseModel):
         )
 
         syft_config = SyftClientConfig.load(syft_config_path)
-        return cls(project, configuration, state, accounting, syft_config)
+        return cls(
+            project,
+            configuration,
+            state,
+            accounting,
+            syft_config,
+            metadata_path,
+        )
 
 
 def load_config(
     syft_config_path: Path,
+    metadata_path: Path,
     state_file: str = "state.json",
     env_file: str = ".env",
 ) -> RouterConfig:
-    return RouterConfig.load(syft_config_path, state_file, env_file)
+    return RouterConfig.load(
+        syft_config_path,
+        metadata_path,
+        state_file,
+        env_file,
+    )

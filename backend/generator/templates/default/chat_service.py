@@ -8,7 +8,7 @@ import requests
 from loguru import logger
 
 from base_services import ChatService
-from schema import ChatResponse, GenerationOptions, Message, Usage
+from schema import ChatResponse, GenerationOptions, Message, Usage, PublishedMetadata, RouterServiceType
 from config import RouterConfig
 from pydantic import EmailStr
 from syft_accounting_sdk import UserClient
@@ -60,7 +60,7 @@ class OllamaChatService(ChatService):
 
             with self.accounting_client.delegated_transfer(
                 user_email,
-                amount=0.1,
+                amount=self.pricing,
                 token=transaction_token,
             ) as payment_txn:
                 # Make request to Ollama
@@ -110,6 +110,14 @@ class OllamaChatService(ChatService):
         except Exception as e:
             logger.error(f"Unexpected error in chat generation: {e}")
             raise e
+
+    @property
+    def pricing(self) -> float:
+        """Get the pricing for the chat service."""
+        if not self.config.metadata_path.exists():
+            return 0.0
+        metadata = PublishedMetadata.from_path(self.config.metadata_path)
+        return metadata.services[RouterServiceType.CHAT].pricing
 
 
 ChatServiceImpl = OllamaChatService

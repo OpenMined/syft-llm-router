@@ -1,6 +1,8 @@
+from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 from uuid import UUID
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -272,3 +274,47 @@ class SearchResponse(SchemaBase):
     provider_info: Optional[dict[str, Any]] = Field(
         default=None, description="Router-specific information"
     )
+
+
+class PricingChargeType(str, Enum):
+    PER_REQUEST = "per_request"
+
+
+class RouterServiceType(str, Enum):
+    CHAT = "chat"
+    SEARCH = "search"
+
+    @classmethod
+    def all_types(cls):
+        return [service.value for service in cls]
+
+
+class ServiceOverview(SchemaBase):
+    type: RouterServiceType
+    pricing: float
+    charge_type: PricingChargeType = Field(default=PricingChargeType.PER_REQUEST)
+    enabled: bool
+
+
+class PublishedMetadata(SchemaBase):
+    """Metadata for a published project."""
+
+    project_name: str = Field(..., description="Name of the project")
+    description: str = Field(..., description="Project description")
+    summary: str = Field(..., description="Project summary")
+    tags: list[str] = Field(default_factory=list, description="Project tags")
+    services: list[ServiceOverview] = Field(
+        default_factory=list, description="Pricing information"
+    )
+    code_hash: str = Field(..., description="SHA256 hash of all Python files")
+    version: str = Field(..., description="Project version")
+    documented_endpoints: Optional[dict[str, Any]] = Field(
+        None, description="API endpoints documentation"
+    )
+    publish_date: datetime = Field(..., description="Publication date")
+    author: str = Field(..., description="Author email")
+    schema_path: Optional[str] = Field(None, description="Path to RPC schema file")
+
+    @classmethod
+    def from_path(cls, metadata_path: Path) -> "PublishedMetadata":
+        return cls.model_validate_json(metadata_path.read_text())

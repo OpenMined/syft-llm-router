@@ -115,22 +115,42 @@ router: Optional[SyftLLMRouter] = None
 async def lifespan(app: FastSyftBox):
     """Custom lifespan method to initialize router and handle startup/shutdown."""
     try:
-        # Startup logic
-        config = load_config(syft_config_path=app.syftbox_config.path)
+        syftbox_client = app.syftbox_client
+
+        # Published metadata directory
+        published_metadata_dir = (
+            syftbox_client.my_datasite / "public" / "routers" / app_name
+        )
+
+        # Load config
+        config = load_config(
+            syft_config_path=syftbox_client.config_path,
+            metadata_path=published_metadata_dir / "metadata.json",
+        )
+
+        # Initialize router
         global router
         router = SyftLLMRouter(config=config)
         logger.info(f"Router initialized for project: {config.project_name}")
+
+        # Generate OpenAPI schema
         generate_openapi_schema(app)
+
+        # Setup default RPC permissions
         setup_default_rpc_permissions(app)
+
+        # Get app port and host
         app_port = os.environ.get("APP_PORT", 8000)
         app_host = os.environ.get("APP_HOST", "0.0.0.0")
 
+        # Update router state
         config.state.update_router_state(
             status=RunStatus.RUNNING,
             url=f"http://{app_host}:{app_port}",
         )
 
-        yield  # This allows the application to run
+        # Yield to allow the application to run
+        yield
 
     except Exception as e:
         logger.error(f"Failed to initialize router: {e}")
@@ -171,8 +191,15 @@ async def health_check(request: Request):
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    syft_config_path = request.app.syftbox_config.path
-    config = load_config(syft_config_path=syft_config_path)
+    syftbox_client = request.app.state.syftbox_client
+
+    published_metadata_dir = (
+        syftbox_client.my_datasite / "public" / "routers" / app_name
+    )
+    config = load_config(
+        syft_config_path=syftbox_client.config_path,
+        metadata_path=published_metadata_dir / "metadata.json",
+    )
 
     # Check service availability
     services = config.state.services.model_dump()

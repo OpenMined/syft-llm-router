@@ -9,7 +9,14 @@ from uuid import UUID
 from loguru import logger
 
 from base_services import ChatService
-from schema import ChatResponse, GenerationOptions, Message, Usage
+from schema import (
+    ChatResponse,
+    GenerationOptions,
+    Message,
+    Usage,
+    PublishedMetadata,
+    RouterServiceType,
+)
 from pydantic import EmailStr
 from config import RouterConfig
 
@@ -49,7 +56,7 @@ class CustomChatService(ChatService):
         # 2. Make request to your service
         # with self.accounting_client.delegated_transfer(
         #     user_email,
-        #     amount=0.1,
+        #     amount=self.pricing,
         #     token=transaction_token,
         # ) as payment_txn:
         #   response = requests.post("your_api_endpoint", json=payload)
@@ -84,6 +91,14 @@ class CustomChatService(ChatService):
             "Custom chat service not implemented. "
             "Please implement the generate_chat method in chat_service.py"
         )
+
+    @property
+    def pricing(self) -> float:
+        """Get the pricing for the chat service."""
+        if not self.config.metadata_path.exists():
+            return 0.0
+        metadata = PublishedMetadata.from_path(self.config.metadata_path)
+        return metadata.services[RouterServiceType.CHAT].pricing
 
 
 ChatServiceImpl = CustomChatService

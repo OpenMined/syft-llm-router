@@ -8,7 +8,13 @@ from loguru import logger
 import httpx
 
 from base_services import SearchService
-from schema import DocumentResult, SearchOptions, SearchResponse
+from schema import (
+    DocumentResult,
+    SearchOptions,
+    SearchResponse,
+    PublishedMetadata,
+    RouterServiceType,
+)
 from config import RouterConfig
 from pydantic import EmailStr
 
@@ -52,7 +58,7 @@ class LocalSearchService(SearchService):
         try:
             with self.accounting_client.delegated_transfer(
                 user_email,
-                amount=0.1,
+                amount=self.pricing,
                 token=transaction_token,
             ) as payment_txn:
                 response = self.rag_client.post(
@@ -96,6 +102,14 @@ class LocalSearchService(SearchService):
         except Exception as e:
             logger.error(f"Document search failed: {e}")
             raise e
+
+    @property
+    def pricing(self) -> float:
+        """Get the pricing for the search service."""
+        if not self.config.metadata_path.exists():
+            return 0.0
+        metadata = PublishedMetadata.from_path(self.config.metadata_path)
+        return metadata.services[RouterServiceType.SEARCH].pricing
 
 
 SearchServiceImpl = LocalSearchService
