@@ -18,7 +18,11 @@ from .schemas import (
     RouterCreate,
     PricingChargeType,
 )
-from generator.service import ProjectConfig, SimplifiedProjectGenerator
+from generator.service import (
+    ProjectConfig,
+    SimplifiedProjectGenerator,
+    UserAccountingConfig,
+)
 from generator.common.config import StateFile
 from .publish import publish_project, unpublish_project
 import json
@@ -26,6 +30,7 @@ import shutil
 from shared.exceptions import APIException
 from syft_core.config import SyftClientConfig
 from syft_core import Client as SyftClient
+from settings.app_settings import settings
 
 
 class RouterManager:
@@ -53,6 +58,11 @@ class RouterManager:
             enable_chat=RouterServiceType.CHAT in request.services,
             enable_search=RouterServiceType.SEARCH in request.services,
             syftbox_config=self.syftbox_config,
+            user_accounting_config=UserAccountingConfig(
+                url=settings.accounting_url,
+                email=settings.accounting_email,
+                password=settings.accounting_password,
+            ),
         )
 
         generator = SimplifiedProjectGenerator(template_dir=self.template_dir)

@@ -8,7 +8,14 @@ import requests
 from loguru import logger
 
 from base_services import ChatService
-from schema import ChatResponse, GenerationOptions, Message, Usage, PublishedMetadata, RouterServiceType
+from schema import (
+    ChatResponse,
+    GenerationOptions,
+    Message,
+    Usage,
+    PublishedMetadata,
+    RouterServiceType,
+)
 from config import RouterConfig
 from pydantic import EmailStr
 from syft_accounting_sdk import UserClient
@@ -27,7 +34,7 @@ class OllamaChatService(ChatService):
         self.base_url = self.config.get_service_url("chat") or DEFAULT_OLLAMA_URL
         logger.info(f"Initialized Ollama chat service with base URL: {self.base_url}")
 
-        self.       : UserClient = self.config.accounting_client()
+        self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
 
     def generate_chat(
