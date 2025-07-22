@@ -373,7 +373,6 @@ export function ChatPage({ onBack }: ChatPageProps) {
     setError(null);
 
     try {
-      let enhancedMessage = message;
       const uniqueFiles = new Set<string>();
       let searchResults: SearchResult[] = [];
 
@@ -403,14 +402,6 @@ export function ChatPage({ onBack }: ChatPageProps) {
           }
         }
 
-        // Collect search results for context
-        if (searchResults.length > 0) {
-          const sourceContent = searchResults
-            .map((result: SearchResult) => result.content)
-            .join('\n\n');
-          
-          enhancedMessage = sourceContent;
-        }
         // Update lastSearchResults state for tooltips
         setLastSearchResults(searchResults);
       }
@@ -468,13 +459,25 @@ Use the provided sources to answer the user's question accurately and comprehens
 
     } catch (error) {
       console.error('Error in chat:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      let errorMessage = 'An error occurred';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('message not found')) {
+          errorMessage = 'Server error: The selected router service is currently unavailable. Please try a different router or try again later.';
+        } else if (error.message.includes('500')) {
+          errorMessage = 'Server error: The router service is experiencing issues. Please try again later.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -605,8 +608,9 @@ Use the provided sources to answer the user's question accurately and comprehens
                 <div className="flex-1 relative">
                   <textarea
                     value={message}
-                    onChange={(e) => setMessage((e.target as HTMLTextAreaElement).value)}
-                    onKeyPress={handleKeyPress}
+                    onInput={(e) => setMessage(e.currentTarget.value)}
+                    onChange={(e) => setMessage(e.currentTarget.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Type your message here..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-gray-50 focus:bg-white transition-colors"
                     rows={3}
@@ -617,7 +621,7 @@ Use the provided sources to answer the user's question accurately and comprehens
                   onClick={handleSendMessage}
                   disabled={isLoading || !message.trim() || !selectedChatSource}
                   loading={isLoading}
-                  className="self-end px-6 py-3 rounded-xl"
+                  className="self-start px-6 py-3 rounded-xl"
                 >
                   Send
                 </Button>
