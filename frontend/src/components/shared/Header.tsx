@@ -40,14 +40,14 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-16 gap-6">
         {/* Logo and App Name */}
         <div className="flex items-center space-x-3">
           <img src="/static/syftbox-logo.svg" alt="SyftBox Logo" className="h-8 w-8" />
           <span className="text-xl font-bold text-gray-900 tracking-tight">SyftBox <span className="ml-1 text-xs font-semibold text-primary-600 align-top">ALPHA</span></span>
         </div>
         {/* Navigation Tabs */}
-        <nav className="flex items-center space-x-2">
+        <nav className="flex items-center space-x-2 flex-grow justify-center">
           <button
             onClick={() => onTabChange?.('routers')}
             className={`px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 ${
@@ -69,6 +69,7 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
             Chat
           </button>
         </nav>
+        
         {/* SyftBox Server URL */}
         {syftBoxUrl && (
           <div className="flex items-center bg-blue-50 px-3 py-1 rounded-md border border-blue-200">
@@ -92,16 +93,22 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
             </a>
           </div>
         )}
+        
         {/* User Info and Profile Toggle */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
-            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span className="text-xs text-gray-700">User: <span className="font-medium">{username}</span></span>
+            <div className="flex flex-col">
+              <div className="flex items-center space-x-2">
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span className="text-xs text-gray-700">User: <span className="font-medium">{username}</span></span>
+              </div>
+              <div className="flex items-center space-x-2 mt-1">
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>
+                <span className="text-xs text-gray-700">Balance:</span>
+                <span className="text-xs text-gray-500">$20</span>
+              </div>
+            </div>
             {profileToggle}
-          </div>
-          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
-            <span className="text-xs text-gray-700">Balance:</span>
-            <span className="text-xs text-gray-500">$20</span>
           </div>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Button } from '../shared/Button';
 import { CreateRouterModal } from './CreateRouterModal';
@@ -10,6 +11,51 @@ interface RouterListProps {
   onRouterClick?: (routerName: string, published: boolean, author: string) => void;
   profile: ProfileType;
 }
+
+// Helper function to get enabled services for a router
+const getEnabledServices = (router: Router) => {
+  return router.services?.filter(service => service.enabled).map(service => service.type) || [];
+};
+
+// Component for service icons
+const ServiceIcons = ({ enabledServices }: { enabledServices: string[] }) => {
+  return (
+    <div className="flex items-center gap-1">
+      {enabledServices.includes('search') && (
+        <svg 
+          className="h-4 w-4 text-gray-600" 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+          title="Search service available"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2} 
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+          />
+        </svg>
+      )}
+      {enabledServices.includes('chat') && (
+        <svg 
+          className="h-4 w-4 text-gray-600" 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+          title="Chat service available"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2} 
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+          />
+        </svg>
+      )}
+    </div>
+  );
+};
 
 export function RouterList({ onRouterClick, profile }: RouterListProps) {
   const [routers, setRouters] = useState<Router[]>([]);
@@ -123,6 +169,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                 {/* Left: Main Content */}
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
+                    <ServiceIcons enabledServices={getEnabledServices(router)} />
                     <span className="text-lg font-semibold text-gray-900 truncate">{router.name}</span>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       router.published 
@@ -133,7 +180,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
-                    Author {router.author}
+                    Author: {router.author}
                   </div>
                   {router.summary && (
                     <div className="text-sm text-gray-700 max-w-md bg-gray-50 rounded px-3 py-2 mb-3 break-words">
