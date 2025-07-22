@@ -9,8 +9,10 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
+from syft_accounting_sdk import UserClient
 from dotenv import load_dotenv
+from syft_core.config import SyftClientConfig
 
 
 class RunStatus(str, Enum):
@@ -61,11 +63,26 @@ class RouterConfiguration(BaseModel):
     enable_search: bool = Field(default=True, description="Enable search service")
 
 
-class StateFile(BaseModel):
-    """Complete state file structure."""
+class AccountingConfig(BaseModel):
+    """Accounting configuration."""
 
-    project: ProjectInfo
-    configuration: RouterConfiguration
+    url: str
+    email: EmailStr
+    password: str
+
+    @property
+    def client(self) -> UserClient:
+        """Get user client."""
+        return UserClient(
+            url=self.url,
+            email=self.email,
+            password=self.password,
+        )
+
+
+class StateFile(BaseModel):
+    """Runtime state file structure (services and router only)."""
+
     services: Dict[str, ServiceState] = Field(default_factory=dict)
     router: RouterState = Field(default_factory=lambda: RouterState(status="stopped"))
 
@@ -100,125 +117,109 @@ class StateFile(BaseModel):
             return cls.model_validate(json.load(f))
 
 
-class RouterConfig:
-    """Simplified router configuration that wraps StateFile for easy access."""
+class RouterConfig(BaseModel):
+    """Aggregates static config and runtime state for the router."""
 
-    def __init__(self, state_file: StateFile):
-        """Initialize with a StateFile instance."""
-        self._state = state_file
+    project: ProjectInfo
+    configuration: RouterConfiguration
+    state: StateFile
+    accounting: AccountingConfig
+    syft_config: SyftClientConfig
 
     @property
     def project_name(self) -> str:
-        """Get project name."""
-        return self._state.project.name
+        return self.project.name
 
     @property
     def enable_chat(self) -> bool:
-        """Check if chat is enabled."""
-        return self._state.configuration.enable_chat
+        return self.configuration.enable_chat
 
     @property
     def enable_search(self) -> bool:
-        """Check if search is enabled."""
-        return self._state.configuration.enable_search
+        return self.configuration.enable_search
 
     @property
     def service_urls(self) -> Dict[str, str]:
-        """Get URLs of running services."""
         urls = {}
-        for service_name, service_state in self._state.services.items():
+        for service_name, service_state in self.state.services.items():
             if service_state.status == RunStatus.RUNNING and service_state.url:
                 urls[service_name] = service_state.url
         return urls
 
     def get_service_url(self, service_name: str) -> Optional[str]:
-        """Get URL for a specific service."""
-        service_state = self._state.services.get(service_name)
+        service_state = self.state.services.get(service_name)
         if service_state and service_state.status == RunStatus.RUNNING:
             return service_state.url
         return None
 
     def is_service_enabled(self, service_name: str) -> bool:
-        """Check if a service is enabled."""
         if service_name == "chat":
             return self.enable_chat
         elif service_name == "search":
             return self.enable_search
         return False
 
-    @property
-    def state(self) -> StateFile:
-        """Get the underlying StateFile for advanced operations."""
-        return self._state
+    def accounting_client(self) -> UserClient:
+        return self.accounting.client
 
     @classmethod
-    def from_state_file(cls, state_file: str = "state.json") -> "RouterConfig":
-        """Load configuration from state.json file."""
+    def load(
+        cls,
+        syft_config_path: Path,
+        state_file: str = "state.json",
+        env_file: str = ".env",
+    ) -> "RouterConfig":
+        """
+        Loads runtime state from state_file, and static config from environment variables (or config file if provided).
+        """
         state_path = Path(state_file)
-        load_dotenv(override=True)
+        if state_path.exists():
+            try:
+                state = StateFile.load(state_path)
+            except Exception as e:
+                print(f"Warning: Failed to load state file: {e}")
+                state = StateFile(
+                    services={}, router=RouterState(status=RunStatus.STOPPED)
+                )
+        else:
+            state = StateFile(services={}, router=RouterState(status=RunStatus.STOPPED))
 
-        if not state_path.exists():
-            # Fallback to environment variables
-            return cls.from_env()
+        # Load environment variables from .env file
+        load_dotenv(env_file, override=True)
 
-        try:
-            state = StateFile.load(state_path)
-            return cls(state)
-        except Exception as e:
-            print(f"Warning: Failed to load state file {state_file}: {e}")
-            # Fallback to environment variables
-            return cls.from_env()
+        # Load required environment variables from os.environ
+        required_env_vars = [
+            "PROJECT_NAME",
+            "ENABLE_CHAT",
+            "ENABLE_SEARCH",
+            "ACCOUNTING_URL",
+            "ACCOUNTING_EMAIL",
+            "ACCOUNTING_PASSWORD",
+        ]
+        for var in required_env_vars:
+            if var not in os.environ:
+                raise ValueError(f"{var} is required in environment variables")
 
-    @classmethod
-    def from_env(cls) -> "RouterConfig":
-        """Load configuration from environment variables."""
-        # Load .env file if it exists
-        env_file = Path(".env")
-        if env_file.exists():
-            load_dotenv(env_file)
-
-        # Required fields
-        project_name = os.getenv("PROJECT_NAME")
-        if not project_name:
-            raise ValueError("PROJECT_NAME is required in environment variables")
-
-        # Optional fields with defaults
-        enable_chat = os.getenv("ENABLE_CHAT", "true").lower() == "true"
-        enable_search = os.getenv("ENABLE_SEARCH", "true").lower() == "true"
-
-        # Create a minimal StateFile from environment
-        state = StateFile(
-            project=ProjectInfo(name=project_name, version="1.0.0"),
-            configuration=RouterConfiguration(
-                enable_chat=enable_chat, enable_search=enable_search
-            ),
-            services={},
-            router=RouterState(status=RunStatus.STOPPED),
+        project_name = os.environ["PROJECT_NAME"]
+        enable_chat = os.environ["ENABLE_CHAT"].lower() == "true"
+        enable_search = os.environ["ENABLE_SEARCH"].lower() == "true"
+        project = ProjectInfo(name=project_name, version="1.0.0")
+        configuration = RouterConfiguration(
+            enable_chat=enable_chat, enable_search=enable_search
+        )
+        accounting = AccountingConfig(
+            url=os.environ["ACCOUNTING_URL"],
+            email=os.environ["ACCOUNTING_EMAIL"],
+            password=os.environ["ACCOUNTING_PASSWORD"],
         )
 
-        # Add service URLs from environment if available
-        ollama_url = os.getenv("OLLAMA_BASE_URL")
-        if ollama_url:
-            state.services["chat"] = ServiceState(
-                status=RunStatus.RUNNING, url=ollama_url
-            )
-
-        rag_url = os.getenv("RAG_SERVICE_URL")
-        if rag_url:
-            state.services["search"] = ServiceState(
-                status=RunStatus.RUNNING, url=rag_url
-            )
-
-        return cls(state)
+        syft_config = SyftClientConfig.load(syft_config_path)
+        return cls(project, configuration, state, accounting, syft_config)
 
 
-def load_config() -> RouterConfig:
-    """Load configuration using state-first approach.
-
-    Returns:
-        RouterConfig: The loaded configuration
-
-    Raises:
-        ValueError: If required configuration is missing
-    """
-    return RouterConfig.from_state_file()
+def load_config(
+    syft_config_path: Path,
+    state_file: str = "state.json",
+    env_file: str = ".env",
+) -> RouterConfig:
+    return RouterConfig.load(syft_config_path, state_file, env_file)

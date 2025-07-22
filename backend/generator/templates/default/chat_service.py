@@ -9,7 +9,9 @@ from loguru import logger
 
 from base_services import ChatService
 from schema import ChatResponse, GenerationOptions, Message, Usage
-from config import load_config
+from config import RouterConfig
+from pydantic import EmailStr
+from syft_accounting_sdk import UserClient
 
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
@@ -18,17 +20,22 @@ DEFAULT_OLLAMA_URL = "http://localhost:11434"
 class OllamaChatService(ChatService):
     """Ollama chat service implementation."""
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize Ollama chat service."""
 
-        config = load_config()
-        self.base_url = config.get_service_url("chat") or DEFAULT_OLLAMA_URL
+        super().__init__(config)
+        self.base_url = self.config.get_service_url("chat") or DEFAULT_OLLAMA_URL
         logger.info(f"Initialized Ollama chat service with base URL: {self.base_url}")
+
+        self.       : UserClient = self.config.accounting_client()
+        logger.info(f"Initialized accounting client: {self.accounting_client}")
 
     def generate_chat(
         self,
         model: str,
         messages: List[Message],
+        user_email: EmailStr,
+        transaction_token: str,
         options: Optional[GenerationOptions] = None,
     ) -> ChatResponse:
         """Generate a chat response using Ollama."""
@@ -51,20 +58,31 @@ class OllamaChatService(ChatService):
                 if options.stop_sequences:
                     payload["stop"] = options.stop_sequences
 
-            # Make request to Ollama
-            response = requests.post(
-                f"{self.base_url}/api/chat",
-                json=payload,
-                timeout=120,
-            )
-            response.raise_for_status()
+            with self.accounting_client.delegated_transfer(
+                user_email,
+                amount=0.1,
+                token=transaction_token,
+            ) as payment_txn:
+                # Make request to Ollama
+                response = requests.post(
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                    timeout=120,
+                )
+                response.raise_for_status()
 
-            ollama_response = response.json()
+                ollama_response = response.json()
+
+                content = ollama_response["message"]["content"]
+
+                # If the response is not empty, confirm the transaction
+                if content:
+                    payment_txn.confirm()
 
             # Convert Ollama response to our schema
             assistant_message = Message(
                 role="assistant",
-                content=ollama_response["message"]["content"],
+                content=content,
             )
 
             # Estimate token usage (Ollama doesn't provide exact counts)

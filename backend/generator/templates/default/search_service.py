@@ -9,7 +9,8 @@ import httpx
 
 from base_services import SearchService
 from schema import DocumentResult, SearchOptions, SearchResponse
-from config import load_config
+from config import RouterConfig
+from pydantic import EmailStr
 
 
 MAX_DOCUMENT_LIMIT_PER_QUERY = 10
@@ -18,10 +19,10 @@ MAX_DOCUMENT_LIMIT_PER_QUERY = 10
 class LocalSearchService(SearchService):
     """Local RAG service using ChromaDB and Sentence Transformers."""
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize local RAG service."""
-        config = load_config()
-        self.rag_url = config.get_service_url("search")
+        super().__init__(config)
+        self.rag_url = self.config.get_service_url("search")
         if not self.rag_url:
             raise ValueError("Search service URL not found in configuration")
         logger.info(f"Initialized local RAG service with URL: {self.rag_url}")
@@ -41,19 +42,27 @@ class LocalSearchService(SearchService):
     def search_documents(
         self,
         query: str,
+        user_email: EmailStr,
+        transaction_token: str,
         options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents using local RAG."""
 
         limit = options.limit if options else MAX_DOCUMENT_LIMIT_PER_QUERY
         try:
-            response = self.rag_client.post(
-                "/api/search",
-                json={
-                    "query": query,
-                    "limit": limit,
-                },
-            )
+            with self.accounting_client.delegated_transfer(
+                user_email,
+                amount=0.1,
+                token=transaction_token,
+            ) as payment_txn:
+                response = self.rag_client.post(
+                    "/api/search",
+                    json={
+                        "query": query,
+                        "limit": limit,
+                    },
+                )
+                response.raise_for_status()
 
             response_json = response.json()
 
@@ -74,7 +83,9 @@ class LocalSearchService(SearchService):
                 for result in results
             ]
 
-            response.raise_for_status()
+            if len(documents) > 0:
+                payment_txn.confirm()
+
             return SearchResponse(
                 id=uuid4(),
                 query=query,

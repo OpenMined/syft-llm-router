@@ -5,12 +5,20 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel, field_validator
 from syft_core.config import SyftClientConfig
 from syft_core import Client as SyftClient
 
 RouterType = Literal["default", "custom"]
+
+
+class UserAccountingConfig(BaseModel):
+    """User accounting configuration."""
+
+    url: str
+    email: str
+    password: str
 
 
 class ProjectConfig(BaseModel):
@@ -21,6 +29,7 @@ class ProjectConfig(BaseModel):
     enable_chat: bool = True
     enable_search: bool = True
     syftbox_config: SyftClientConfig
+    user_accounting_config: UserAccountingConfig
 
     # add a pydantic validator to format the project name
     # Replace spaces by dashes and convert to lowercase
@@ -122,27 +131,27 @@ from schema import (
 )
 
 from base_services import ChatService, SearchService
-from config import load_config
+from config import RouterConfig
 
 
 class RouterFactory:
     """Factory for creating service instances based on configuration."""
     
     @staticmethod
-    def create_chat_service() -> ChatService:
+    def create_chat_service(config: RouterConfig) -> ChatService:
         """Create chat service instance."""
         try:
             from chat_service import ChatServiceImpl
-            return ChatServiceImpl()
+            return ChatServiceImpl(config)
         except ImportError:
             raise ImportError("Chat service implementation not found")
     
     @staticmethod
-    def create_search_service() -> SearchService:
+    def create_search_service(config: RouterConfig) -> SearchService:
         """Create search service instance."""
         try:
             from search_service import SearchServiceImpl
-            return SearchServiceImpl()
+            return SearchServiceImpl(config)
         except ImportError:
             raise ImportError("Search service implementation not found")
 
@@ -150,19 +159,19 @@ class RouterFactory:
 class SyftLLMRouter:
     """Syft LLM Router that orchestrates chat and search services."""
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize the router with configured services."""
-        self.config = load_config()
+        self.config = config
         
         # Initialize services using factory pattern
         self.chat_service = None
         self.search_service = None
         
         if self.config.enable_chat:
-            self.chat_service = RouterFactory.create_chat_service()
+            self.chat_service = RouterFactory.create_chat_service(self.config)
         
         if self.config.enable_search:
-            self.search_service = RouterFactory.create_search_service()
+            self.search_service = RouterFactory.create_search_service(self.config)
 
     def generate_chat(
         self,
@@ -215,6 +224,7 @@ dependencies = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "httpx>=0.24.0",
+    "accounting-sdk @ git+https://github.com/OpenMined/accounting-sdk.git"
 ]
 
 [project.optional-dependencies]
@@ -251,6 +261,11 @@ python_functions = ["test_*"]
             "# Service Configuration",
             f"ENABLE_CHAT={str(config.enable_chat).lower()}",
             f"ENABLE_SEARCH={str(config.enable_search).lower()}",
+            "",
+            "# Accounting Configuration",
+            f"ACCOUNTING_URL={config.user_accounting_config.url}",
+            f"ACCOUNTING_EMAIL={config.user_accounting_config.email}",
+            f"ACCOUNTING_PASSWORD={config.user_accounting_config.password}",
             "",
         ]
 

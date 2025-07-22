@@ -120,7 +120,7 @@ class ChatResponse(SchemaBase):
     logprobs: Optional[LogProbs] = None
 
 
-class GenerateChatParams(SchemaBase):
+class ChatRequest(SchemaBase):
     """Parameters for chat completion generation."""
 
     # The model identifier to use for chat

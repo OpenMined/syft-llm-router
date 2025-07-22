@@ -16,7 +16,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from dotenv import load_dotenv
-from config import ProjectInfo, RouterConfiguration, RouterState, RunStatus, StateFile
+from config import (
+    AccountingConfig,
+    ProjectInfo,
+    RouterConfiguration,
+    RouterState,
+    RunStatus,
+    StateFile,
+)
 
 # Configure verbose logging
 logging.basicConfig(
@@ -62,7 +69,7 @@ class CustomServiceManager:
         logger.info(f"Chat enabled: {self.enable_chat}")
         logger.info(f"Search enabled: {self.enable_search}")
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> StateFile:
         """Load service state from state.json."""
         if self.state_file.exists():
             try:
@@ -70,20 +77,12 @@ class CustomServiceManager:
             except Exception as e:
                 logger.warning(f"Failed to load state: {e}")
 
-        # Initialize default state with new unified structure
-        project_info = ProjectInfo(name=self.project_name, version="1.0.0")
-        router_configuration = RouterConfiguration(
-            enable_chat=self.enable_chat,
-            enable_search=self.enable_search,
-        )
+        # Initialize default state with new structure
         state = StateFile(
-            project=project_info,
-            configuration=router_configuration,
             services={},
+            router=RouterState(status=RunStatus.STOPPED),
         )
-
         state.save(self.state_file)
-
         # Initialize service states based on enabled services
         if self.enable_chat:
             state.update_service_state(
@@ -95,7 +94,6 @@ class CustomServiceManager:
                 started_at=None,
                 error=None,
             )
-
         if self.enable_search:
             state.update_service_state(
                 "search",
@@ -106,7 +104,6 @@ class CustomServiceManager:
                 started_at=None,
                 error=None,
             )
-
         return state
 
     def spawn_custom_chat(self) -> bool:

@@ -17,7 +17,14 @@ from dataclasses import dataclass, asdict
 from dotenv import load_dotenv
 import requests
 from syft_core import Client
-from config import ProjectInfo, RouterConfiguration, RouterState, RunStatus, StateFile
+from config import (
+    AccountingConfig,
+    ProjectInfo,
+    RouterConfiguration,
+    RouterState,
+    RunStatus,
+    StateFile,
+)
 
 # Configure verbose logging
 logging.basicConfig(
@@ -87,28 +94,19 @@ class ServiceManager:
         logger.info(f"Chat enabled: {self.enable_chat}")
         logger.info(f"Search enabled: {self.enable_search}")
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> StateFile:
         """Load service state from state.json."""
         if self.state_file.exists():
             try:
                 return StateFile.load(self.state_file)
             except Exception as e:
                 logger.warning(f"Failed to load state: {e}")
-        else:
-            # Initialize default state with new unified structure
-            project_info = ProjectInfo(name=self.project_name, version="1.0.0")
-            router_configuration = RouterConfiguration(
-                enable_chat=self.enable_chat,
-                enable_search=self.enable_search,
-            )
-            state = StateFile(
-                project=project_info,
-                configuration=router_configuration,
-                services={},
-            )
-            state.save(self.state_file)
-            return state
-
+        # Initialize default state with new structure
+        state = StateFile(
+            services={},
+            router=RouterState(status=RunStatus.STOPPED),
+        )
+        state.save(self.state_file)
         # Initialize service states based on enabled services
         if self.enable_chat:
             state.update_service_state(
@@ -120,7 +118,6 @@ class ServiceManager:
                 started_at=None,
                 error=None,
             )
-
         if self.enable_search:
             state.update_service_state(
                 "search",
@@ -131,7 +128,6 @@ class ServiceManager:
                 started_at=None,
                 error=None,
             )
-
         return state
 
     def spawn_ollama(self) -> bool:

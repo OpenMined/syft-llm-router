@@ -10,6 +10,8 @@ from loguru import logger
 
 from base_services import ChatService
 from schema import ChatResponse, GenerationOptions, Message, Usage
+from pydantic import EmailStr
+from config import RouterConfig
 
 
 class CustomChatService(ChatService):
@@ -18,14 +20,16 @@ class CustomChatService(ChatService):
     TODO: Implement your chat service logic here.
     """
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize custom chat service."""
+        super().__init__(config)
         # TODO: Add your initialization logic here
         # Example: API keys, base URLs, model configurations, etc.
         logger.info("Initialized custom chat service")
 
     def generate_chat(
         self,
+        user_email: EmailStr,
         model: str,
         messages: List[Message],
         options: Optional[GenerationOptions] = None,
@@ -43,8 +47,15 @@ class CustomChatService(ChatService):
         # }
 
         # 2. Make request to your service
-        # response = requests.post("your_api_endpoint", json=payload)
-        # response_data = response.json()
+        # with self.accounting_client.delegated_transfer(
+        #     user_email,
+        #     amount=0.1,
+        #     token=transaction_token,
+        # ) as payment_txn:
+        #   response = requests.post("your_api_endpoint", json=payload)
+        #   response_data = response.json()
+        #   response.raise_for_status()
+        #   payment_txn.confirm()
 
         # 3. Convert response to our schema format
         # assistant_message = Message(

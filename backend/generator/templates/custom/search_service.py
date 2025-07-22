@@ -10,6 +10,8 @@ from loguru import logger
 
 from base_services import SearchService
 from schema import DocumentResult, SearchOptions, SearchResponse
+from pydantic import EmailStr
+from config import RouterConfig
 
 
 class CustomSearchService(SearchService):
@@ -18,14 +20,16 @@ class CustomSearchService(SearchService):
     TODO: Implement your search service logic here.
     """
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize custom search service."""
+        super().__init__(config)
         # TODO: Add your initialization logic here
         # Example: Database connections, API keys, index configurations, etc.
         logger.info("Initialized custom search service")
 
     def search_documents(
         self,
+        user_email: EmailStr,
         query: str,
         options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
@@ -42,7 +46,13 @@ class CustomSearchService(SearchService):
         # }
 
         # 2. Search your document index/database
-        # results = your_search_function(search_params)
+        # with self.accounting_client.delegated_transfer(
+        #     user_email,
+        #     amount=0.1,
+        #     token=transaction_token,
+        # ) as payment_txn:
+        #   results = your_search_function(search_params)
+        #   payment_txn.confirm()
 
         # 3. Convert results to DocumentResult format
         # documents = []

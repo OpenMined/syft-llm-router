@@ -11,19 +11,20 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastsyftbox import FastSyftBox
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from loguru import logger
 from pydantic import BaseModel
 from syft_core.config import SyftClientConfig
 from pathlib import Path
+from pydantic import EmailStr
 
 from config import load_config, RunStatus
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
-    GenerateChatParams,
     SearchDocumentsParams,
+    ChatRequest,
     SearchOptions,
     SearchResponse,
 )
@@ -115,9 +116,9 @@ async def lifespan(app: FastSyftBox):
     """Custom lifespan method to initialize router and handle startup/shutdown."""
     try:
         # Startup logic
-        config = load_config()
+        config = load_config(syft_config_path=app.syftbox_config.path)
         global router
-        router = SyftLLMRouter()
+        router = SyftLLMRouter(config=config)
         logger.info(f"Router initialized for project: {config.project_name}")
         generate_openapi_schema(app)
         setup_default_rpc_permissions(app)
@@ -161,7 +162,7 @@ app = FastSyftBox(
     summary="Health check",
     description="Health check",
 )
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint.
 
     Returns:
@@ -170,7 +171,8 @@ async def health_check():
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    config = load_config()
+    syft_config_path = request.app.syftbox_config.path
+    config = load_config(syft_config_path=syft_config_path)
 
     # Check service availability
     services = config.state.services.model_dump()
@@ -190,11 +192,12 @@ async def health_check():
     description="Chat with the router",
     responses={200: {"model": ChatResponse}},
 )
-async def chat_completion(request: GenerateChatParams):
+async def chat_completion(user_email: EmailStr, request: ChatRequest) -> ChatResponse:
     """Chat completion endpoint.
 
     Args:
-        request (GenerateChatParams): The request body containing the chat completion parameters
+        user_email (EmailStr): The email of the user making the request
+        request (ChatRequest): The request body containing the chat completion parameters
 
     Returns:
         ChatResponse: The chat completion response from the router
@@ -203,7 +206,12 @@ async def chat_completion(request: GenerateChatParams):
         raise HTTPException(status_code=503, detail="Router not initialized")
 
     try:
-        return router.generate_chat(request.model, request.messages, request.options)
+        return router.generate_chat(
+            user_email,
+            request.model,
+            request.messages,
+            request.options,
+        )
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -225,7 +233,7 @@ def is_port_in_use(port: int) -> bool:
     description="Search documents",
     responses={200: {"model": SearchResponse}},
 )
-async def search_documents(request: SearchDocumentsParams):
+async def search_documents(user_email: EmailStr, request: SearchDocumentsParams):
     """Document retrieval endpoint.
 
     Args:
@@ -245,7 +253,7 @@ async def search_documents(request: SearchDocumentsParams):
         options.limit = 3
 
     try:
-        return router.search_documents(request.query, options)
+        return router.search_documents(user_email, request.query, options)
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
