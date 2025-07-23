@@ -12,7 +12,7 @@ from schema import (
     ChatResponse,
     GenerationOptions,
     Message,
-    Usage,
+    ChatUsage,
     PublishedMetadata,
     RouterServiceType,
 )
@@ -122,7 +122,7 @@ class OllamaChatService(ChatService):
             completion_tokens = len(assistant_message.content.split())
             total_tokens = prompt_tokens + completion_tokens
 
-            usage = Usage(
+            usage = ChatUsage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=total_tokens,

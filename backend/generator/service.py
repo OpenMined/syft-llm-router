@@ -132,6 +132,7 @@ from schema import (
 
 from base_services import ChatService, SearchService
 from config import RouterConfig
+from pydantic import EmailStr
 
 
 class RouterFactory:
