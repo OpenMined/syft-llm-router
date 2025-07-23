@@ -177,22 +177,37 @@ class SyftLLMRouter:
         self,
         model: str,
         messages: List[Message],
+        user_email: EmailStr,
+        transaction_token: Optional[str] = None,
         options: Optional[GenerationOptions] = None,
     ) -> ChatResponse:
         """Generate a chat response based on conversation history."""
         if not self.chat_service:
             raise NotImplementedError("Chat functionality is not enabled")
-        return self.chat_service.generate_chat(model, messages, options)
+        return self.chat_service.generate_chat(
+            model=model,
+            messages=messages,
+            user_email=user_email,
+            transaction_token=transaction_token,
+            options=options,
+        )
 
     def search_documents(
         self,
+        user_email: EmailStr,
         query: str,
         options: Optional[SearchOptions] = None,
+        transaction_token: Optional[str] = None,
     ) -> SearchResponse:
         """Search documents from the index based on a search query."""
         if not self.search_service:
             raise NotImplementedError("Search functionality is not enabled")
-        return self.search_service.search_documents(query, options)
+        return self.search_service.search_documents(
+            user_email=user_email,
+            query=query,
+            options=options,
+            transaction_token=transaction_token,
+        )
 '''
 
         with open(output_path / "router.py", "w") as f:

@@ -38,6 +38,7 @@ class LocalSearchService(SearchService):
         self._check_if_rag_is_ready()
 
     def _check_if_rag_is_ready(self):
+        """Check if RAG is ready."""
         try:
             response = self.rag_client.get("/api/stats")
             response.raise_for_status()
@@ -45,34 +46,55 @@ class LocalSearchService(SearchService):
         except Exception as e:
             logger.error(f"RAG is not ready: {e}")
 
+    def __make_search_request(self, payload: dict) -> list[dict]:
+        """Make a search request to the RAG service."""
+        response = self.rag_client.post(
+            "/api/search",
+            json=payload,
+        )
+        response.raise_for_status()
+
+        response_json = response.json()
+
+        return response_json["results"]
+
     def search_documents(
         self,
-        query: str,
         user_email: EmailStr,
-        transaction_token: str,
+        query: str,
+        transaction_token: Optional[str] = None,
         options: Optional[SearchOptions] = None,
     ) -> SearchResponse:
         """Search documents using local RAG."""
 
         limit = options.limit if options else MAX_DOCUMENT_LIMIT_PER_QUERY
+
+        query_cost = 0.0
+
         try:
-            with self.accounting_client.delegated_transfer(
-                user_email,
-                amount=self.pricing,
-                token=transaction_token,
-            ) as payment_txn:
-                response = self.rag_client.post(
-                    "/api/search",
-                    json={
-                        "query": query,
-                        "limit": limit,
-                    },
+
+            if self.pricing > 0 and transaction_token:
+                # If pricing is not zero, then we need to create a transaction
+                with self.accounting_client.delegated_transfer(
+                    user_email,
+                    amount=self.pricing,
+                    token=transaction_token,
+                ) as payment_txn:
+                    results = self.__make_search_request(query, limit)
+
+                    if len(results) > 0:
+                        payment_txn.confirm()
+                    query_cost = self.pricing
+            elif self.pricing > 0 and not transaction_token:
+                # If pricing is not zero, but transaction token is not provided, then we raise an error
+                raise ValueError(
+                    "Transaction token is required for paid services. Please provide a transaction token."
                 )
-                response.raise_for_status()
+            else:
+                # If pricing is zero, then we make a request to RAG without creating a transaction
+                # We don't need to create a transaction because the service is free
+                results = self.__make_search_request(query, limit)
 
-            response_json = response.json()
-
-            results = response_json["results"]
             documents = [
                 DocumentResult(
                     id=str(result["id"]),
@@ -89,14 +111,12 @@ class LocalSearchService(SearchService):
                 for result in results
             ]
 
-            if len(documents) > 0:
-                payment_txn.confirm()
-
             return SearchResponse(
                 id=uuid4(),
                 query=query,
                 results=documents,
                 provider_info={"provider": "local_rag"},
+                cost=query_cost,
             )
 
         except Exception as e:

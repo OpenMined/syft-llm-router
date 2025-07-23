@@ -1,10 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 from uuid import UUID
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 def to_camel(snake_str: str) -> str:
@@ -17,6 +17,9 @@ class SchemaBase(BaseModel):
     class Config:
         populate_by_name = True
         alias_generator = to_camel
+
+
+DEFAULT_SEARCH_LIMIT = 3
 
 
 class Role(str, Enum):
@@ -75,7 +78,7 @@ class GenerationOptions(SchemaBase):
     )
 
 
-class Usage(SchemaBase):
+class ChatUsage(SchemaBase):
     """Token usage information for the request and response."""
 
     # The number of tokens in the prompt
@@ -113,13 +116,16 @@ class ChatResponse(SchemaBase):
     finish_reason: Optional[FinishReason] = None
 
     # Token usage information
-    usage: Usage
+    usage: ChatUsage
 
     # Provider-specific information
     provider_info: Optional[dict[str, Any]] = None
 
     # Log probabilities for generated tokens
     logprobs: Optional[LogProbs] = None
+
+    # Cost of the request
+    cost: Optional[float] = None
 
 
 class ChatRequest(SchemaBase):
@@ -135,41 +141,13 @@ class ChatRequest(SchemaBase):
     options: Optional[GenerationOptions] = None
 
 
-class EmbeddingOptions(SchemaBase):
-    """Options for controlling document embedding process"""
-
-    # Size of text chunks for embedding
-    chunk_size: Optional[int] = Field(
-        default=None, description="Size of text chunks for embedding"
-    )
-
-    # Overlap between consecutive chunks
-    chunk_overlap: Optional[int] = Field(
-        default=None, description="Overlap between consecutive chunks"
-    )
-
-    # Number of documents to process in a single batch
-    batch_size: Optional[int] = Field(
-        default=None, description="Number of documents to process in a single batch"
-    )
-
-    # Interval in seconds to check for new files
-    process_interval: Optional[int] = Field(
-        default=None, description="Interval in seconds to check for new files"
-    )
-
-    # Container for embedder-specific extensions
-    extensions: Optional[dict[str, Any]] = Field(
-        default=None, description="Container for embedder-specific extensions"
-    )
-
-
 class SearchOptions(SchemaBase):
     """Options for controlling document retrieval process"""
 
     # Maximum number of documents to search
     limit: Optional[int] = Field(
-        default=None, description="Maximum number of documents to search"
+        default=DEFAULT_SEARCH_LIMIT,
+        description="Maximum number of documents to search",
     )
 
     # Minimum similarity score for searched documents
@@ -219,41 +197,24 @@ class DocumentResult(SchemaBase):
     )
 
 
-class EmbeddingResponse(SchemaBase):
-    """The result of the document embedding operation"""
-
-    # Unique identifier for this embedding operation
-    id: UUID = Field(..., description="Unique identifier for this embedding operation")
-
-    # Status of the embedding operation
-    status: Literal["success", "partial_success", "failure"] = Field(
-        ..., description="Status of the embedding operation"
-    )
-
-    # Number of documents successfully processed
-    processed_count: int = Field(
-        ..., description="Number of documents successfully processed"
-    )
-
-    # Number of documents that failed processing
-    failed_count: Optional[int] = Field(
-        default=None, description="Number of documents that failed processing"
-    )
-
-    # Router-specific information
-    provider_info: Optional[dict[str, Any]] = Field(
-        default=None, description="Router-specific information"
-    )
-
-
-class SearchDocumentsParams(SchemaBase):
+class SearchRequest(SchemaBase):
     """Parameters for document search request."""
+
+    # The user email
+    user_email: EmailStr = Field(..., description="The user email")
 
     # The search query
     query: str = Field(..., description="The search query")
 
     # Additional parameters for the search
-    options: Optional[SearchOptions] = None
+    options: Optional[SearchOptions] = Field(
+        default=SearchOptions(), description="Additional parameters for the search"
+    )
+
+    # Transaction token
+    transaction_token: Optional[str] = Field(
+        default=None, description="Transaction token"
+    )
 
 
 class SearchResponse(SchemaBase):
@@ -275,8 +236,14 @@ class SearchResponse(SchemaBase):
         default=None, description="Router-specific information"
     )
 
+    # Cost of the request
+    cost: Optional[float] = None
+
 
 class PricingChargeType(str, Enum):
+    """The type of charge for a service"""
+
+    # The service is charged per request
     PER_REQUEST = "per_request"
 
 
@@ -290,29 +257,59 @@ class RouterServiceType(str, Enum):
 
 
 class ServiceOverview(SchemaBase):
+    """Overview of a service provided by the router"""
+
+    # The type of service
     type: RouterServiceType
+
+    # The pricing of the service
     pricing: float
+
+    # The charge type of the service
     charge_type: PricingChargeType = Field(default=PricingChargeType.PER_REQUEST)
+
+    # Whether the service is enabled
     enabled: bool
 
 
 class PublishedMetadata(SchemaBase):
     """Metadata for a published project."""
 
+    # Name of the project
     project_name: str = Field(..., description="Name of the project")
+
+    # Description of the project
     description: str = Field(..., description="Project description")
+
+    # Summary of the project
     summary: str = Field(..., description="Project summary")
+
+    # Tags of the project
     tags: list[str] = Field(default_factory=list, description="Project tags")
+
+    # Services provided by the project
     services: list[ServiceOverview] = Field(
         default_factory=list, description="Pricing information"
     )
+
+    # SHA256 hash of all Python files
     code_hash: str = Field(..., description="SHA256 hash of all Python files")
+
+    # Version of the project
     version: str = Field(..., description="Project version")
+
+    # API endpoints documentation
     documented_endpoints: Optional[dict[str, Any]] = Field(
         None, description="API endpoints documentation"
     )
+
+    # Publication date
     publish_date: datetime = Field(..., description="Publication date")
+
+    # Author email
     author: str = Field(..., description="Author email")
+
+    # Path to RPC schema file
     schema_path: Optional[str] = Field(None, description="Path to RPC schema file")
 
     @classmethod

@@ -23,7 +23,7 @@ from config import load_config, RunStatus
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
-    SearchDocumentsParams,
+    SearchRequest,
     ChatRequest,
     SearchOptions,
     SearchResponse,
@@ -219,7 +219,7 @@ async def health_check(request: Request):
     description="Chat with the router",
     responses={200: {"model": ChatResponse}},
 )
-async def chat_completion(user_email: EmailStr, request: ChatRequest) -> ChatResponse:
+async def chat_completion(request: ChatRequest) -> ChatResponse:
     """Chat completion endpoint.
 
     Args:
@@ -234,10 +234,11 @@ async def chat_completion(user_email: EmailStr, request: ChatRequest) -> ChatRes
 
     try:
         return router.generate_chat(
-            user_email,
-            request.model,
-            request.messages,
-            request.options,
+            user_email=request.user_email,
+            model=request.model,
+            messages=request.messages,
+            options=request.options,
+            transaction_token=request.transaction_token,
         )
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
@@ -260,7 +261,7 @@ def is_port_in_use(port: int) -> bool:
     description="Search documents",
     responses={200: {"model": SearchResponse}},
 )
-async def search_documents(user_email: EmailStr, request: SearchDocumentsParams):
+async def search_documents(request: SearchRequest):
     """Document retrieval endpoint.
 
     Args:
@@ -272,15 +273,13 @@ async def search_documents(user_email: EmailStr, request: SearchDocumentsParams)
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    # Set default limit if options are not provided or limit is not set
-    options = request.options
-    if options is None:
-        options = SearchOptions(limit=3)
-    elif options.limit is None:
-        options.limit = 3
-
     try:
-        return router.search_documents(user_email, request.query, options)
+        return router.search_documents(
+            user_email=request.user_email,
+            query=request.query,
+            options=request.options,
+            transaction_token=request.transaction_token,
+        )
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:

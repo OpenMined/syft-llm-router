@@ -25,9 +25,10 @@ class ChatService(ABC):
     @abstractmethod
     def generate_chat(
         self,
-        user_email: EmailStr,
         model: str,
         messages: List[Message],
+        user_email: EmailStr,
+        transaction_token: Optional[str] = None,
         options: Optional[GenerationOptions] = None,
     ) -> ChatResponse:
         """Generate a chat response based on conversation history."""
@@ -46,6 +47,7 @@ class SearchService(ABC):
         user_email: EmailStr,
         query: str,
         options: Optional[SearchOptions] = None,
+        transaction_token: Optional[str] = None,
     ) -> SearchResponse:
         """Search documents based on a search query."""
         pass

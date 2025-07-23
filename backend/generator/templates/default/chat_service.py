@@ -37,12 +37,27 @@ class OllamaChatService(ChatService):
         self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
 
+    def __make_chat_request(self, payload: dict) -> dict:
+        """Make a search request to the Ollama API."""
+        response = requests.post(
+            f"{self.base_url}/api/chat",
+            json=payload,
+            timeout=120,
+        )
+        response.raise_for_status()
+
+        ollama_response = response.json()
+
+        content = ollama_response["message"]["content"]
+
+        return content
+
     def generate_chat(
         self,
         model: str,
         messages: List[Message],
         user_email: EmailStr,
-        transaction_token: str,
+        transaction_token: Optional[str] = None,
         options: Optional[GenerationOptions] = None,
     ) -> ChatResponse:
         """Generate a chat response using Ollama."""
@@ -53,6 +68,9 @@ class OllamaChatService(ChatService):
                 "messages": [msg.dict() for msg in messages],
                 "stream": False,
             }
+
+            # Initialize query cost to 0.0
+            query_cost = 0.0
 
             # Add generation options if provided
             if options:
@@ -65,26 +83,33 @@ class OllamaChatService(ChatService):
                 if options.stop_sequences:
                     payload["stop"] = options.stop_sequences
 
-            with self.accounting_client.delegated_transfer(
-                user_email,
-                amount=self.pricing,
-                token=transaction_token,
-            ) as payment_txn:
-                # Make request to Ollama
-                response = requests.post(
-                    f"{self.base_url}/api/chat",
-                    json=payload,
-                    timeout=120,
+            if self.pricing > 0 and transaction_token:
+                # If pricing is not zero, then we need to create a transaction
+                with self.accounting_client.delegated_transfer(
+                    user_email,
+                    amount=self.pricing,
+                    token=transaction_token,
+                ) as payment_txn:
+                    # Make request to Ollama
+                    content = self.__make_chat_request(payload)
+
+                    # If the response is not empty, confirm the transaction
+                    if content:
+                        payment_txn.confirm()
+
+                    query_cost = self.pricing
+
+            elif self.pricing > 0 and not transaction_token:
+                # If pricing is not zero, but transaction token is not provided, then we raise an error
+                raise ValueError(
+                    "Transaction token is required for paid services. Please provide a transaction token."
                 )
-                response.raise_for_status()
 
-                ollama_response = response.json()
-
-                content = ollama_response["message"]["content"]
-
-                # If the response is not empty, confirm the transaction
-                if content:
-                    payment_txn.confirm()
+            else:
+                # If pricing is zero, then we make a request to Ollama without creating a transaction
+                # We don't need to create a transaction because the service is free
+                # Make request to Ollama
+                content = self.__make_chat_request(payload)
 
             # Convert Ollama response to our schema
             assistant_message = Message(
@@ -109,6 +134,7 @@ class OllamaChatService(ChatService):
                 message=assistant_message,
                 usage=usage,
                 provider_info={"provider": "ollama", "model": model},
+                cost=query_cost,
             )
 
         except requests.exceptions.RequestException as e:
