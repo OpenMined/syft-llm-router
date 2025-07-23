@@ -239,6 +239,7 @@ dependencies = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "httpx>=0.24.0",
+    "pydantic-settings>=2.10.1",
     "syft-accounting-sdk @ git+https://github.com/OpenMined/accounting-sdk.git"
 ]
 
