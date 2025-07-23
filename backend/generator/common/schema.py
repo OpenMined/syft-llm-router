@@ -131,6 +131,9 @@ class ChatResponse(SchemaBase):
 class ChatRequest(SchemaBase):
     """Parameters for chat completion generation."""
 
+    # The user email
+    user_email: EmailStr = Field(..., description="The user email")
+
     # The model identifier to use for chat
     model: str
 
@@ -139,6 +142,11 @@ class ChatRequest(SchemaBase):
 
     # Additional parameters for the generation
     options: Optional[GenerationOptions] = None
+
+    # Transaction token
+    transaction_token: Optional[str] = Field(
+        default=None, description="Transaction token"
+    )
 
 
 class SearchOptions(SchemaBase):

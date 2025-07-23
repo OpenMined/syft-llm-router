@@ -132,7 +132,9 @@ class CustomSearchService(SearchService):
         if not self.config.metadata_path.exists():
             return 0.0
         metadata = PublishedMetadata.from_path(self.config.metadata_path)
-        return metadata.services[RouterServiceType.SEARCH].pricing
+        for service in metadata.services:
+            if service.type == RouterServiceType.SEARCH:
+                return service.pricing
 
 
 SearchServiceImpl = CustomSearchService
