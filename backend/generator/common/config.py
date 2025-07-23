@@ -5,14 +5,25 @@ then falls back to environment variables. Uses Pydantic for type safety and vali
 """
 
 import json
-import os
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 from pydantic import BaseModel, EmailStr, Field
 from syft_accounting_sdk import UserClient
-from dotenv import load_dotenv
 from syft_core.config import SyftClientConfig
+from pydantic_settings import BaseSettings
+
+
+class RouterEnvSettings(BaseSettings):
+    project_name: str = Field(..., env="PROJECT_NAME")
+    enable_chat: bool = Field(..., env="ENABLE_CHAT")
+    enable_search: bool = Field(..., env="ENABLE_SEARCH")
+    accounting_url: str = Field(..., env="ACCOUNTING_URL")
+    accounting_email: EmailStr = Field(..., env="ACCOUNTING_EMAIL")
+    accounting_password: str = Field(..., env="ACCOUNTING_PASSWORD")
+
+    class Config:
+        env_file = ".env"
 
 
 class RunStatus(str, Enum):
@@ -170,7 +181,6 @@ class RouterConfig(BaseModel):
         syft_config_path: Path,
         metadata_path: Path,
         state_file: str = "state.json",
-        env_file: str = ".env",
     ) -> "RouterConfig":
         """
         Loads runtime state from state_file, and static config from environment variables (or config file if provided).
@@ -187,33 +197,18 @@ class RouterConfig(BaseModel):
         else:
             state = StateFile(services={}, router=RouterState(status=RunStatus.STOPPED))
 
-        # Load environment variables from .env file
-        load_dotenv(env_file, override=True)
-
         # Load required environment variables from os.environ
-        required_env_vars = [
-            "PROJECT_NAME",
-            "ENABLE_CHAT",
-            "ENABLE_SEARCH",
-            "ACCOUNTING_URL",
-            "ACCOUNTING_EMAIL",
-            "ACCOUNTING_PASSWORD",
-        ]
-        for var in required_env_vars:
-            if var not in os.environ:
-                raise ValueError(f"{var} is required in environment variables")
+        env_settings = RouterEnvSettings()
 
-        project_name = os.environ["PROJECT_NAME"]
-        enable_chat = os.environ["ENABLE_CHAT"].lower() == "true"
-        enable_search = os.environ["ENABLE_SEARCH"].lower() == "true"
-        project = ProjectInfo(name=project_name, version="1.0.0")
+        project = ProjectInfo(name=env_settings.project_name, version="1.0.0")
         configuration = RouterConfiguration(
-            enable_chat=enable_chat, enable_search=enable_search
+            enable_chat=env_settings.enable_chat,
+            enable_search=env_settings.enable_search,
         )
         accounting = AccountingConfig(
-            url=os.environ["ACCOUNTING_URL"],
-            email=os.environ["ACCOUNTING_EMAIL"],
-            password=os.environ["ACCOUNTING_PASSWORD"],
+            url=env_settings.accounting_url,
+            email=env_settings.accounting_email,
+            password=env_settings.accounting_password,
         )
 
         syft_config = SyftClientConfig.load(syft_config_path)
@@ -231,11 +226,9 @@ def load_config(
     syft_config_path: Path,
     metadata_path: Path,
     state_file: str = "state.json",
-    env_file: str = ".env",
 ) -> RouterConfig:
     return RouterConfig.load(
         syft_config_path,
         metadata_path,
         state_file,
-        env_file,
     )
