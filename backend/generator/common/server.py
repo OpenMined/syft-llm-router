@@ -23,6 +23,7 @@ from router import SyftLLMRouter
 from schema import (
     ChatResponse,
     GenerateChatParams,
+    SearchDocumentsParams,
     SearchOptions,
     SearchResponse,
 )
@@ -224,15 +225,11 @@ def is_port_in_use(port: int) -> bool:
     description="Search documents",
     responses={200: {"model": SearchResponse}},
 )
-async def search_documents(
-    query: str,
-    options: Optional[SearchOptions] = None,
-):
+async def search_documents(request: SearchDocumentsParams):
     """Document retrieval endpoint.
 
     Args:
-        query (str): The search query
-        options (Optional[SearchOptions]): The search options
+        request (SearchDocumentsParams): The request body containing the search query and options
 
     Returns:
         SearchResponse: The search response from the router
@@ -240,13 +237,20 @@ async def search_documents(
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
+    # Set default limit if options are not provided or limit is not set
+    options = request.options
+    if options is None:
+        options = SearchOptions(limit=3)
+    elif options.limit is None:
+        options.limit = 3
+
     try:
-        return router.search_documents(query, options)
+        return router.search_documents(request.query, options)
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         logger.error(f"Document retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail="Document retrieval failed")
+        raise HTTPException(status_code=500, detail=f"Document retrieval failed {e}")
 
 
 def main():
