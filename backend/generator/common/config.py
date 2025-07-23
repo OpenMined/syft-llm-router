@@ -8,7 +8,7 @@ import json
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, EmailStr, Field
 from syft_accounting_sdk import UserClient
 from dotenv import load_dotenv
@@ -27,7 +27,8 @@ class ServiceState(BaseModel):
     """Represents the runtime state of a service."""
 
     status: RunStatus = Field(
-        ..., description="Service status: running, stopped, failed"
+        default=RunStatus.STOPPED,
+        description="Service status: running, stopped, failed",
     )
     url: Optional[str] = Field(None, description="Service URL")
     port: Optional[int] = Field(None, description="Service port")
@@ -40,10 +41,10 @@ class RouterState(BaseModel):
     """Represents the runtime state of the router."""
 
     status: RunStatus = Field(
-        ..., description="Router status: running, stopped, failed"
+        default=RunStatus.STOPPED, description="Router status: running, stopped, failed"
     )
     started_at: Optional[str] = Field(None, description="Router start timestamp")
-    depends_on: list[str] = Field(
+    depends_on: List[str] = Field(
         default_factory=list, description="Service dependencies"
     )
     url: Optional[str] = Field(None, description="Router URL")
@@ -84,7 +85,7 @@ class StateFile(BaseModel):
     """Runtime state file structure (services and router only)."""
 
     services: Dict[str, ServiceState] = Field(default_factory=dict)
-    router: RouterState = Field(default_factory=lambda: RouterState(status="stopped"))
+    router: RouterState = Field(default_factory=lambda: RouterState())
 
     def update_service_state(self, service_name: str, **kwargs):
         """Update the state of a specific service."""
@@ -177,7 +178,7 @@ class RouterConfig(BaseModel):
         state_path = Path(state_file)
         if state_path.exists():
             try:
-                state = StateFile.load(state_path)
+                state = StateFile.load(str(state_path))
             except Exception as e:
                 print(f"Warning: Failed to load state file: {e}")
                 state = StateFile(
@@ -217,12 +218,12 @@ class RouterConfig(BaseModel):
 
         syft_config = SyftClientConfig.load(syft_config_path)
         return cls(
-            project,
-            configuration,
-            state,
-            accounting,
-            syft_config,
-            metadata_path,
+            project=project,
+            configuration=configuration,
+            state=state,
+            accounting=accounting,
+            syft_config=syft_config,
+            metadata_path=metadata_path,
         )
 
 
