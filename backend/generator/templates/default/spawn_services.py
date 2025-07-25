@@ -6,18 +6,13 @@ Handles spawning and monitoring of Ollama and Local RAG services.
 
 import argparse
 import logging
-import os
 import subprocess
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
-from dotenv import load_dotenv
 import requests
 from syft_core import Client
-from config import ProjectInfo, RouterConfiguration, RouterState, RunStatus, StateFile
+from config import RunStatus, load_config
 
 # Configure verbose logging
 logging.basicConfig(
@@ -31,87 +26,45 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class RunStatus:
-    """Represents the state of a service."""
-
-    RUNNING = "running"
-    STOPPED = "stopped"
-    FAILED = "failed"
-
-
-@dataclass
-class ServiceState:
-    """Represents the state of a service."""
-
-    status: RunStatus
-    port: Optional[int] = None
-    pid: Optional[int] = None
-    started_at: Optional[str] = None
-    error: Optional[str] = None
-    url: Optional[str] = None
-
-
-@dataclass
-class RouterState:
-    """Represents the state of the router."""
-
-    status: RunStatus
-    started_at: Optional[str] = None
-    depends_on: List[str] = None
-
-
 class ServiceManager:
     """Manages service spawning, monitoring, and state tracking."""
 
     def __init__(self, project_name: str, config_path: str):
-        self.project_name = project_name
-        self.config_path = Path(config_path)
-        self.state_file = Path("state.json")
-        self.env_file = Path(".env")
 
-        # Load environment variables
-        load_dotenv(self.env_file)
+        client = Client.load(config_path)
+
+        # metadata path
+        metadata_path = (
+            client.my_datasite / "public" / "routers" / project_name / "metadata.json"
+        )
+
+        # load config
+        self.config = load_config(
+            syft_config_path=client.config.path,
+            metadata_path=metadata_path,
+        )
 
         # Service configuration from .env
-        self.enable_chat = os.getenv("ENABLE_CHAT", "true").lower() == "true"
-        self.enable_search = os.getenv("ENABLE_SEARCH", "true").lower() == "true"
+        self.enable_chat = self.config.enable_chat
+        self.enable_search = self.config.enable_search
 
         # URLs will be discovered dynamically when services are spawned
         self.ollama_base_url = None
         self.rag_service_url = None
 
-        # Initialize state
-        self.state = self._load_state()
+        # Update state
+        self._initialize_state()
 
         logger.info(f"Service Manager initialized for {project_name}")
         logger.info(f"Chat enabled: {self.enable_chat}")
         logger.info(f"Search enabled: {self.enable_search}")
 
-    def _load_state(self) -> Dict[str, Any]:
-        """Load service state from state.json."""
-        if self.state_file.exists():
-            try:
-                return StateFile.load(self.state_file)
-            except Exception as e:
-                logger.warning(f"Failed to load state: {e}")
-        else:
-            # Initialize default state with new unified structure
-            project_info = ProjectInfo(name=self.project_name, version="1.0.0")
-            router_configuration = RouterConfiguration(
-                enable_chat=self.enable_chat,
-                enable_search=self.enable_search,
-            )
-            state = StateFile(
-                project=project_info,
-                configuration=router_configuration,
-                services={},
-            )
-            state.save(self.state_file)
-            return state
+    def _initialize_state(self) -> None:
+        """Update state."""
 
         # Initialize service states based on enabled services
         if self.enable_chat:
-            state.update_service_state(
+            self.config.state.update_service_state(
                 "chat",
                 status=RunStatus.STOPPED,
                 url=None,
@@ -120,9 +73,8 @@ class ServiceManager:
                 started_at=None,
                 error=None,
             )
-
         if self.enable_search:
-            state.update_service_state(
+            self.config.state.update_service_state(
                 "search",
                 status=RunStatus.STOPPED,
                 url=None,
@@ -131,8 +83,6 @@ class ServiceManager:
                 started_at=None,
                 error=None,
             )
-
-        return state
 
     def spawn_ollama(self) -> bool:
         """Spawn and verify Ollama service."""
@@ -147,7 +97,7 @@ class ServiceManager:
             if result.returncode != 0:
                 logger.error("❌ Ollama not found. Please install Ollama first:")
                 logger.error("   curl -fsSL https://ollama.ai/install.sh | sh")
-                self.state.update_service_state(
+                self.config.state.update_service_state(
                     "chat", status=RunStatus.FAILED, error="Ollama not installed"
                 )
                 return False
@@ -170,7 +120,7 @@ class ServiceManager:
 
                 if pull_result.returncode != 0:
                     logger.error(f"❌ Failed to pull tinyllama: {pull_result.stderr}")
-                    self.state.update_service_state(
+                    self.config.state.update_service_state(
                         "chat", status=RunStatus.FAILED, error="Model pull failed"
                     )
                     return False
@@ -187,7 +137,7 @@ class ServiceManager:
                     if response.status_code == 200:
                         self.ollama_base_url = url
                         logger.info(f"✅ Ollama service discovered at {url}")
-                        self.state.update_service_state(
+                        self.config.state.update_service_state(
                             "chat",
                             status=RunStatus.RUNNING,
                             started_at=datetime.now().isoformat(),
@@ -197,20 +147,20 @@ class ServiceManager:
                     continue
 
             logger.error("❌ Ollama service not found on any expected URL")
-            self.state.update_service_state(
+            self.config.state.update_service_state(
                 "chat", status=RunStatus.FAILED, error="Service not found"
             )
             return False
 
         except subprocess.TimeoutExpired:
             logger.error("❌ Ollama setup timed out")
-            self.state.update_service_state(
+            self.config.state.update_service_state(
                 "chat", status=RunStatus.FAILED, error="Setup timeout"
             )
             return False
         except Exception as e:
             logger.error(f"❌ Ollama setup failed: {e}")
-            self.state.update_service_state(
+            self.config.state.update_service_state(
                 "chat", status=RunStatus.FAILED, error=str(e)
             )
             return False
@@ -227,7 +177,7 @@ class ServiceManager:
 
             if result.returncode != 0:
                 logger.error("❌ syftbox not found. Please install syftbox first.")
-                self.state.update_service_state(
+                self.config.state.update_service_state(
                     "search", status="failed", error="syftbox not installed"
                 )
                 return False
@@ -236,7 +186,7 @@ class ServiceManager:
 
             # Check if local-rag is already installed
             result = subprocess.run(
-                ["syftbox", "app", "list", "-c", self.config_path],
+                ["syftbox", "app", "list", "-c", self.config.syft_config.path],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -251,7 +201,7 @@ class ServiceManager:
                         "install",
                         "https://github.com/OpenMined/local-rag",
                         "--config",
-                        self.config_path,
+                        self.config.syft_config.path,
                     ],
                     capture_output=True,
                     text=True,
@@ -262,7 +212,7 @@ class ServiceManager:
                     logger.error(
                         f"❌ Failed to install local-rag: {install_result.stderr}"
                     )
-                    self.state.update_service_state(
+                    self.config.state.update_service_state(
                         "search",
                         status=RunStatus.FAILED,
                         error="Installation failed",
@@ -275,7 +225,7 @@ class ServiceManager:
             logger.info("⏳ Waiting for local-rag to be ready...")
 
             # Check if app.pid and app.port are set
-            client = Client.load(self.config_path)
+            client = Client.load(self.config.syft_config.path)
             app_folder = (
                 client.workspace.data_dir / "apps" / "com.github.openmined.local-rag"
             )
@@ -294,7 +244,7 @@ class ServiceManager:
                     logger.info(
                         f"✅ Local RAG service discovered at {self.rag_service_url}"
                     )
-                    self.state.update_service_state(
+                    self.config.state.update_service_state(
                         "search",
                         status=RunStatus.RUNNING,
                         started_at=datetime.now().isoformat(),
@@ -305,14 +255,14 @@ class ServiceManager:
                 time.sleep(1)
 
             logger.error("❌ Local RAG service failed to start within timeout")
-            self.state.update_service_state(
+            self.config.state.update_service_state(
                 "search", status=RunStatus.FAILED, error="Service startup timeout"
             )
             return False
 
         except Exception as e:
             logger.error(f"❌ Local RAG setup failed: {e}")
-            self.state.update_service_state(
+            self.config.state.update_service_state(
                 "search", status=RunStatus.FAILED, error=str(e)
             )
             return False
@@ -350,7 +300,7 @@ class ServiceManager:
 
             if not spawn_func():
                 logger.error(f"❌ Failed to spawn {service_name}")
-                self.state.update_router_state(status="stopped")
+                self.config.state.update_router_state(status="stopped")
                 return False
 
             logger.info(f"✅ {service_name} spawned successfully")
@@ -367,7 +317,7 @@ class ServiceManager:
         for service_name, health_check_func in health_checks:
             if not health_check_func():
                 logger.error(f"❌ Health check failed for {service_name}")
-                self.state.update_router_state(status=RunStatus.FAILED)
+                self.config.state.update_router_state(status=RunStatus.FAILED)
                 return False
 
         logger.info("✅ All services spawned and healthy")
@@ -382,11 +332,13 @@ class ServiceManager:
         logger.info("🧹 Cleaning up services...")
 
         # Update router state
-        self.state.update_router_state(status=RunStatus.STOPPED)
+        self.config.state.update_router_state(status=RunStatus.STOPPED)
 
         # Update service states
-        for service_name in self.state.services.keys():
-            self.state.update_service_state(service_name, status=RunStatus.STOPPED)
+        for service_name in self.config.state.services.keys():
+            self.config.state.update_service_state(
+                service_name, status=RunStatus.STOPPED
+            )
 
         logger.info("✅ Cleanup completed")
 
@@ -396,10 +348,10 @@ class ServiceManager:
 
         # Update state with discovered URLs
         if self.ollama_base_url:
-            self.state.update_service_state("chat", url=self.ollama_base_url)
+            self.config.state.update_service_state("chat", url=self.ollama_base_url)
 
         if self.rag_service_url:
-            self.state.update_service_state("search", url=self.rag_service_url)
+            self.config.state.update_service_state("search", url=self.rag_service_url)
 
 
 def main():

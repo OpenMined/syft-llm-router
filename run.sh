@@ -16,14 +16,28 @@ cd frontend
 if [[ "$OSTYPE" == "msys" ]]; then
     echo "Windows detected. Installing bun..."
     powershell -c "irm bun.sh/install.ps1 | iex"
+    # Add Bun to PATH for this session
+    export BUN_INSTALL="$USERPROFILE\\.bun"
+    export PATH="$BUN_INSTALL\\bin:$PATH"
 else
     # Else, for MacOS and Linux, install bun
     if ! command -v bun &> /dev/null; then
         echo "Bun is not installed. Installing..."
         curl -fsSL https://bun.sh/install | bash
+        # Add Bun to PATH for this script session
+        export BUN_INSTALL="$HOME/.bun"
+        export PATH="$BUN_INSTALL/bin:$PATH"
     fi
 fi
 
+# Ensure Bun is in PATH even if already installed
+if [[ "$OSTYPE" == "msys" ]]; then
+    export BUN_INSTALL="$USERPROFILE\\.bun"
+    export PATH="$BUN_INSTALL\\bin:$PATH"
+else
+    export BUN_INSTALL="$HOME/.bun"
+    export PATH="$BUN_INSTALL/bin:$PATH"
+fi
 # Install bun dependencies
 bun install
 bun run build

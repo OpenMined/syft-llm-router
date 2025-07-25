@@ -1,4 +1,4 @@
-class HTTPException(Exception):
+class APIException(Exception):
     """Generic HTTP exception with status code"""
 
     def __init__(self, message: str, status_code: int = 500):
