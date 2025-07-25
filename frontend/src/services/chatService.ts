@@ -128,35 +128,50 @@ class ChatService {
     }
   }
 
-  private async pollForResponse<T>(pollUrl: string, maxAttempts: number = 20): Promise<ApiResponse<T>> {
+  private async pollForResponse<T>(pollUrl: string, maxAttempts: number = 20): Promise<ApiResponse<T> & { errorDetails?: string }> {
     const serverUrl = await this.getServerUrl();
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const fullUrl = this.joinUrls(serverUrl, pollUrl);
         const response = await fetch(fullUrl);
-        const data = await response.json();
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If response is not JSON, treat as error
+          return {
+            success: false,
+            error: 'Something bad happened. Please try again later.',
+            errorDetails: undefined,
+          };
+        }
 
-        // Check if the response has a status_code of 200 (resolved response)
-        if (response.status === 200 && data?.data?.message?.status_code === 200) {
+        const statusCode = data?.data?.message?.status_code;
+        const errorBody = data?.data?.message?.body || null;
+
+        if (response.status === 200 && statusCode === 200) {
           return {
             success: true,
             data,
           };
-        } else if (response.status === 202 || (data?.data?.message?.status_code !== 200)) {
+        } else if (response.status === 202 || statusCode === 202) {
           // Still processing, wait and try again
           await new Promise(resolve => setTimeout(resolve, 2000));
           continue;
         } else {
+          // Stop polling on any other status or error
           return {
             success: false,
-            error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+            error: 'Something bad happened. Please try again later.',
+            errorDetails: errorBody ?? undefined,
           };
         }
       } catch (error) {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error occurred',
+          errorDetails: undefined,
         };
       }
     }
@@ -164,10 +179,11 @@ class ChatService {
     return {
       success: false,
       error: 'Request timed out after maximum attempts',
+      errorDetails: undefined,
     };
   }
 
-  async search(routerName: string, author: string, query: string): Promise<ApiResponse<SearchResponse>> {
+  async search(routerName: string, author: string, query: string): Promise<ApiResponse<SearchResponse> & { errorDetails?: string }> {
     const encodedQuery = encodeURIComponent(query);
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/search?query="${encodedQuery}"`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
@@ -183,7 +199,12 @@ class ChatService {
       return this.pollForResponse<SearchResponse>(response.data.data.poll_url);
     }
 
-    return response;
+    // Propagate errorDetails if present in the response
+    let errorDetails: string | undefined = undefined;
+    if (!response.success && typeof response.data?.data?.message?.body === 'string') {
+      errorDetails = response.data.data.message.body;
+    }
+    return { ...response, errorDetails };
   }
 
   async chat(routerName: string, author: string, messages: ChatMessage[]): Promise<ApiResponse<ChatResponse>> {

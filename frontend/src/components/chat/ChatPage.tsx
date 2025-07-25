@@ -290,6 +290,8 @@ export function ChatPage({ onBack }: ChatPageProps) {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | undefined>(undefined);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   
   // Available routers
   const [routers, setRouters] = useState<Router[]>([]);
@@ -451,7 +453,12 @@ Use the provided sources to answer the user's question accurately and comprehens
         };
         setChatHistory(prev => [...prev, assistantMessage]);
       } else {
-        throw new Error(chatResponse.error || 'Failed to get chat response');
+        // Show improved error message from chatService
+        setError(chatResponse.error || 'Something bad happened. Please try again later.');
+        setErrorDetails((chatResponse as typeof chatResponse & { errorDetails?: string }).errorDetails);
+        setShowErrorDetails(false);
+        setIsLoading(false);
+        return;
       }
 
       // Clear the input
@@ -594,11 +601,22 @@ Use the provided sources to answer the user's question accurately and comprehens
             {error && (
               <div className="px-6 py-3 bg-red-50 border-t border-red-200">
                 <div className="text-red-700 text-sm flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59c.75 1.334-.213 2.987-1.742 2.987H3.48c-1.53 0-2.492-1.653-1.742-2.987l6.519-11.59zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clipRule="evenodd" />
                   </svg>
-                  {error}
+                  <span>{error}</span>
+                  {errorDetails && (
+                    <button
+                      className="ml-2 underline text-xs text-red-700 hover:text-red-900"
+                      onClick={() => setShowErrorDetails((v) => !v)}
+                    >
+                      {showErrorDetails ? 'Hide details' : 'See more information'}
+                    </button>
+                  )}
                 </div>
+                {showErrorDetails && errorDetails && (
+                  <pre className="mt-2 bg-red-100 text-xs p-2 rounded whitespace-pre-wrap break-all">{errorDetails}</pre>
+                )}
               </div>
             )}
 
