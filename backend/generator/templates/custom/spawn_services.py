@@ -26,9 +26,6 @@ class CustomServiceManager:
     """Manages custom service spawning, monitoring, and state tracking."""
 
     def __init__(self, project_name: str, config_path: str):
-        self.project_name = project_name
-        self.config_path = config_path
-
         client = Client.load(config_path)
 
         # metadata path

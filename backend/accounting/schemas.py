@@ -1,4 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
+from enum import Enum
+from typing import Optional
 
 
 class AccountingConfig(BaseModel):
@@ -31,3 +34,23 @@ class TransactionToken(BaseModel):
 
     token: str
     recipient_email: str
+
+
+class TransactionDetail(BaseModel):
+    """Transaction detail."""
+
+    id: str
+    amount: float
+    created_at: datetime
+    sender_email: EmailStr
+    recipient_email: EmailStr
+    status: str
+    amount: float
+
+
+class TransactionHistory(BaseModel):
+    """Transaction history. Returns a list of transactions and the total credited and debited amounts."""
+
+    transactions: list[TransactionDetail]
+    total_credits: float
+    total_debits: float

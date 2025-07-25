@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from .manager import AccountingManager
-from .schemas import UserAccountView, TransactionToken
+from .schemas import UserAccountView, TransactionToken, TransactionHistory
 from fastapi import HTTPException
 from shared.exceptions import APIException
 
@@ -21,6 +21,13 @@ def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
     async def get_account_info() -> UserAccountView:
         try:
             return accounting_manager.get_user_account()
+        except APIException as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    @router.get("/history", response_model=TransactionHistory)
+    async def get_transaction_history() -> TransactionHistory:
+        try:
+            return accounting_manager.get_user_transactions()
         except APIException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
 

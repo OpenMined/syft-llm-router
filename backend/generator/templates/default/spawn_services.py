@@ -186,7 +186,7 @@ class ServiceManager:
 
             # Check if local-rag is already installed
             result = subprocess.run(
-                ["syftbox", "app", "list", "-c", self.config_path],
+                ["syftbox", "app", "list", "-c", self.config.syft_config.path],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -201,7 +201,7 @@ class ServiceManager:
                         "install",
                         "https://github.com/OpenMined/local-rag",
                         "--config",
-                        self.config_path,
+                        self.config.syft_config.path,
                     ],
                     capture_output=True,
                     text=True,
@@ -225,7 +225,7 @@ class ServiceManager:
             logger.info("⏳ Waiting for local-rag to be ready...")
 
             # Check if app.pid and app.port are set
-            client = Client.load(self.config_path)
+            client = Client.load(self.config.syft_config.path)
             app_folder = (
                 client.workspace.data_dir / "apps" / "com.github.openmined.local-rag"
             )
