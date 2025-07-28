@@ -283,6 +283,7 @@ python_functions = ["test_*"]
             f"ACCOUNTING_URL={config.user_accounting_config.url}",
             f"ACCOUNTING_EMAIL={config.user_accounting_config.email}",
             f"ACCOUNTING_PASSWORD={config.user_accounting_config.password}",
+            f"SYFT_CONFIG_PATH={config.syftbox_config.path}",
             "",
         ]
 

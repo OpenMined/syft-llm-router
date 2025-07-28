@@ -8,7 +8,7 @@ import json
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from syft_accounting_sdk import UserClient
 from syft_core.config import SyftClientConfig
 from pydantic_settings import BaseSettings
@@ -21,9 +21,22 @@ class RouterEnvSettings(BaseSettings):
     accounting_url: str = Field(..., env="ACCOUNTING_URL")
     accounting_email: EmailStr = Field(..., env="ACCOUNTING_EMAIL")
     accounting_password: str = Field(..., env="ACCOUNTING_PASSWORD")
+    syft_config_path: Path = Field(
+        ..., env="SYFT_CONFIG_PATH", default="~/.syftbox/config.json"
+    )
 
     class Config:
         env_file = ".env"
+
+    @field_validator("syft_config_path", mode="before")
+    def validate_syft_config_path(cls, v) -> Path:
+        path = Path(v).resolve()
+        if not path.exists():
+            raise ValueError(f"Syft config path {path} does not exist")
+        return path
+
+
+env_settings = RouterEnvSettings()
 
 
 class RunStatus(str, Enum):
@@ -183,7 +196,8 @@ class RouterConfig(BaseModel):
         state_file: str = "state.json",
     ) -> "RouterConfig":
         """
-        Loads runtime state from state_file, and static config from environment variables (or config file if provided).
+        Loads runtime state from state_file, and
+        static config from environment variables (or config file if provided).
         """
         state_path = Path(state_file)
         if state_path.exists():
@@ -198,7 +212,6 @@ class RouterConfig(BaseModel):
             state = StateFile(services={}, router=RouterState(status=RunStatus.STOPPED))
 
         # Load required environment variables from os.environ
-        env_settings = RouterEnvSettings()
 
         project = ProjectInfo(name=env_settings.project_name, version="1.0.0")
         configuration = RouterConfiguration(
