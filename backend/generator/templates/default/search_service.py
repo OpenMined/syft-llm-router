@@ -17,6 +17,7 @@ from schema import (
 )
 from config import RouterConfig
 from pydantic import EmailStr
+from syft_accounting_sdk import UserClient
 
 
 MAX_DOCUMENT_LIMIT_PER_QUERY = 10
@@ -34,6 +35,8 @@ class LocalSearchService(SearchService):
         logger.info(f"Initialized local RAG service with URL: {self.rag_url}")
 
         self.rag_client = httpx.Client(base_url=self.rag_url)
+        self.accounting_client: UserClient = self.config.accounting_client()
+        logger.info(f"Initialized accounting client: {self.accounting_client}")
 
         self._check_if_rag_is_ready()
 

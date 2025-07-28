@@ -305,6 +305,9 @@ export function ChatPage({ onBack }: ChatPageProps) {
   // Add a ref to keep track of the latest searchResults for tooltips
   const [lastSearchResults, setLastSearchResults] = useState<SearchResult[]>([]);
 
+  // Add state for user email
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   // Calculate total price for selected items
   const calculateTotalPrice = () => {
     let total = 0;
@@ -365,6 +368,15 @@ export function ChatPage({ onBack }: ChatPageProps) {
     loadRouters();
   }, []);
 
+  // In useEffect, fetch user email on mount
+  useEffect(() => {
+    routerService.getUsername().then((resp) => {
+      if (resp.success && resp.data?.username) {
+        setUserEmail(resp.data.username);
+      }
+    });
+  }, []);
+
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedChatSource) {
       setError('Please enter a message and select a chat source');
@@ -418,13 +430,30 @@ export function ChatPage({ onBack }: ChatPageProps) {
         throw new Error('Selected chat source not found');
       }
 
+      // Find the chat service for pricing
+      const chatServiceObj = chatRouter.services.find(s => s.type === 'chat');
+      const chatPricing = chatServiceObj?.pricing || 0;
+      const recipientEmail = chatRouter.author;
+
+      let transactionToken: string | undefined = undefined;
+      if (chatPricing > 0) {
+        if (!userEmail) throw new Error('User email not found');
+        try {
+          transactionToken = await chatService.createTransactionToken(recipientEmail);
+        } catch (err) {
+          setError('Failed to create transaction token.');
+          setErrorDetails(err instanceof Error ? err.message : String(err));
+          setShowErrorDetails(false);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Prepare messages for chat
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: `You are a helpful AI assistant that answers questions based on the provided source context.
-
-Use the provided sources to answer the user's question accurately and comprehensively. If you do not know the answer from the sources, say so.`
+          content: `You are a helpful AI assistant that answers questions based on the provided source context.\n\nUse the provided sources to answer the user's question accurately and comprehensively. If you do not know the answer from the sources, say so.`
         },
         ...chatHistory,
         { role: 'user', content: message }
@@ -444,7 +473,12 @@ Use the provided sources to answer the user's question accurately and comprehens
       }
 
       // Send chat request
-      const chatResponse = await chatService.chat(chatRouter.name, chatRouter.author, messages);
+      const chatResponse = await chatService.chat(
+        chatRouter.name,
+        chatRouter.author,
+        messages,
+        chatPricing > 0 ? { user_email: userEmail!, transaction_token: transactionToken } : undefined
+      );
       
       if (chatResponse.success && chatResponse.data) {
         const assistantMessage: ChatMessage = {

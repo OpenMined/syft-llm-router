@@ -26,6 +26,23 @@ interface RouterDetails {
   endpoints?: OpenAPISpecification;
 }
 
+// Add transaction interfaces
+interface Transaction {
+  id: string;
+  sender_email: string;
+  recipient_email: string;
+  amount: number;
+  service_type: string;
+  router_name?: string;
+  status: 'completed' | 'pending' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+interface TransactionHistory {
+  transactions: Transaction[];
+}
+
 function getMarkdownHtml(md: string) {
   try {
     if (typeof marked.parseInline === 'function') {
@@ -322,7 +339,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [details, setDetails] = useState<RouterDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documentation'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documentation' | 'usage'>('overview');
   const [routerStatus, setRouterStatus] = useState<RouterRunStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const { color } = useTheme();
@@ -330,6 +347,13 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
+
+  // Transaction history state
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Get current user to check if router belongs to them
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -398,6 +422,58 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
     }
   }, [currentUser, author, routerName, published]);
 
+  // Load transaction history
+  useEffect(() => {
+    if (activeTab === 'usage') {
+      setTransactionsLoading(true);
+      setTransactionsError(null);
+      routerService.getTransactionHistory()
+        .then((resp) => {
+          if (resp.success && resp.data) {
+            setTransactions(resp.data.transactions);
+          } else {
+            setTransactionsError(resp.error || 'Failed to load transaction history.');
+          }
+        })
+        .catch(() => setTransactionsError('Failed to load transaction history.'))
+        .finally(() => setTransactionsLoading(false));
+    }
+  }, [activeTab]);
+
+  // Filter transactions
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesStatus = filterStatus === 'all' || transaction.status === filterStatus;
+    const matchesSearch = searchTerm === '' || 
+      transaction.sender_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.recipient_email?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'failed':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   // If client tries to access a draft, show error
   if (profile === 'client' && !published) {
     return (
@@ -421,10 +497,9 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
           <div className="flex space-x-8 border-b border-gray-200 mb-10">
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'overview' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('overview')}>Overview</button>
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'documentation' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('documentation')}>API Documentation</button>
-            <button className="px-4 py-2 text-base font-semibold text-gray-400 cursor-not-allowed flex items-center gap-2" disabled>
-              Usage
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200 ml-2">Coming Soon</span>
-            </button>
+            {profile === 'provider' && (
+              <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'usage' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('usage')}>Usage</button>
+            )}
           </div>
 
           {activeTab === 'overview' && details && (
@@ -602,8 +677,192 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
               )}
             </div>
           )}
+
+          {/* Usage Tab - Only for Provider */}
+          {activeTab === 'usage' && profile === 'provider' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Transaction History</h3>
+                  <p className="text-gray-600 mt-1">Track all your router usage and payments</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  {/* Search */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search by email..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.currentTarget.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  
+                  {/* Status Filter */}
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.currentTarget.value as any)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+                      <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.status === 'completed').length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.status === 'pending').length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0 8c1.11 0 2.08-.402 2.599-1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Spent</p>
+                      <p className="text-2xl font-bold text-gray-900">${transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transactions List */}
+              <div className="bg-white rounded-xl shadow-sm border">
+                {transactionsLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading transactions...</p>
+                  </div>
+                ) : transactionsError ? (
+                  <div className="p-8 text-center text-red-600">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0 8c1.11 0 2.08-.402 2.599-1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    <p>{transactionsError}</p>
+                  </div>
+                ) : filteredTransactions.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <p className="text-lg font-medium">No transactions found</p>
+                    <p className="text-sm">Try adjusting your search or filter criteria</p>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredTransactions.map((transaction) => (
+                            <tr key={transaction.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10">
+                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900 font-mono">
+                                      {transaction.id.slice(0, 8)}...
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {transaction.id}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{transaction.sender_email}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{transaction.recipient_email}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ${transaction.amount.toFixed(2)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(transaction.status)}`}>
+                                  {transaction.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDate(transaction.created_at)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
+
       {/* Publish Router Modal */}
       {showPublishModal && details && (
         <PublishRouterModal

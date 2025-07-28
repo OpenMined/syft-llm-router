@@ -19,6 +19,7 @@ from schema import (
 )
 from pydantic import EmailStr
 from config import RouterConfig
+from syft_accounting_sdk import UserClient
 
 
 class CustomChatService(ChatService):
@@ -32,6 +33,8 @@ class CustomChatService(ChatService):
         super().__init__(config)
         # TODO: Add your initialization logic here
         # Example: API keys, base URLs, model configurations, etc.
+        self.accounting_client: UserClient = self.config.accounting_client()
+        logger.info(f"Initialized accounting client: {self.accounting_client}")
         logger.info("Initialized custom chat service")
 
     def generate_chat(

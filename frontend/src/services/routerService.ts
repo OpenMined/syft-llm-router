@@ -11,6 +11,22 @@ import type {
 
 const API_BASE_URL = '';
 
+interface TransactionHistory {
+  transactions: Transaction[];
+}
+
+interface Transaction {
+  id: string;
+  sender_email: string;
+  recipient_email: string;
+  amount: number;
+  service_type: string;
+  router_name?: string;
+  status: 'completed' | 'pending' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
 class RouterService {
   private async request<T>(
     endpoint: string, 
@@ -122,6 +138,10 @@ class RouterService {
     return this.request<{ id: string; email: string; balance: number }>(
       '/account/info'
     );
+  }
+
+  async getTransactionHistory(): Promise<ApiResponse<TransactionHistory>> {
+    return this.request<TransactionHistory>('/account/history');
   }
 }
 

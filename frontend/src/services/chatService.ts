@@ -60,6 +60,11 @@ interface SbUrlResponse {
   url: string;
 }
 
+interface TransactionTokenResponse {
+  token: string;
+  recipient_email: string;
+}
+
 class ChatService {
   private joinUrls(baseUrl: string, endpoint: string): string {
     // Remove trailing slash from base URL and leading slash from endpoint
@@ -207,16 +212,38 @@ class ChatService {
     return { ...response, errorDetails };
   }
 
-  async chat(routerName: string, author: string, messages: ChatMessage[]): Promise<ApiResponse<ChatResponse>> {
+  async createTransactionToken(recipient_email: string): Promise<string> {
+    try {
+      const response = await fetch(`/account/token/create?recipient_email=${encodeURIComponent(recipient_email)}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create transaction token');
+      }
+      const data: TransactionTokenResponse = await response.json();
+      return data.token;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Unknown error occurred while creating transaction token');
+    }
+  }
+
+  async chat(
+    routerName: string,
+    author: string,
+    messages: ChatMessage[],
+    options?: { user_email?: string; transaction_token?: string }
+  ): Promise<ApiResponse<ChatResponse>> {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/chat`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
     const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
     
-    const payload: ChatRequest = {
+    const payload: any = {
       model: "tinyllama:latest",
       messages,
     };
+    if (options?.user_email) payload.user_email = options.user_email;
+    if (options?.transaction_token) payload.transaction_token = options.transaction_token;
 
     const response = await this.request<ChatResponse>(endpoint, {
       method: 'POST',

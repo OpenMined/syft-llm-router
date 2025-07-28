@@ -89,17 +89,19 @@ class AccountingManager:
     def get_user_transactions(self) -> TransactionHistory:
         """Get user transactions. Returns a list of transactions."""
         try:
-            transaction_details = self.client.get_transaction_history()
+            transactions = self.client.get_transaction_history()
             total_credited = 0
             total_debited = 0
-            for transaction in transaction_details:
-                transaction_details.append(
+            txn_details = []
+
+            for transaction in transactions:
+                txn_details.append(
                     TransactionDetail(
                         id=transaction.id,
                         created_at=transaction.createdAt,
                         sender_email=transaction.senderEmail,
                         recipient_email=transaction.recipientEmail,
-                        status=transaction.status,
+                        status=transaction.status.value,
                         amount=transaction.amount,
                     )
                 )
@@ -110,7 +112,7 @@ class AccountingManager:
                     total_credited += transaction.amount
 
             return TransactionHistory(
-                transactions=transaction_details,
+                transactions=txn_details,
                 total_credits=total_credited,
                 total_debits=total_debited,
             )

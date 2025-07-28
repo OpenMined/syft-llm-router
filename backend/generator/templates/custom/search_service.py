@@ -18,6 +18,7 @@ from schema import (
 )
 from pydantic import EmailStr
 from config import RouterConfig
+from syft_accounting_sdk import UserClient
 
 
 class CustomSearchService(SearchService):
@@ -31,6 +32,8 @@ class CustomSearchService(SearchService):
         super().__init__(config)
         # TODO: Add your initialization logic here
         # Example: Database connections, API keys, index configurations, etc.
+        self.accounting_client: UserClient = self.config.accounting_client()
+        logger.info(f"Initialized accounting client: {self.accounting_client}")
         logger.info("Initialized custom search service")
 
     def search_documents(
