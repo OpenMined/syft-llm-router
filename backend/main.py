@@ -73,7 +73,17 @@ def init_accounting_manager() -> AccountingManager:
         syftbox_config=app.syftbox_config,
         accounting_config=accounting_config,
     )
-    accounting_manager.get_or_create_user_account()
+    try:
+        accounting_manager.get_or_create_user_account()
+    except Exception as e:
+        error_msg = (
+            f"Error initializing accounting manager. "
+            f"Please check your accounting server is running and your credentials are correct: {e}"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=error_msg,
+        )
     return accounting_manager
 
 

@@ -19,7 +19,7 @@ from syft_core.config import SyftClientConfig
 from pathlib import Path
 from pydantic import EmailStr
 
-from config import load_config, RunStatus, env_settings
+from config import load_config, RunStatus, get_env_settings
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
@@ -171,7 +171,7 @@ app = FastSyftBox(
     syftbox_endpoint_tags=["syftbox"],
     include_syft_openapi=True,
     lifespan=lifespan,
-    syftbox_config=SyftClientConfig.load(env_settings.syft_config_path),
+    syftbox_config=SyftClientConfig.load(get_env_settings().syftbox_config_path),
 )
 
 

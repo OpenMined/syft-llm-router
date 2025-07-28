@@ -20,23 +20,26 @@ class RouterEnvSettings(BaseSettings):
     enable_search: bool = Field(..., env="ENABLE_SEARCH")
     accounting_url: str = Field(..., env="ACCOUNTING_URL")
     accounting_email: EmailStr = Field(..., env="ACCOUNTING_EMAIL")
-    accounting_password: str = Field(..., env="ACCOUNTING_PASSWORD")
-    syft_config_path: Path = Field(
-        ..., env="SYFT_CONFIG_PATH", default="~/.syftbox/config.json"
+    accounting_password: str = Field("changethis", env="ACCOUNTING_PASSWORD")
+    syftbox_config_path: Path = Field(
+        "~/.syftbox/config.json", env="SYFTBOX_CONFIG_PATH"
     )
 
     class Config:
-        env_file = ".env"
+        env_file = "../.env"
 
-    @field_validator("syft_config_path", mode="before")
-    def validate_syft_config_path(cls, v) -> Path:
-        path = Path(v).resolve()
+    @field_validator("syftbox_config_path", mode="before")
+    def validate_syftbox_config_path(cls, v) -> Path:
+        # Expand tilde to home directory
+        expanded_path = Path(v).expanduser()
+        path = expanded_path.resolve()
         if not path.exists():
-            raise ValueError(f"Syft config path {path} does not exist")
+            raise ValueError(f"Syftbox config path {path} does not exist")
         return path
 
 
-env_settings = RouterEnvSettings()
+def get_env_settings() -> RouterEnvSettings:
+    return RouterEnvSettings()
 
 
 class RunStatus(str, Enum):
@@ -213,15 +216,16 @@ class RouterConfig(BaseModel):
 
         # Load required environment variables from os.environ
 
-        project = ProjectInfo(name=env_settings.project_name, version="1.0.0")
+        settings = get_env_settings()
+        project = ProjectInfo(name=settings.project_name, version="1.0.0")
         configuration = RouterConfiguration(
-            enable_chat=env_settings.enable_chat,
-            enable_search=env_settings.enable_search,
+            enable_chat=settings.enable_chat,
+            enable_search=settings.enable_search,
         )
         accounting = AccountingConfig(
-            url=env_settings.accounting_url,
-            email=env_settings.accounting_email,
-            password=env_settings.accounting_password,
+            url=settings.accounting_url,
+            email=settings.accounting_email,
+            password=settings.accounting_password,
         )
 
         syft_config = SyftClientConfig.load(syft_config_path)
