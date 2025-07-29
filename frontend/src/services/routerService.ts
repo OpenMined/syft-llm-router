@@ -13,6 +13,27 @@ const API_BASE_URL = '';
 
 interface TransactionHistory {
   transactions: Transaction[];
+  total_credits: number;
+  total_debits: number;
+}
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+interface TransactionSummary {
+  completed_count: number;
+  pending_count: number;
+  total_spent: number;
+}
+
+interface PaginatedTransactionHistory {
+  data: TransactionHistory;
+  pagination: PaginationInfo;
+  summary: TransactionSummary;
 }
 
 interface Transaction {
@@ -140,8 +161,21 @@ class RouterService {
     );
   }
 
-  async getTransactionHistory(): Promise<ApiResponse<TransactionHistory>> {
-    return this.request<TransactionHistory>('/account/history');
+  async getTransactionHistory(
+    page: number = 1, 
+    pageSize: number = 10,
+    status?: string
+  ): Promise<ApiResponse<PaginatedTransactionHistory>> {
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    });
+    
+    if (status && status !== 'all') {
+      params.append('status', status);
+    }
+    
+    return this.request<PaginatedTransactionHistory>(`/account/history?${params.toString()}`);
   }
 }
 

@@ -41,6 +41,27 @@ interface Transaction {
 
 interface TransactionHistory {
   transactions: Transaction[];
+  total_credits: number;
+  total_debits: number;
+}
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+interface TransactionSummary {
+  completed_count: number;
+  pending_count: number;
+  total_spent: number;
+}
+
+interface PaginatedTransactionHistory {
+  data: TransactionHistory;
+  pagination: PaginationInfo;
+  summary: TransactionSummary;
 }
 
 function getMarkdownHtml(md: string) {
@@ -353,7 +374,14 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
 
   // Get current user to check if router belongs to them
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -427,10 +455,14 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
     if (activeTab === 'usage') {
       setTransactionsLoading(true);
       setTransactionsError(null);
-      routerService.getTransactionHistory()
+      routerService.getTransactionHistory(currentPage, pageSize, filterStatus)
         .then((resp) => {
           if (resp.success && resp.data) {
-            setTransactions(resp.data.transactions);
+            setTransactions(resp.data.data.transactions);
+            setTotalTransactions(resp.data.pagination.total);
+            setCompletedCount(resp.data.summary.completed_count);
+            setPendingCount(resp.data.summary.pending_count);
+            setTotalSpent(resp.data.summary.total_spent);
           } else {
             setTransactionsError(resp.error || 'Failed to load transaction history.');
           }
@@ -438,16 +470,10 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
         .catch(() => setTransactionsError('Failed to load transaction history.'))
         .finally(() => setTransactionsLoading(false));
     }
-  }, [activeTab]);
+  }, [activeTab, currentPage, pageSize, filterStatus]);
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesStatus = filterStatus === 'all' || transaction.status === filterStatus;
-    const matchesSearch = searchTerm === '' || 
-      transaction.sender_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.recipient_email?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  // Use transactions directly since filtering is now done on the backend
+  const filteredTransactions = transactions;
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -688,24 +714,13 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                   <p className="text-gray-600 mt-1">Track all your router usage and payments</p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  {/* Search */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search by email..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.currentTarget.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  
                   {/* Status Filter */}
                   <select
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.currentTarget.value as any)}
+                    onChange={(e) => {
+                      setFilterStatus(e.currentTarget.value as any);
+                      setCurrentPage(1); // Reset to first page when filter changes
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="all">All Status</option>
@@ -727,7 +742,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-                      <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
+                      <p className="text-2xl font-bold text-gray-900">{totalTransactions}</p>
                     </div>
                   </div>
                 </div>
@@ -741,7 +756,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Completed</p>
-                      <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.status === 'completed').length}</p>
+                      <p className="text-2xl font-bold text-gray-900">{completedCount}</p>
                     </div>
                   </div>
                 </div>
@@ -755,7 +770,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Pending</p>
-                      <p className="text-2xl font-bold text-gray-900">{transactions.filter(t => t.status === 'pending').length}</p>
+                      <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
                     </div>
                   </div>
                 </div>
@@ -769,7 +784,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                      <p className="text-2xl font-bold text-gray-900">${transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-gray-900">${totalSpent.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -854,6 +869,71 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Pagination Controls */}
+                {totalTransactions > 0 && (
+                  <div className="mt-6 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-sm text-gray-700">
+                        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalTransactions)} of {totalTransactions} transactions
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <label className="text-sm text-gray-700">Show:</label>
+                        <select
+                          value={pageSize}
+                          onChange={(e) => {
+                            setPageSize(Number(e.currentTarget.value));
+                            setCurrentPage(1); // Reset to first page when changing page size
+                          }}
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                        </select>
+                        <span className="text-sm text-gray-700">per page</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: Math.min(5, totalTransactions / pageSize + 1) }, (_, i) => {
+                          const pageNum = i + 1;
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1 text-sm border rounded ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-500 text-white border-blue-500'
+                                  : 'border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalTransactions / pageSize + 1, currentPage + 1))}
+                        disabled={currentPage >= totalTransactions / pageSize}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
                 )}

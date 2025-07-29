@@ -54,3 +54,28 @@ class TransactionHistory(BaseModel):
     transactions: list[TransactionDetail]
     total_credits: float
     total_debits: float
+
+
+class PaginationInfo(BaseModel):
+    """Pagination information."""
+
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class TransactionSummary(BaseModel):
+    """Transaction summary statistics."""
+
+    completed_count: int
+    pending_count: int
+    total_spent: float
+
+
+class PaginatedTransactionHistory(BaseModel):
+    """Paginated transaction history with summary statistics."""
+
+    data: TransactionHistory
+    pagination: PaginationInfo
+    summary: TransactionSummary

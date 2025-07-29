@@ -1,3 +1,4 @@
+from typing import Optional
 from syft_core.config import SyftClientConfig
 from .schemas import (
     AccountingConfig,
@@ -6,6 +7,9 @@ from .schemas import (
     TransactionToken,
     TransactionHistory,
     TransactionDetail,
+    PaginatedTransactionHistory,
+    PaginationInfo,
+    TransactionSummary,
 )
 from syft_accounting_sdk import UserClient, ServiceException
 from shared.exceptions import APIException
@@ -86,35 +90,97 @@ class AccountingManager:
 
         return TransactionToken(token=token, recipient_email=recipient_email)
 
-    def get_user_transactions(self) -> TransactionHistory:
-        """Get user transactions. Returns a list of transactions."""
+    def get_user_transactions(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        status: Optional[str] = None,
+    ) -> PaginatedTransactionHistory:
+        """Get user transactions with pagination and optional status filtering."""
         try:
             transactions = self.client.get_transaction_history()
             total_credited = 0
             total_debited = 0
             txn_details = []
 
+            # Filter transactions
+            filtered_transactions = []
             for transaction in transactions:
+                # Apply status filter
+                if status and status != "all":
+                    if transaction.status.value.lower() != status.lower():
+                        continue
+
+                filtered_transactions.append(transaction)
+
+            # Calculate totals for filtered transactions
+            for transaction in filtered_transactions:
+                if transaction.senderEmail == self.accounting_config.email:
+                    total_debited += transaction.amount
+                if transaction.recipientEmail == self.accounting_config.email:
+                    total_credited += transaction.amount
+
+            # Apply pagination
+            total_transactions = len(filtered_transactions)
+            total_pages = (total_transactions + page_size - 1) // page_size
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            paginated_transactions = filtered_transactions[start_idx:end_idx]
+
+            # Calculate counts for all transactions (not just current page)
+            completed_count = sum(
+                1
+                for t in filtered_transactions
+                if t.status.value.lower() == "completed"
+            )
+            pending_count = sum(
+                1 for t in filtered_transactions if t.status.value.lower() == "pending"
+            )
+            total_spent = sum(
+                t.amount
+                for t in filtered_transactions
+                if t.status.value.lower() == "completed"
+            )
+
+            # Convert to TransactionDetail objects
+            for transaction in paginated_transactions:
                 txn_details.append(
                     TransactionDetail(
                         id=transaction.id,
                         created_at=transaction.createdAt,
                         sender_email=transaction.senderEmail,
                         recipient_email=transaction.recipientEmail,
-                        status=transaction.status.value,
+                        status=transaction.status.value.lower(),  # Convert to lowercase to match frontend expectations
                         amount=transaction.amount,
                     )
                 )
 
-                if transaction.senderEmail == self.accounting_config.email:
-                    total_debited += transaction.amount
-                if transaction.recipientEmail == self.accounting_config.email:
-                    total_credited += transaction.amount
-
-            return TransactionHistory(
+            # Create the transaction history data
+            transaction_history = TransactionHistory(
                 transactions=txn_details,
                 total_credits=total_credited,
                 total_debits=total_debited,
+            )
+
+            # Create pagination info
+            pagination_info = PaginationInfo(
+                total=total_transactions,
+                page=page,
+                page_size=page_size,
+                total_pages=total_pages,
+            )
+
+            # Create summary info
+            summary_info = TransactionSummary(
+                completed_count=completed_count,
+                pending_count=pending_count,
+                total_spent=total_spent,
+            )
+
+            return PaginatedTransactionHistory(
+                data=transaction_history,
+                pagination=pagination_info,
+                summary=summary_info,
             )
         except ServiceException as e:
             raise APIException(
