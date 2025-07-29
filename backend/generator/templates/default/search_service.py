@@ -49,11 +49,11 @@ class LocalSearchService(SearchService):
         except Exception as e:
             logger.error(f"RAG is not ready: {e}")
 
-    def __make_search_request(self, payload: dict) -> list[dict]:
+    def __make_search_request(self, query: str, limit: int) -> list[dict]:
         """Make a search request to the RAG service."""
         response = self.rag_client.post(
             "/api/search",
-            json=payload,
+            json={"query": query, "limit": limit},
         )
         response.raise_for_status()
 
@@ -87,7 +87,7 @@ class LocalSearchService(SearchService):
 
                     if len(results) > 0:
                         payment_txn.confirm()
-                    query_cost = self.pricing
+                        query_cost = self.pricing
             elif self.pricing > 0 and not transaction_token:
                 # If pricing is not zero, but transaction token is not provided, then we raise an error
                 raise ValueError(

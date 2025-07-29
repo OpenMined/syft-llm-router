@@ -96,8 +96,7 @@ class OllamaChatService(ChatService):
                     # If the response is not empty, confirm the transaction
                     if content:
                         payment_txn.confirm()
-
-                    query_cost = self.pricing
+                        query_cost = self.pricing
 
             elif self.pricing > 0 and not transaction_token:
                 # If pricing is not zero, but transaction token is not provided, then we raise an error

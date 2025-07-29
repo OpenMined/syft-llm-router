@@ -398,7 +398,28 @@ export function ChatPage({ onBack }: ChatPageProps) {
           const router = searchRouters.find(r => r.name === routerName);
           if (router) {
             try {
-              const searchResponse = await chatService.search(router.name, router.author, message);
+              // Check if search service has pricing
+              const searchService = router.services.find(s => s.type === 'search');
+              const searchPricing = searchService?.pricing || 0;
+              
+              let searchTransactionToken: string | undefined = undefined;
+              if (searchPricing > 0) {
+                if (!userEmail) throw new Error('User email not found');
+                try {
+                  searchTransactionToken = await chatService.createTransactionToken(router.author);
+                } catch (err) {
+                  console.error(`Failed to create transaction token for search service ${routerName}:`, err);
+                  continue; // Skip this search service if token creation fails
+                }
+              }
+
+              const searchResponse = await chatService.search(
+                router.name, 
+                router.author, 
+                message,
+                searchPricing > 0 ? { user_email: userEmail!, transaction_token: searchTransactionToken } : undefined
+              );
+              
               if (searchResponse.success && searchResponse.data) {
                 const results = searchResponse.data.data.message.body.results;
                 searchResults.push(...results);
