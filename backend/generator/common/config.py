@@ -26,7 +26,7 @@ class RouterEnvSettings(BaseSettings):
     )
 
     class Config:
-        env_file = "../.env"
+        env_file = ".env"
 
     @field_validator("syftbox_config_path", mode="before")
     def validate_syftbox_config_path(cls, v) -> Path:
