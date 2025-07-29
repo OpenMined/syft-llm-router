@@ -105,6 +105,8 @@ class AccountingManager:
 
             # Filter transactions
             filtered_transactions = []
+            # sort transactions by created_at datetime
+            transactions.sort(key=lambda x: x.createdAt, reverse=True)
             for transaction in transactions:
                 # Apply status filter
                 if status and status != "all":
