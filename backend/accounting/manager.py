@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from syft_core.config import SyftClientConfig
 from .schemas import (
@@ -95,6 +96,8 @@ class AccountingManager:
         page: int = 1,
         page_size: int = 10,
         status: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
     ) -> PaginatedTransactionHistory:
         """Get user transactions with pagination and optional status filtering."""
         try:
@@ -108,6 +111,11 @@ class AccountingManager:
             # sort transactions by created_at datetime
             transactions.sort(key=lambda x: x.createdAt, reverse=True)
             for transaction in transactions:
+                if start_date and transaction.createdAt <= start_date:
+                    continue
+                if end_date and transaction.createdAt >= end_date:
+                    continue
+
                 # Apply status filter
                 if status and status != "all":
                     if transaction.status.value.lower() != status.lower():
@@ -115,12 +123,13 @@ class AccountingManager:
 
                 filtered_transactions.append(transaction)
 
-            # Calculate totals for filtered transactions
+            # Calculate totals for completed transactions only (to match balance calculation)
             for transaction in filtered_transactions:
-                if transaction.senderEmail == self.accounting_config.email:
-                    total_debited += transaction.amount
-                if transaction.recipientEmail == self.accounting_config.email:
-                    total_credited += transaction.amount
+                if transaction.status.value.lower() == "completed":
+                    if transaction.senderEmail == self.accounting_config.email:
+                        total_debited += transaction.amount
+                    if transaction.recipientEmail == self.accounting_config.email:
+                        total_credited += transaction.amount
 
             # Apply pagination
             total_transactions = len(filtered_transactions)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Query
 from .manager import AccountingManager
 from .schemas import UserAccountView, TransactionToken, PaginatedTransactionHistory
@@ -33,9 +34,15 @@ def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
         status: str = Query(
             None, description="Filter by status (completed, pending, failed)"
         ),
+        start_date: datetime = Query(
+            None, description="Filter by start date (ISO format)"
+        ),
+        end_date: datetime = Query(None, description="Filter by end date (ISO format)"),
     ) -> PaginatedTransactionHistory:
         try:
-            return accounting_manager.get_user_transactions(page, page_size, status)
+            return accounting_manager.get_user_transactions(
+                page, page_size, status, start_date, end_date
+            )
         except APIException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
 

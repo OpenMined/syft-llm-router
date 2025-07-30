@@ -4,8 +4,8 @@ import { routerService } from '../../services/routerService';
 
 interface HeaderProps {
   profileToggle: h.JSX.Element;
-  onTabChange?: (tab: 'routers' | 'chat') => void;
-  activeTab?: 'routers' | 'chat';
+  onTabChange?: (tab: 'routers' | 'chat' | 'usage') => void;
+  activeTab?: 'routers' | 'chat' | 'usage';
 }
 
 export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
@@ -88,6 +88,16 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
             }`}
           >
             Chat
+          </button>
+          <button
+            onClick={() => onTabChange?.('usage')}
+            className={`px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center gap-2 ${
+              activeTab === 'usage'
+                ? 'text-primary-700 bg-primary-50'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            Usage
           </button>
         </nav>
         

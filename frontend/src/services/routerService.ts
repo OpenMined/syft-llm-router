@@ -161,20 +161,30 @@ class RouterService {
     );
   }
 
-  async getTransactionHistory(
+    async getTransactionHistory(
     page: number = 1, 
     pageSize: number = 10,
-    status?: string
+    status?: string,
+    startDate?: string,
+    endDate?: string
   ): Promise<ApiResponse<PaginatedTransactionHistory>> {
     const params = new URLSearchParams({
       page: String(page),
       page_size: String(pageSize),
     });
-    
+
     if (status && status !== 'all') {
       params.append('status', status);
     }
-    
+
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+
     return this.request<PaginatedTransactionHistory>(`/account/history?${params.toString()}`);
   }
 }
