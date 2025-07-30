@@ -17,8 +17,25 @@ interface SearchResponse {
   data: {
     message: {
       body: {
+        cost: number;
+        id: string;
+        providerInfo: {
+          provider: string;
+        };
+        query: string;
         results: SearchResult[];
       };
+      created: string;
+      expires: string;
+      headers: {
+        'content-length': string;
+        'content-type': string;
+      };
+      id: string;
+      method: string;
+      sender: string;
+      status_code: number;
+      url: string;
     };
     poll_url?: string;
   };
@@ -58,6 +75,11 @@ interface PollResponse {
 
 interface SbUrlResponse {
   url: string;
+}
+
+interface TransactionTokenResponse {
+  token: string;
+  recipient_email: string;
 }
 
 class ChatService {
@@ -183,15 +205,26 @@ class ChatService {
     };
   }
 
-  async search(routerName: string, author: string, query: string): Promise<ApiResponse<SearchResponse> & { errorDetails?: string }> {
-    const encodedQuery = encodeURIComponent(query);
-    const syftUrl = `syft://${author}/app_data/${routerName}/rpc/search?query="${encodedQuery}"`;
+  async search(
+    routerName: string, 
+    author: string, 
+    query: string,
+    options?: { user_email?: string; transaction_token?: string }
+  ): Promise<ApiResponse<SearchResponse> & { errorDetails?: string }> {
+    const syftUrl = `syft://${author}/app_data/${routerName}/rpc/search`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
     const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
     
+    const payload: any = {
+      query,
+    };
+    if (options?.user_email) payload.user_email = options.user_email;
+    if (options?.transaction_token) payload.transaction_token = options.transaction_token;
+
     const response = await this.request<SearchResponse>(endpoint, {
       method: 'POST',
+      body: JSON.stringify(payload),
     });
 
     // If we get a 202, poll for the response
@@ -207,16 +240,38 @@ class ChatService {
     return { ...response, errorDetails };
   }
 
-  async chat(routerName: string, author: string, messages: ChatMessage[]): Promise<ApiResponse<ChatResponse>> {
+  async createTransactionToken(recipient_email: string): Promise<string> {
+    try {
+      const response = await fetch(`/account/token/create?recipient_email=${encodeURIComponent(recipient_email)}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create transaction token');
+      }
+      const data: TransactionTokenResponse = await response.json();
+      return data.token;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Unknown error occurred while creating transaction token');
+    }
+  }
+
+  async chat(
+    routerName: string,
+    author: string,
+    messages: ChatMessage[],
+    options?: { user_email?: string; transaction_token?: string }
+  ): Promise<ApiResponse<ChatResponse>> {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/chat`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
     const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
     
-    const payload: ChatRequest = {
+    const payload: any = {
       model: "tinyllama:latest",
       messages,
     };
+    if (options?.user_email) payload.user_email = options.user_email;
+    if (options?.transaction_token) payload.transaction_token = options.transaction_token;
 
     const response = await this.request<ChatResponse>(endpoint, {
       method: 'POST',
@@ -231,17 +286,6 @@ class ChatService {
     return response;
   }
 
-  async getAvailableRouters(): Promise<ApiResponse<Array<{ name: string; author: string; services: string[] }>>> {
-    // This would typically come from your router list API
-    // For now, we'll return a mock response
-    return {
-      success: true,
-      data: [
-        { name: 'mit', author: 'alice@openmined.org', services: ['search'] },
-        { name: 'oreilly', author: 'alice@openmined.org', services: ['chat'] },
-      ],
-    };
-  }
 }
 
 export const chatService = new ChatService();

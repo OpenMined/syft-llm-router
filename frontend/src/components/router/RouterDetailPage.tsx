@@ -26,6 +26,9 @@ interface RouterDetails {
   endpoints?: OpenAPISpecification;
 }
 
+// Add transaction interfaces
+
+
 function getMarkdownHtml(md: string) {
   try {
     if (typeof marked.parseInline === 'function') {
@@ -331,6 +334,8 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
 
+
+
   // Get current user to check if router belongs to them
   const [currentUser, setCurrentUser] = useState<string | null>(null);
 
@@ -398,6 +403,10 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
     }
   }, [currentUser, author, routerName, published]);
 
+
+
+
+
   // If client tries to access a draft, show error
   if (profile === 'client' && !published) {
     return (
@@ -421,10 +430,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
           <div className="flex space-x-8 border-b border-gray-200 mb-10">
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'overview' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('overview')}>Overview</button>
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'documentation' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('documentation')}>API Documentation</button>
-            <button className="px-4 py-2 text-base font-semibold text-gray-400 cursor-not-allowed flex items-center gap-2" disabled>
-              Usage
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200 ml-2">Coming Soon</span>
-            </button>
+            
           </div>
 
           {activeTab === 'overview' && details && (
@@ -602,8 +608,11 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
               )}
             </div>
           )}
+
+
         </>
       )}
+
       {/* Publish Router Modal */}
       {showPublishModal && details && (
         <PublishRouterModal

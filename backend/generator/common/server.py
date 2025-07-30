@@ -11,19 +11,20 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastsyftbox import FastSyftBox
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from loguru import logger
 from pydantic import BaseModel
 from syft_core.config import SyftClientConfig
 from pathlib import Path
+from pydantic import EmailStr
 
-from config import load_config, RunStatus
+from config import load_config, RunStatus, get_env_settings
 from router import SyftLLMRouter
 from schema import (
     ChatResponse,
-    GenerateChatParams,
-    SearchDocumentsParams,
+    SearchRequest,
+    ChatRequest,
     SearchOptions,
     SearchResponse,
 )
@@ -114,22 +115,42 @@ router: Optional[SyftLLMRouter] = None
 async def lifespan(app: FastSyftBox):
     """Custom lifespan method to initialize router and handle startup/shutdown."""
     try:
-        # Startup logic
-        config = load_config()
+        syftbox_client = app.syftbox_client
+
+        # Published metadata directory
+        published_metadata_dir = (
+            syftbox_client.my_datasite / "public" / "routers" / app_name
+        )
+
+        # Load config
+        config = load_config(
+            syft_config_path=syftbox_client.config_path,
+            metadata_path=published_metadata_dir / "metadata.json",
+        )
+
+        # Initialize router
         global router
-        router = SyftLLMRouter()
+        router = SyftLLMRouter(config=config)
         logger.info(f"Router initialized for project: {config.project_name}")
+
+        # Generate OpenAPI schema
         generate_openapi_schema(app)
+
+        # Setup default RPC permissions
         setup_default_rpc_permissions(app)
+
+        # Get app port and host
         app_port = os.environ.get("APP_PORT", 8000)
         app_host = os.environ.get("APP_HOST", "0.0.0.0")
 
+        # Update router state
         config.state.update_router_state(
             status=RunStatus.RUNNING,
             url=f"http://{app_host}:{app_port}",
         )
 
-        yield  # This allows the application to run
+        # Yield to allow the application to run
+        yield
 
     except Exception as e:
         logger.error(f"Failed to initialize router: {e}")
@@ -150,7 +171,7 @@ app = FastSyftBox(
     syftbox_endpoint_tags=["syftbox"],
     include_syft_openapi=True,
     lifespan=lifespan,
-    syftbox_config=SyftClientConfig.load("~/.syftbox/config.json"),
+    syftbox_config=SyftClientConfig.load(get_env_settings().syftbox_config_path),
 )
 
 
@@ -161,7 +182,7 @@ app = FastSyftBox(
     summary="Health check",
     description="Health check",
 )
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint.
 
     Returns:
@@ -170,7 +191,15 @@ async def health_check():
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    config = load_config()
+    syftbox_client = request.app.state.syftbox_client
+
+    published_metadata_dir = (
+        syftbox_client.my_datasite / "public" / "routers" / app_name
+    )
+    config = load_config(
+        syft_config_path=syftbox_client.config_path,
+        metadata_path=published_metadata_dir / "metadata.json",
+    )
 
     # Check service availability
     services = config.state.services.model_dump()
@@ -190,11 +219,12 @@ async def health_check():
     description="Chat with the router",
     responses={200: {"model": ChatResponse}},
 )
-async def chat_completion(request: GenerateChatParams):
+async def chat_completion(request: ChatRequest) -> ChatResponse:
     """Chat completion endpoint.
 
     Args:
-        request (GenerateChatParams): The request body containing the chat completion parameters
+        user_email (EmailStr): The email of the user making the request
+        request (ChatRequest): The request body containing the chat completion parameters
 
     Returns:
         ChatResponse: The chat completion response from the router
@@ -203,7 +233,13 @@ async def chat_completion(request: GenerateChatParams):
         raise HTTPException(status_code=503, detail="Router not initialized")
 
     try:
-        return router.generate_chat(request.model, request.messages, request.options)
+        return router.generate_chat(
+            user_email=request.user_email,
+            model=request.model,
+            messages=request.messages,
+            options=request.options,
+            transaction_token=request.transaction_token,
+        )
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -225,7 +261,7 @@ def is_port_in_use(port: int) -> bool:
     description="Search documents",
     responses={200: {"model": SearchResponse}},
 )
-async def search_documents(request: SearchDocumentsParams):
+async def search_documents(request: SearchRequest):
     """Document retrieval endpoint.
 
     Args:
@@ -237,15 +273,13 @@ async def search_documents(request: SearchDocumentsParams):
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    # Set default limit if options are not provided or limit is not set
-    options = request.options
-    if options is None:
-        options = SearchOptions(limit=3)
-    elif options.limit is None:
-        options.limit = 3
-
     try:
-        return router.search_documents(request.query, options)
+        return router.search_documents(
+            user_email=request.user_email,
+            query=request.query,
+            options=request.options,
+            transaction_token=request.transaction_token,
+        )
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:

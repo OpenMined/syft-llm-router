@@ -9,7 +9,7 @@ from .schemas import (
     RouterRunStatus,
 )
 from .manager import RouterManager
-from .exceptions import HTTPException
+from shared.exceptions import APIException
 
 
 def build_router_api(router_manager: RouterManager) -> APIRouter:
@@ -30,7 +30,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         """Create a new router app."""
         try:
             return service.create_router(request)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.get("/exists", response_model=bool)
@@ -49,7 +49,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         try:
             result = service.publish_router(request)
             return JSONResponse(status_code=200, content=result)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.put("/unpublish")
@@ -60,7 +60,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         try:
             result = service.unpublish_router(router_name)
             return JSONResponse(status_code=200, content=result)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.get("/list", response_model=RouterList)
@@ -78,7 +78,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         try:
             result = service.delete_router(router_name, published)
             return JSONResponse(status_code=200, content=result)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.get("/details", response_model=RouterDetails)
@@ -91,7 +91,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         """Fetch the details of a router app."""
         try:
             return service.get_router_details(router_name, author, published)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.get("/status", response_model=RouterRunStatus)
@@ -101,7 +101,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         """Get the status of the router."""
         try:
             return service.get_router_status(router_name)
-        except HTTPException as e:
+        except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     return router

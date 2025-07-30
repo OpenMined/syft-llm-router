@@ -9,9 +9,9 @@
         "type-check": "bunx --bun tsc --noEmit"
     },
     "dependencies": {
-        "preact": "^10.19.6",
         "dompurify": "^3.0.8",
-        "marked": "^12.0.0"
+        "marked": "^12.0.0",
+        "preact": "^10.19.6"
     },
     "devDependencies": {
         "@preact/preset-vite": "^2.8.1",

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { RouterList } from './components/router/RouterList';
 import { RouterDetailPage } from './components/router/RouterDetailPage';
 import { ChatPage } from './components/chat/ChatPage';
+import { UsagePage } from './components/usage/UsagePage';
 import { Header } from './components/shared/Header';
 import { ProfileToggle, ProfileType } from './components/shared/ProfileToggle';
 import { OnboardingModal } from './components/shared/OnboardingModal';
@@ -11,8 +12,8 @@ const PROFILE_KEY = 'syftbox_profile';
 
 // Simple route state
 export function App() {
-  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string } | { page: 'chat' }>({ page: 'list' });
-  const [activeTab, setActiveTab] = useState<'routers' | 'chat'>('routers');
+  const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string } | { page: 'chat' } | { page: 'usage' }>({ page: 'list' });
+  const [activeTab, setActiveTab] = useState<'routers' | 'chat' | 'usage'>('routers');
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -46,12 +47,14 @@ export function App() {
   };
 
   // Handler for tab changes
-  const handleTabChange = (tab: 'routers' | 'chat') => {
+  const handleTabChange = (tab: 'routers' | 'chat' | 'usage') => {
     setActiveTab(tab);
     if (tab === 'routers') {
       setRoute({ page: 'list' });
     } else if (tab === 'chat') {
       setRoute({ page: 'chat' });
+    } else if (tab === 'usage') {
+      setRoute({ page: 'usage' });
     }
   };
 
@@ -87,8 +90,10 @@ export function App() {
                   onBack={handleBackToList}
                   profile={profile}
                 />
-              ) : (
+              ) : route.page === 'chat' ? (
                 <ChatPage onBack={handleBackToList} />
+              ) : (
+                <UsagePage />
               )}
             </div>
           </div>

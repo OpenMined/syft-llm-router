@@ -11,6 +11,72 @@ import type {
 
 const API_BASE_URL = '';
 
+interface TransactionHistory {
+  transactions: Transaction[];
+  total_credits: number;
+  total_debits: number;
+}
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+interface TransactionSummary {
+  completed_count: number;
+  pending_count: number;
+  total_spent: number;
+}
+
+interface PaginatedTransactionHistory {
+  data: TransactionHistory;
+  pagination: PaginationInfo;
+  summary: TransactionSummary;
+}
+
+// Analytics interfaces
+interface DailyMetrics {
+  date: string;
+  query_count: number;
+  total_earned: number;
+  total_spent: number;
+  net_profit: number;
+  completed_count: number;
+  pending_count: number;
+}
+
+interface AnalyticsSummary {
+  total_days: number;
+  avg_daily_queries: number;
+  avg_daily_earned: number;
+  avg_daily_spent: number;
+  avg_daily_profit: number;
+  total_queries: number;
+  total_earned: number;
+  total_spent: number;
+  total_profit: number;
+  success_rate: number;
+}
+
+interface AnalyticsResponse {
+  daily_metrics: DailyMetrics[];
+  summary: AnalyticsSummary;
+}
+
+interface Transaction {
+  id: string;
+  sender_email: string;
+  recipient_email: string;
+  amount: number;
+  service_type: string;
+  router_name?: string;
+  status: 'completed' | 'pending' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
 class RouterService {
   private async request<T>(
     endpoint: string, 
@@ -116,6 +182,56 @@ class RouterService {
 
   async getSyftBoxUrl(): Promise<ApiResponse<{ url: string }>> {
     return this.request<{ url: string }>('/sburl');
+  }
+
+  async getAccountInfo(): Promise<ApiResponse<{ id: string; email: string; balance: number }>> {
+    return this.request<{ id: string; email: string; balance: number }>(
+      '/account/info'
+    );
+  }
+
+    async getTransactionHistory(
+    page: number = 1, 
+    pageSize: number = 10,
+    status?: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<ApiResponse<PaginatedTransactionHistory>> {
+    const params = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    });
+
+    if (status && status !== 'all') {
+      params.append('status', status);
+    }
+
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+
+    return this.request<PaginatedTransactionHistory>(`/account/history?${params.toString()}`);
+  }
+
+  async getAnalytics(
+    startDate?: string,
+    endDate?: string
+  ): Promise<ApiResponse<AnalyticsResponse>> {
+    const params = new URLSearchParams();
+
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+
+    return this.request<AnalyticsResponse>(`/account/analytics?${params.toString()}`);
   }
 }
 

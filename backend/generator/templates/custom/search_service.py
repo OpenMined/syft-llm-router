@@ -9,7 +9,16 @@ from uuid import UUID
 from loguru import logger
 
 from base_services import SearchService
-from schema import DocumentResult, SearchOptions, SearchResponse
+from schema import (
+    DocumentResult,
+    SearchOptions,
+    SearchResponse,
+    PublishedMetadata,
+    RouterServiceType,
+)
+from pydantic import EmailStr
+from config import RouterConfig
+from syft_accounting_sdk import UserClient
 
 
 class CustomSearchService(SearchService):
@@ -18,42 +27,69 @@ class CustomSearchService(SearchService):
     TODO: Implement your search service logic here.
     """
 
-    def __init__(self):
+    def __init__(self, config: RouterConfig):
         """Initialize custom search service."""
+        super().__init__(config)
         # TODO: Add your initialization logic here
         # Example: Database connections, API keys, index configurations, etc.
+        self.accounting_client: UserClient = self.config.accounting_client()
+        logger.info(f"Initialized accounting client: {self.accounting_client}")
         logger.info("Initialized custom search service")
 
     def search_documents(
         self,
+        user_email: EmailStr,
         query: str,
         options: Optional[SearchOptions] = None,
+        transaction_token: Optional[str] = None,
     ) -> SearchResponse:
         """Search documents using your custom implementation."""
         # TODO: Implement your document retrieval logic here
         # Example implementation:
 
-        # 1. Prepare your search request
-        # search_params = {
+        # 1. Prepare the search payload for your document search service
+        # limit = options.limit if options else 10
+        # payload = {
         #     "query": query,
-        #     "limit": options.limit if options else 5,
-        #     "similarity_threshold": options.similarity_threshold if options else 0.5,
-        #     # Add other parameters as needed
+        #     "limit": limit,
+        #     # Add other parameters as needed from options
         # }
 
-        # 2. Search your document index/database
-        # results = your_search_function(search_params)
+        # 2. Handle payment transaction if pricing > 0
+        # query_cost = 0.0
+        # if self.pricing > 0 and transaction_token:
+        #     with self.accounting_client.delegated_transfer(
+        #         user_email,
+        #         amount=self.pricing,
+        #         token=transaction_token,
+        #     ) as payment_txn:
+        #         # Make request to your search service
+        #         response = requests.post("your_search_api_endpoint", json=payload)
+        #         response.raise_for_status()
+        #         results = response.json()["results"]
+        #         if results:
+        #             payment_txn.confirm()
+        #         query_cost = self.pricing
+        # elif self.pricing > 0 and not transaction_token:
+        #     raise ValueError(
+        #         "Transaction token is required for paid services. Please provide a transaction token."
+        #     )
+        # else:
+        #     # Free service, just make the request
+        #     response = requests.post("your_search_api_endpoint", json=payload)
+        #     response.raise_for_status()
+        #     results = response.json()["results"]
 
         # 3. Convert results to DocumentResult format
-        # documents = []
-        # for result in results:
-        #     document = DocumentResult(
-        #         id=result["id"],
+        # documents = [
+        #     DocumentResult(
+        #         id=str(result["id"]),
         #         score=result["score"],
         #         content=result["content"],
         #         metadata=result.get("metadata", {}),
         #     )
-        #     documents.append(document)
+        #     for result in results
+        # ]
 
         # 4. Return SearchResponse
         # return SearchResponse(
@@ -61,6 +97,7 @@ class CustomSearchService(SearchService):
         #     query=query,
         #     results=documents,
         #     provider_info={"provider": "custom", "results_count": len(documents)},
+        #     cost=query_cost,
         # )
 
         # Placeholder implementation (remove this when implementing)
@@ -91,6 +128,16 @@ class CustomSearchService(SearchService):
             "Custom document indexing not implemented. "
             "Please implement the add_documents method in search_service.py"
         )
+
+    @property
+    def pricing(self) -> float:
+        """Get the pricing for the search service."""
+        if not self.config.metadata_path.exists():
+            return 0.0
+        metadata = PublishedMetadata.from_path(self.config.metadata_path)
+        for service in metadata.services:
+            if service.type == RouterServiceType.SEARCH:
+                return service.pricing
 
 
 SearchServiceImpl = CustomSearchService
