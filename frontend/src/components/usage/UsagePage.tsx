@@ -1,6 +1,7 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { routerService } from '../../services/routerService';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 // Transaction interfaces
 interface Transaction {
@@ -50,6 +51,14 @@ export function UsagePage() {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  
+  // View toggle state
+  const [activeView, setActiveView] = useState<'table' | 'analytics'>('table');
+  
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -113,6 +122,54 @@ export function UsagePage() {
       .finally(() => setTransactionsLoading(false));
   }, [currentPage, pageSize, filterStatus, dateFilter, startDate, endDate]);
 
+  // Load analytics data
+  useEffect(() => {
+    if (activeView === 'analytics') {
+      setAnalyticsLoading(true);
+      setAnalyticsError(null);
+      
+      // Convert date filter to start/end dates for analytics
+      let startDateParam: string | undefined;
+      let endDateParam: string | undefined;
+      
+      if (dateFilter !== 'all') {
+        const now = new Date();
+        
+        switch (dateFilter) {
+          case 'today':
+            startDateParam = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            endDateParam = now.toISOString();
+            break;
+          case 'week':
+            startDateParam = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            endDateParam = now.toISOString();
+            break;
+          case 'month':
+            startDateParam = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            endDateParam = now.toISOString();
+            break;
+          case 'custom':
+            if (startDate && endDate) {
+              startDateParam = new Date(startDate).toISOString();
+              endDateParam = new Date(endDate).toISOString();
+            }
+            break;
+        }
+      }
+      
+      routerService.getAnalytics(startDateParam, endDateParam)
+        .then((resp) => {
+          if (resp.success && resp.data) {
+            setAnalyticsData(resp.data);
+          } else {
+            setAnalyticsError(resp.error || 'Failed to load analytics data.');
+          }
+        })
+        .catch(() => setAnalyticsError('Failed to load analytics data.'))
+        .finally(() => setAnalyticsLoading(false));
+    }
+  }, [activeView, dateFilter, startDate, endDate]);
+
 
 
   // Format date
@@ -164,12 +221,43 @@ export function UsagePage() {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Usage & Costs</h1>
-          <p className="text-gray-600 mt-2">Track the cost of your chat and search queries across all routers</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Usage & Analytics</h1>
+              <p className="text-gray-600 mt-2">Track costs and analyze usage patterns across all routers</p>
+            </div>
+            
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveView('table')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  activeView === 'table'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Table View
+              </button>
+              <button
+                onClick={() => setActiveView('analytics')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  activeView === 'analytics'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Analytics View
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        {/* Table View */}
+        {activeView === 'table' && (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center">
               <div className="p-3 bg-blue-50 rounded-xl">
@@ -466,6 +554,17 @@ export function UsagePage() {
             )}
           </div>
         </div>
+          </>
+        )}
+
+        {/* Analytics View */}
+        {activeView === 'analytics' && (
+          <AnalyticsDashboard 
+            data={analyticsData} 
+            loading={analyticsLoading}
+            error={analyticsError}
+          />
+        )}
       </div>
     </div>
   );

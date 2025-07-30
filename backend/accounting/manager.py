@@ -11,6 +11,9 @@ from .schemas import (
     PaginatedTransactionHistory,
     PaginationInfo,
     TransactionSummary,
+    DailyMetrics,
+    AnalyticsSummary,
+    AnalyticsResponse,
 )
 from syft_accounting_sdk import UserClient, ServiceException
 from shared.exceptions import APIException
@@ -196,5 +199,103 @@ class AccountingManager:
         except ServiceException as e:
             raise APIException(
                 f"Failed to get user transactions: {e}",
+                status_code=e.status_code,
+            )
+
+    def get_analytics(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+    ) -> AnalyticsResponse:
+        """Get analytics data with daily metrics and summary."""
+        try:
+            transactions = self.client.get_transaction_history()
+
+            # Filter transactions by date if provided
+            filtered_transactions = []
+            for transaction in transactions:
+                if start_date and transaction.createdAt < start_date:
+                    continue
+                if end_date and transaction.createdAt > end_date:
+                    continue
+                filtered_transactions.append(transaction)
+
+            # Group transactions by date
+            daily_data = {}
+            for transaction in filtered_transactions:
+                date_str = transaction.createdAt.strftime("%Y-%m-%d")
+                if date_str not in daily_data:
+                    daily_data[date_str] = {
+                        "query_count": 0,
+                        "total_earned": 0.0,
+                        "total_spent": 0.0,
+                        "completed_count": 0,
+                        "pending_count": 0,
+                    }
+
+                daily_data[date_str]["query_count"] += 1
+
+                if transaction.status.value.lower() == "completed":
+                    daily_data[date_str]["completed_count"] += 1
+                    if transaction.recipientEmail == self.accounting_config.email:
+                        daily_data[date_str]["total_earned"] += transaction.amount
+                    if transaction.senderEmail == self.accounting_config.email:
+                        daily_data[date_str]["total_spent"] += transaction.amount
+                elif transaction.status.value.lower() == "pending":
+                    daily_data[date_str]["pending_count"] += 1
+
+            # Convert to DailyMetrics objects
+            daily_metrics = []
+            for date_str, data in sorted(daily_data.items()):
+                net_profit = data["total_earned"] - data["total_spent"]
+                daily_metrics.append(
+                    DailyMetrics(
+                        date=date_str,
+                        query_count=data["query_count"],
+                        total_earned=data["total_earned"],
+                        total_spent=data["total_spent"],
+                        net_profit=net_profit,
+                        completed_count=data["completed_count"],
+                        pending_count=data["pending_count"],
+                    )
+                )
+
+            # Calculate summary statistics
+            total_days = len(daily_metrics)
+            total_queries = sum(m.query_count for m in daily_metrics)
+            total_earned = sum(m.total_earned for m in daily_metrics)
+            total_spent = sum(m.total_spent for m in daily_metrics)
+            total_profit = total_earned - total_spent
+            total_completed = sum(m.completed_count for m in daily_metrics)
+
+            avg_daily_queries = total_queries / total_days if total_days > 0 else 0
+            avg_daily_earned = total_earned / total_days if total_days > 0 else 0
+            avg_daily_spent = total_spent / total_days if total_days > 0 else 0
+            avg_daily_profit = total_profit / total_days if total_days > 0 else 0
+            success_rate = (
+                (total_completed / total_queries * 100) if total_queries > 0 else 0
+            )
+
+            summary = AnalyticsSummary(
+                total_days=total_days,
+                avg_daily_queries=avg_daily_queries,
+                avg_daily_earned=avg_daily_earned,
+                avg_daily_spent=avg_daily_spent,
+                avg_daily_profit=avg_daily_profit,
+                total_queries=total_queries,
+                total_earned=total_earned,
+                total_spent=total_spent,
+                total_profit=total_profit,
+                success_rate=success_rate,
+            )
+
+            return AnalyticsResponse(
+                daily_metrics=daily_metrics,
+                summary=summary,
+            )
+
+        except ServiceException as e:
+            raise APIException(
+                f"Failed to get analytics: {e}",
                 status_code=e.status_code,
             )

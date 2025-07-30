@@ -36,6 +36,35 @@ interface PaginatedTransactionHistory {
   summary: TransactionSummary;
 }
 
+// Analytics interfaces
+interface DailyMetrics {
+  date: string;
+  query_count: number;
+  total_earned: number;
+  total_spent: number;
+  net_profit: number;
+  completed_count: number;
+  pending_count: number;
+}
+
+interface AnalyticsSummary {
+  total_days: number;
+  avg_daily_queries: number;
+  avg_daily_earned: number;
+  avg_daily_spent: number;
+  avg_daily_profit: number;
+  total_queries: number;
+  total_earned: number;
+  total_spent: number;
+  total_profit: number;
+  success_rate: number;
+}
+
+interface AnalyticsResponse {
+  daily_metrics: DailyMetrics[];
+  summary: AnalyticsSummary;
+}
+
 interface Transaction {
   id: string;
   sender_email: string;
@@ -186,6 +215,23 @@ class RouterService {
     }
 
     return this.request<PaginatedTransactionHistory>(`/account/history?${params.toString()}`);
+  }
+
+  async getAnalytics(
+    startDate?: string,
+    endDate?: string
+  ): Promise<ApiResponse<AnalyticsResponse>> {
+    const params = new URLSearchParams();
+
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+
+    return this.request<AnalyticsResponse>(`/account/analytics?${params.toString()}`);
   }
 }
 

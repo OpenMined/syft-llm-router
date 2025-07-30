@@ -1,7 +1,13 @@
 from datetime import datetime
 from fastapi import APIRouter, Query
+from datetime import datetime
 from .manager import AccountingManager
-from .schemas import UserAccountView, TransactionToken, PaginatedTransactionHistory
+from .schemas import (
+    UserAccountView,
+    TransactionToken,
+    PaginatedTransactionHistory,
+    AnalyticsResponse,
+)
 from fastapi import HTTPException
 from shared.exceptions import APIException
 
@@ -43,6 +49,18 @@ def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
             return accounting_manager.get_user_transactions(
                 page, page_size, status, start_date, end_date
             )
+        except APIException as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    @router.get("/analytics", response_model=AnalyticsResponse)
+    async def get_analytics(
+        start_date: datetime = Query(
+            None, description="Filter by start date (ISO format)"
+        ),
+        end_date: datetime = Query(None, description="Filter by end date (ISO format)"),
+    ) -> AnalyticsResponse:
+        try:
+            return accounting_manager.get_analytics(start_date, end_date)
         except APIException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
 

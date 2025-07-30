@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 
 class AccountingConfig(BaseModel):
@@ -13,7 +13,7 @@ class AccountingConfig(BaseModel):
 
 
 class UserAccount(BaseModel):
-    """User account."""
+    """User account information."""
 
     id: str
     email: EmailStr
@@ -22,7 +22,7 @@ class UserAccount(BaseModel):
 
 
 class UserAccountView(BaseModel):
-    """User account view."""
+    """User account view (without password)."""
 
     id: str
     email: EmailStr
@@ -30,14 +30,14 @@ class UserAccountView(BaseModel):
 
 
 class TransactionToken(BaseModel):
-    """Transaction token."""
+    """Transaction token for payment."""
 
     token: str
     recipient_email: str
 
 
 class TransactionDetail(BaseModel):
-    """Transaction detail."""
+    """Transaction detail information."""
 
     id: str
     amount: float
@@ -45,13 +45,12 @@ class TransactionDetail(BaseModel):
     sender_email: EmailStr
     recipient_email: EmailStr
     status: str
-    amount: float
 
 
 class TransactionHistory(BaseModel):
-    """Transaction history. Returns a list of transactions and the total credited and debited amounts."""
+    """Transaction history response."""
 
-    transactions: list[TransactionDetail]
+    transactions: List[TransactionDetail]
     total_credits: float
     total_debits: float
 
@@ -79,3 +78,38 @@ class PaginatedTransactionHistory(BaseModel):
     data: TransactionHistory
     pagination: PaginationInfo
     summary: TransactionSummary
+
+
+# Analytics Schemas
+class DailyMetrics(BaseModel):
+    """Daily metrics for analytics."""
+
+    date: str
+    query_count: int
+    total_earned: float
+    total_spent: float
+    net_profit: float
+    completed_count: int
+    pending_count: int
+
+
+class AnalyticsSummary(BaseModel):
+    """Analytics summary statistics."""
+
+    total_days: int
+    avg_daily_queries: float
+    avg_daily_earned: float
+    avg_daily_spent: float
+    avg_daily_profit: float
+    total_queries: int
+    total_earned: float
+    total_spent: float
+    total_profit: float
+    success_rate: float
+
+
+class AnalyticsResponse(BaseModel):
+    """Analytics response with daily metrics and summary."""
+
+    daily_metrics: List[DailyMetrics]
+    summary: AnalyticsSummary
