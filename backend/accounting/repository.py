@@ -34,9 +34,12 @@ class AccountingRepository:
                 statement = (
                     select(AccountingCredentialsModel)
                     .where(AccountingCredentialsModel.active)
-                    .update({"active": False})
+                    .with_for_update()
                 )
-                session.exec(statement)
+                for credential in session.exec(statement).all():
+                    credential.active = False
+                    session.add(credential)
+                session.commit()
 
                 # If no active credentials exist, set the new credentials as active
                 credentials = AccountingCredentialsModel(

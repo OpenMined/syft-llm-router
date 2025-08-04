@@ -97,16 +97,24 @@ class AccountingManager:
                 organization=organization,
             )
         except Exception as e:
-            logger.error(f"Failed to add or update credentials: {e.message}")
+            logger.error(f"Failed to add or update credentials: {e}")
             raise APIException(
-                f"Failed to add or update credentials: {e.message}",
+                f"Failed to add or update credentials: {e}",
                 status_code=500,
+            )
+
+        try:
+            user_info = self.client.get_user_info()
+        except ServiceException as e:
+            raise APIException(
+                f"Failed to get user info: {e}",
+                status_code=e.status_code,
             )
 
         return UserAccount(
             email=credentials.email,
             organization=credentials.organization,
-            balance=credentials.balance,
+            balance=user_info.balance,
             password=credentials.password,
         )
 
