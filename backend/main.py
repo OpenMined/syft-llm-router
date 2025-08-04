@@ -14,6 +14,7 @@ from router.repository import RouterRepository
 from shared.database import Database
 from accounting.api import build_accounting_api
 from accounting.manager import AccountingManager
+from accounting.repository import AccountingRepository
 from accounting.schemas import AccountingConfig
 from settings.app_settings import settings
 
@@ -63,27 +64,13 @@ def init_router_manager() -> RouterManager:
 
 def init_accounting_manager() -> AccountingManager:
     """Initialize the accounting manager."""
-
-    accounting_config = AccountingConfig(
-        email=settings.accounting_email,
-        password=settings.accounting_password,
-        url=settings.accounting_url,
-    )
+    accounting_repository = AccountingRepository(db=db)
+    accounting_config = AccountingConfig(url=settings.accounting_service_url)
     accounting_manager = AccountingManager(
         syftbox_config=app.syftbox_config,
+        repository=accounting_repository,
         accounting_config=accounting_config,
     )
-    try:
-        accounting_manager.get_or_create_user_account()
-    except Exception as e:
-        error_msg = (
-            f"Error initializing accounting manager. "
-            f"Please check your accounting server is running and your credentials are correct: {e}"
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=error_msg,
-        )
     return accounting_manager
 
 

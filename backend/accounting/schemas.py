@@ -1,32 +1,29 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
-from enum import Enum
 
 
 class AccountingConfig(BaseModel):
     """Accounting configuration."""
 
-    email: str
-    password: str
     url: str
 
 
 class UserAccount(BaseModel):
     """User account information."""
 
-    id: str
     email: EmailStr
     balance: float = Field(ge=0.0, default=0.0)
     password: str
+    organization: Optional[str] = None
 
 
 class UserAccountView(BaseModel):
     """User account view (without password)."""
 
-    id: str
     email: EmailStr
     balance: float = Field(ge=0.0, default=0.0)
+    organization: Optional[str] = None
 
 
 class TransactionToken(BaseModel):

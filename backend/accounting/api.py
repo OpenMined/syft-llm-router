@@ -7,9 +7,11 @@ from .schemas import (
     TransactionToken,
     PaginatedTransactionHistory,
     AnalyticsResponse,
+    UserAccount,
 )
 from fastapi import HTTPException
 from shared.exceptions import APIException
+from typing import Optional
 
 
 def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
@@ -27,7 +29,55 @@ def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
     @router.get("/info", response_model=UserAccountView)
     async def get_account_info() -> UserAccountView:
         try:
-            return accounting_manager.get_user_account()
+            return accounting_manager.get_current_account_info()
+        except APIException as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    @router.get("/url", response_model=str)
+    async def get_accounting_service_url() -> str:
+        return accounting_manager.accounting_config.url
+
+    @router.post("/credential/create", response_model=UserAccount)
+    async def add_account_credentials(
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Add account credentials to the accounting service.
+
+        Try creating a user on the accounting service.
+        - If the user already exists, raise an error.
+        - If the user does not exist, create the user and add the user account info to the repository.
+        """
+        try:
+            # Try creating a user on the accounting service
+            user, user_pwd = accounting_manager.create_user_on_service(
+                email, organization, password
+            )
+
+            # Add the user account info to the repository
+            user_account = accounting_manager.add_or_update_credentials(
+                user.email, user.organization, user_pwd
+            )
+            return user_account
+        except APIException as e:
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+    @router.post("/credential/update", response_model=UserAccount)
+    async def update_account_credentials(
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Update account credentials."""
+        if not organization and not password:
+            raise HTTPException(
+                status_code=400, detail="Either organization or password is required"
+            )
+        try:
+            return accounting_manager.add_or_update_credentials(
+                email, organization, password
+            )
         except APIException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
 

@@ -18,6 +18,7 @@ from .schemas import (
 from syft_accounting_sdk import UserClient, ServiceException
 from shared.exceptions import APIException
 from loguru import logger
+from .repository import AccountingRepository
 
 
 class AccountingManager:
@@ -26,60 +27,102 @@ class AccountingManager:
     def __init__(
         self,
         syftbox_config: SyftClientConfig,
+        repository: AccountingRepository,
         accounting_config: AccountingConfig,
     ):
         self.syftbox_config = syftbox_config
+        self.repository = repository
         self.accounting_config = accounting_config
 
     @property
     def client(self) -> UserClient:
-        """Get user client."""
+        """Get a user client."""
+        credentials = self.repository.get_active_credentials(
+            accounting_service_url=self.accounting_config.url,
+        )
+        if credentials is None:
+            raise APIException(
+                f"No active credentials found for {self.accounting_config.url}",
+                status_code=404,
+            )
         return UserClient(
             url=self.accounting_config.url,
-            email=self.accounting_config.email,
-            password=self.accounting_config.password,
+            email=credentials.email,
+            password=credentials.password,
         )
 
-    def get_or_create_user_account(self) -> UserAccount:
-        """Get or create user account."""
+    def create_user_on_service(
+        self,
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Create a user account on the service."""
         try:
-            user, password = self.client.create_user(
+            user, user_pwd = UserClient.create_user(
                 url=self.accounting_config.url,
-                email=self.accounting_config.email,
-                password=self.accounting_config.password,
+                organization=organization,
+                email=email,
+                password=password,
             )
         except ServiceException as e:
+            logger.error(
+                f"Failed to create user account: {e.message} with {e.status_code}"
+            )
             if e.status_code == 409:
-                logger.info(f"User account already exists: {e}")
-                user = self.client.get_user_info()
-                password = self.accounting_config.password
-            else:
                 raise APIException(
-                    f"Failed to create user account: {e}",
+                    f"User account already exists: {e.message}",
                     status_code=e.status_code,
                 )
+            else:
+                raise APIException(
+                    f"Failed to create user account: {e.message} with {e.status_code}",
+                    status_code=e.status_code,
+                )
+        return user, user_pwd
 
-        return UserAccount(
-            id=user.id,
-            email=user.email,
-            balance=user.balance,
-            password=password,
-        )
+    def add_or_update_credentials(
+        self,
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Add or update user account credentials to the repository."""
 
-    def get_user_account(self) -> UserAccountView:
-        """Get user account information."""
         try:
-            user = self.client.get_user_info()
-        except ServiceException as e:
+            credentials = self.repository.add_or_update_credentials(
+                email=email,
+                password=password,
+                accounting_service_url=self.accounting_config.url,
+                organization=organization,
+            )
+        except Exception as e:
+            logger.error(f"Failed to add or update credentials: {e.message}")
             raise APIException(
-                f"Failed to get user account: {e}",
-                status_code=e.status_code,
+                f"Failed to add or update credentials: {e.message}",
+                status_code=500,
             )
 
+        return UserAccount(
+            email=credentials.email,
+            organization=credentials.organization,
+            balance=credentials.balance,
+            password=credentials.password,
+        )
+
+    def get_current_account_info(self) -> UserAccountView:
+        """Get current account info."""
+        try:
+            user_info = self.client.get_user_info()
+        except ServiceException as e:
+            raise APIException(
+                f"Failed to get user info: {e}",
+                status_code=e.status_code,
+            )
         return UserAccountView(
-            id=user.id,
-            email=user.email,
-            balance=user.balance,
+            email=user_info.email,
+            organization=user_info.organization,
+            balance=user_info.balance,
         )
 
     def create_txn_token(self, recipient_email: str) -> TransactionToken:
