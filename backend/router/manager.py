@@ -1,56 +1,85 @@
+import json
+import shutil
 from pathlib import Path
-from .repository import RouterRepository
-from .models import RouterServiceType
-from .schemas import (
-    CreateRouterRequest,
-    CreateRouterResponse,
-    PublishRouterRequest,
-    RouterList,
-    RouterOverview,
-    ServiceOverview,
-    RouterDetails,
-    RouterMetadataResponse,
-    RouterRunStatus,
-    RouterServiceStatus,
-    RouterUpdate,
-    RouterMetadata,
-    RouterService,
-    RouterCreate,
-    PricingChargeType,
-)
+
+from accounting.repository import AccountingRepository
+from generator.common.config import StateFile
 from generator.service import (
     ProjectConfig,
     SimplifiedProjectGenerator,
     UserAccountingConfig,
 )
-from generator.common.config import StateFile
-from .publish import publish_project, unpublish_project
-import json
-import shutil
-from shared.exceptions import APIException
-from syft_core.config import SyftClientConfig
-from syft_core import Client as SyftClient
 from settings.app_settings import settings
+from shared.exceptions import APIException
+from syft_core import Client as SyftClient
+from syft_core.config import SyftClientConfig
+
+from .models import PricingChargeType, RouterServiceType
+from .publish import publish_project, unpublish_project
+from .repository import RouterRepository
+from .schemas import (
+    CreateRouterRequest,
+    CreateRouterResponse,
+    PublishRouterRequest,
+    RouterCreate,
+    RouterDetails,
+    RouterList,
+    RouterMetadata,
+    RouterMetadataResponse,
+    RouterOverview,
+    RouterRunStatus,
+    RouterService,
+    RouterServiceStatus,
+    RouterUpdate,
+    ServiceOverview,
+)
 
 
 class RouterManager:
     def __init__(
         self,
         repository: RouterRepository,
+        accounting_repository: AccountingRepository,
         syftbox_config: SyftClientConfig,
         syftbox_client: SyftClient,
         router_app_dir: Path,
         template_dir: Path,
     ):
         self.repository = repository
+        self.accounting_repository = accounting_repository
         self.syftbox_config = syftbox_config
         self.syftbox_client = syftbox_client
         self.router_app_dir = router_app_dir
         self.template_dir = template_dir
 
+    def _get_accounting_credentials(self) -> UserAccountingConfig:
+        """Get active accounting credentials from database."""
+
+        # Get the accounting service URL from the current user's context
+        credentials = self.accounting_repository.get_active_credentials(
+            settings.accounting_service_url
+        )
+
+        if not credentials:
+            raise APIException(
+                "No active accounting credentials found. "
+                "Please set up your accounting service credentials first.",
+                404,
+            )
+
+        # Return the credentials as a UserAccountingConfig object
+        return UserAccountingConfig(
+            url=credentials.accounting_service_url,
+            email=credentials.email,
+            password=credentials.password,
+        )
+
     def create_router(self, request: CreateRouterRequest) -> CreateRouterResponse:
         """Create a new router app"""
         author = self.get_current_user()
+
+        # Get accounting credentials from database instead of settings
+        user_accounting_config = self._get_accounting_credentials()
 
         config = ProjectConfig(
             project_name=request.name.strip(),
@@ -58,11 +87,7 @@ class RouterManager:
             enable_chat=RouterServiceType.CHAT in request.services,
             enable_search=RouterServiceType.SEARCH in request.services,
             syftbox_config=self.syftbox_config,
-            user_accounting_config=UserAccountingConfig(
-                url=settings.accounting_url,
-                email=settings.accounting_email,
-                password=settings.accounting_password,
-            ),
+            user_accounting_config=user_accounting_config,
         )
 
         generator = SimplifiedProjectGenerator(template_dir=self.template_dir)
@@ -216,7 +241,6 @@ class RouterManager:
         # Fetch published routers from other datasites (requires syftbox client)
         # This involves iterating through datasites and reading metadata.json files
         for datasite in self.syftbox_client.datasites.iterdir():
-
             # Skip current datasite
             if datasite.name == self.syftbox_client.email:
                 continue

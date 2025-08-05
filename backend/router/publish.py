@@ -1,11 +1,11 @@
 import hashlib
 import json
 import shutil
+import tomllib
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union
 
-import tomllib
 from rich import print as rprint
 from syft_core import Client
 from syft_core.permissions import PERM_FILE, SyftPermission

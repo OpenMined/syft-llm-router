@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException as FastAPIHTTPException
+from fastapi import APIRouter, Depends
+from fastapi import HTTPException as FastAPIHTTPException
 from fastapi.responses import JSONResponse
+from shared.exceptions import APIException
+
+from .manager import RouterManager
 from .schemas import (
     CreateRouterRequest,
     CreateRouterResponse,
     PublishRouterRequest,
-    RouterList,
     RouterDetails,
+    RouterList,
     RouterRunStatus,
 )
-from .manager import RouterManager
-from shared.exceptions import APIException
 
 
 def build_router_api(router_manager: RouterManager) -> APIRouter:

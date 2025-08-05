@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Optional
-from uuid import uuid4, UUID
-from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import JSON
+from uuid import UUID, uuid4
 
-from .constants import RouterType, RouterServiceType, PricingChargeType
+from sqlalchemy import JSON
+from sqlmodel import Field, Relationship, SQLModel
+
+from .constants import PricingChargeType, RouterServiceType, RouterType
 
 
 class RouterModel(SQLModel, table=True):

@@ -1,17 +1,17 @@
 from datetime import datetime
-from fastapi import APIRouter, Query
-from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from shared.exceptions import APIException
+
 from .manager import AccountingManager
 from .schemas import (
-    UserAccountView,
-    TransactionToken,
-    PaginatedTransactionHistory,
     AnalyticsResponse,
+    PaginatedTransactionHistory,
+    TransactionToken,
     UserAccount,
+    UserAccountView,
 )
-from fastapi import HTTPException
-from shared.exceptions import APIException
-from typing import Optional
 
 
 def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:

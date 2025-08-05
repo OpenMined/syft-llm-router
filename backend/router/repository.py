@@ -1,8 +1,10 @@
-from typing import Optional, List
-from sqlmodel import select
-from .models import RouterModel, RouterServiceModel, RouterMetadataModel
-from .schemas import Router, RouterCreate, RouterUpdate
+from typing import List, Optional
+
 from shared.database import BaseRepository
+from sqlmodel import select
+
+from .models import RouterMetadataModel, RouterModel, RouterServiceModel
+from .schemas import Router, RouterCreate, RouterUpdate
 
 
 class RouterRepository(BaseRepository):

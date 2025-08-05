@@ -1,8 +1,9 @@
 from datetime import datetime
-from sqlmodel import SQLModel, Field
-from pydantic import EmailStr
-from uuid import UUID, uuid4
 from typing import Optional
+from uuid import UUID, uuid4
+
+from pydantic import EmailStr
+from sqlmodel import Field, SQLModel
 
 
 class AccountingCredentialsModel(SQLModel, table=True):
