@@ -1,23 +1,27 @@
 from datetime import datetime
 from typing import Optional
+
+from loguru import logger
+from shared.exceptions import APIException
+from syft_accounting_sdk import ServiceException, UserClient
 from syft_core.config import SyftClientConfig
+
+from .repository import AccountingRepository
 from .schemas import (
     AccountingConfig,
-    UserAccount,
-    UserAccountView,
-    TransactionToken,
-    TransactionHistory,
-    TransactionDetail,
+    AnalyticsResponse,
+    AnalyticsSummary,
+    AppMetrics,
+    DailyMetrics,
     PaginatedTransactionHistory,
     PaginationInfo,
+    TransactionDetail,
+    TransactionHistory,
     TransactionSummary,
-    DailyMetrics,
-    AnalyticsSummary,
-    AnalyticsResponse,
+    TransactionToken,
+    UserAccount,
+    UserAccountView,
 )
-from syft_accounting_sdk import UserClient, ServiceException
-from shared.exceptions import APIException
-from loguru import logger
 
 
 class AccountingManager:
@@ -26,60 +30,110 @@ class AccountingManager:
     def __init__(
         self,
         syftbox_config: SyftClientConfig,
+        repository: AccountingRepository,
         accounting_config: AccountingConfig,
     ):
         self.syftbox_config = syftbox_config
+        self.repository = repository
         self.accounting_config = accounting_config
 
     @property
     def client(self) -> UserClient:
-        """Get user client."""
+        """Get a user client."""
+        credentials = self.repository.get_active_credentials(
+            accounting_service_url=self.accounting_config.url,
+        )
+        if credentials is None:
+            raise APIException(
+                f"No active credentials found for {self.accounting_config.url}",
+                status_code=404,
+            )
         return UserClient(
             url=self.accounting_config.url,
-            email=self.accounting_config.email,
-            password=self.accounting_config.password,
+            email=credentials.email,
+            password=credentials.password,
         )
 
-    def get_or_create_user_account(self) -> UserAccount:
-        """Get or create user account."""
+    def create_user_on_service(
+        self,
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Create a user account on the service."""
         try:
-            user, password = self.client.create_user(
+            user, user_pwd = UserClient.create_user(
                 url=self.accounting_config.url,
-                email=self.accounting_config.email,
-                password=self.accounting_config.password,
+                organization=organization,
+                email=email,
+                password=password,
             )
         except ServiceException as e:
+            logger.error(
+                f"Failed to create user account: {e.message} with {e.status_code}"
+            )
             if e.status_code == 409:
-                logger.info(f"User account already exists: {e}")
-                user = self.client.get_user_info()
-                password = self.accounting_config.password
-            else:
                 raise APIException(
-                    f"Failed to create user account: {e}",
+                    f"User account already exists: {e.message}",
                     status_code=e.status_code,
                 )
+            else:
+                raise APIException(
+                    f"Failed to create user account: {e.message} with {e.status_code}",
+                    status_code=e.status_code,
+                )
+        return user, user_pwd
 
-        return UserAccount(
-            id=user.id,
-            email=user.email,
-            balance=user.balance,
-            password=password,
-        )
+    def add_or_update_credentials(
+        self,
+        email: str,
+        organization: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> UserAccount:
+        """Add or update user account credentials to the repository."""
 
-    def get_user_account(self) -> UserAccountView:
-        """Get user account information."""
         try:
-            user = self.client.get_user_info()
+            credentials = self.repository.add_or_update_credentials(
+                email=email,
+                password=password,
+                accounting_service_url=self.accounting_config.url,
+                organization=organization,
+            )
+        except Exception as e:
+            logger.error(f"Failed to add or update credentials: {e}")
+            raise APIException(
+                f"Failed to add or update credentials: {e}",
+                status_code=500,
+            )
+
+        try:
+            user_info = self.client.get_user_info()
         except ServiceException as e:
             raise APIException(
-                f"Failed to get user account: {e}",
+                f"Failed to get user info: {e}",
                 status_code=e.status_code,
             )
 
+        return UserAccount(
+            email=credentials.email,
+            organization=credentials.organization,
+            balance=user_info.balance,
+            password=credentials.password,
+        )
+
+    def get_current_account_info(self) -> UserAccountView:
+        """Get current account info."""
+        try:
+            user_info = self.client.get_user_info()
+        except ServiceException as e:
+            raise APIException(
+                f"Failed to get user info: {e}",
+                status_code=e.status_code,
+            )
         return UserAccountView(
-            id=user.id,
-            email=user.email,
-            balance=user.balance,
+            email=user_info.email,
+            organization=user_info.organization,
+            balance=user_info.balance,
         )
 
     def create_txn_token(self, recipient_email: str) -> TransactionToken:
@@ -129,9 +183,9 @@ class AccountingManager:
             # Calculate totals for completed transactions only (to match balance calculation)
             for transaction in filtered_transactions:
                 if transaction.status.value.lower() == "completed":
-                    if transaction.senderEmail == self.accounting_config.email:
+                    if transaction.senderEmail == self.client.email:
                         total_debited += transaction.amount
-                    if transaction.recipientEmail == self.accounting_config.email:
+                    if transaction.recipientEmail == self.client.email:
                         total_credited += transaction.amount
 
             # Apply pagination
@@ -166,6 +220,8 @@ class AccountingManager:
                         recipient_email=transaction.recipientEmail,
                         status=transaction.status.value.lower(),  # Convert to lowercase to match frontend expectations
                         amount=transaction.amount,
+                        app_name=transaction.appName,
+                        app_ep_path=transaction.appEpPath,
                     )
                 )
 
@@ -220,9 +276,12 @@ class AccountingManager:
                     continue
                 filtered_transactions.append(transaction)
 
-            # Group transactions by date
+            # Group transactions by date and app
             daily_data = {}
+            app_data = {}
+
             for transaction in filtered_transactions:
+                # Group by date
                 date_str = transaction.createdAt.strftime("%Y-%m-%d")
                 if date_str not in daily_data:
                     daily_data[date_str] = {
@@ -237,12 +296,36 @@ class AccountingManager:
 
                 if transaction.status.value.lower() == "completed":
                     daily_data[date_str]["completed_count"] += 1
-                    if transaction.recipientEmail == self.accounting_config.email:
+                    if transaction.recipientEmail == self.client.email:
                         daily_data[date_str]["total_earned"] += transaction.amount
-                    if transaction.senderEmail == self.accounting_config.email:
+                    if transaction.senderEmail == self.client.email:
                         daily_data[date_str]["total_spent"] += transaction.amount
                 elif transaction.status.value.lower() == "pending":
                     daily_data[date_str]["pending_count"] += 1
+
+                # Group by app
+                app_name = transaction.appName or "Unknown"
+                if app_name not in app_data:
+                    app_data[app_name] = {
+                        "query_count": 0,
+                        "total_earned": 0.0,
+                        "total_spent": 0.0,
+                        "completed_count": 0,
+                        "pending_count": 0,
+                        "total_amount": 0.0,
+                    }
+
+                app_data[app_name]["query_count"] += 1
+                app_data[app_name]["total_amount"] += transaction.amount
+
+                if transaction.status.value.lower() == "completed":
+                    app_data[app_name]["completed_count"] += 1
+                    if transaction.recipientEmail == self.client.email:
+                        app_data[app_name]["total_earned"] += transaction.amount
+                    if transaction.senderEmail == self.client.email:
+                        app_data[app_name]["total_spent"] += transaction.amount
+                elif transaction.status.value.lower() == "pending":
+                    app_data[app_name]["pending_count"] += 1
 
             # Convert to DailyMetrics objects
             daily_metrics = []
@@ -257,6 +340,35 @@ class AccountingManager:
                         net_profit=net_profit,
                         completed_count=data["completed_count"],
                         pending_count=data["pending_count"],
+                    )
+                )
+
+            # Convert to AppMetrics objects
+            app_metrics = []
+            for app_name, data in sorted(app_data.items()):
+                net_profit = data["total_earned"] - data["total_spent"]
+                success_rate = (
+                    (data["completed_count"] / data["query_count"] * 100)
+                    if data["query_count"] > 0
+                    else 0
+                )
+                avg_amount_per_query = (
+                    data["total_amount"] / data["query_count"]
+                    if data["query_count"] > 0
+                    else 0
+                )
+
+                app_metrics.append(
+                    AppMetrics(
+                        app_name=app_name,
+                        query_count=data["query_count"],
+                        total_earned=data["total_earned"],
+                        total_spent=data["total_spent"],
+                        net_profit=net_profit,
+                        completed_count=data["completed_count"],
+                        pending_count=data["pending_count"],
+                        success_rate=success_rate,
+                        avg_amount_per_query=avg_amount_per_query,
                     )
                 )
 
@@ -291,6 +403,7 @@ class AccountingManager:
 
             return AnalyticsResponse(
                 daily_metrics=daily_metrics,
+                app_metrics=app_metrics,
                 summary=summary,
             )
 

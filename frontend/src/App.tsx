@@ -6,7 +6,10 @@ import { UsagePage } from './components/usage/UsagePage';
 import { Header } from './components/shared/Header';
 import { ProfileToggle, ProfileType } from './components/shared/ProfileToggle';
 import { OnboardingModal } from './components/shared/OnboardingModal';
+import { PasswordUpdateModal } from './components/shared/PasswordUpdateModal';
+import { AccountingSetupModal } from './components/shared/AccountingSetupModal';
 import { ThemeContext } from './components/shared/ThemeContext';
+import { accountingService, type UserAccount } from './services/accountingService';
 
 const PROFILE_KEY = 'syftbox_profile';
 
@@ -16,22 +19,71 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'routers' | 'chat' | 'usage'>('routers');
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
+  const [showAccountingSetup, setShowAccountingSetup] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [accountingUrl, setAccountingUrl] = useState('');
+  const [accountingSetupReason, setAccountingSetupReason] = useState<'no_credentials' | 'auth_failed'>('no_credentials');
 
   // Load profile from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(PROFILE_KEY) as ProfileType | null;
     if (stored === 'provider' || stored === 'client') {
       setProfile(stored);
+      // After profile is loaded, validate account
+      validateAccount();
     } else {
       setShowOnboarding(true);
     }
   }, []);
 
+  // Validate account connection
+  const validateAccount = async () => {
+    const accountResponse = await accountingService.getAccountInfo();
+    
+    if (accountResponse.success && accountResponse.data) {
+      // Account is valid - hide all modals and proceed to router detail page
+      setCurrentEmail(accountResponse.data.email);
+      setShowOnboarding(false);
+      setShowPasswordUpdate(false);
+      setShowAccountingSetup(false);
+    } else if (accountResponse.statusCode === 401) {
+      // Invalid credentials (incorrect password), get email from username API and show password update modal
+      const usernameResponse = await accountingService.getUsername();
+      if (usernameResponse.success && usernameResponse.data) {
+        setCurrentEmail(usernameResponse.data.username);
+      }
+      
+      const urlResponse = await accountingService.getAccountingUrl();
+      if (urlResponse.success && urlResponse.data) {
+        setAccountingUrl(urlResponse.data);
+      }
+      setShowOnboarding(false); // Hide onboarding to show password update modal
+      setShowPasswordUpdate(true);
+      setShowAccountingSetup(false);
+    } else if (accountResponse.statusCode === 404) {
+      // No credentials found in database, show accounting setup modal
+      const usernameResponse = await accountingService.getUsername();
+      if (usernameResponse.success && usernameResponse.data) {
+        setCurrentEmail(usernameResponse.data.username);
+      }
+      
+      const urlResponse = await accountingService.getAccountingUrl();
+      if (urlResponse.success && urlResponse.data) {
+        setAccountingUrl(urlResponse.data);
+      }
+      setAccountingSetupReason('no_credentials');
+      setShowOnboarding(false); // Hide onboarding to show accounting setup modal
+      setShowAccountingSetup(true);
+      setShowPasswordUpdate(false);
+    }
+  };
+
   // Persist profile to localStorage
   useEffect(() => {
     if (profile) {
       localStorage.setItem(PROFILE_KEY, profile);
-      setShowOnboarding(false);
+      // Don't hide onboarding here - let validateAccount handle it
     }
   }, [profile]);
 
@@ -58,9 +110,39 @@ export function App() {
     }
   };
 
-  // Handler for onboarding modal
-  const handleOnboardingSelect = (selected: ProfileType) => {
+  // Handler for onboarding modal - now validates account after profile selection
+  const handleOnboardingSelect = async (selected: ProfileType) => {
     setProfile(selected);
+    // After profile is set, validate account
+    await validateAccount();
+  };
+
+  // Handler for password update modal
+  const handlePasswordUpdateSuccess = (account: UserAccount) => {
+    setShowPasswordUpdate(false);
+    setShowOnboarding(false);
+    setShowAccountingSetup(false);
+    setCurrentEmail(account.email);
+  };
+
+  const handlePasswordUpdateClose = () => {
+    setShowPasswordUpdate(false);
+    // If user cancels password update, show onboarding
+    setShowOnboarding(true);
+  };
+
+  // Handler for accounting setup modal
+  const handleAccountingSetupSuccess = (account: UserAccount) => {
+    setShowAccountingSetup(false);
+    setShowOnboarding(false);
+    setShowPasswordUpdate(false);
+    setCurrentEmail(account.email);
+  };
+
+  const handleAccountingSetupClose = () => {
+    setShowAccountingSetup(false);
+    // If user cancels accounting setup, show onboarding
+    setShowOnboarding(true);
   };
 
   // Handler for profile toggle
@@ -71,8 +153,8 @@ export function App() {
   return (
     <ThemeContext.Provider value={profile ? { profile, color: profile === 'provider' ? 'indigo' : 'teal' } : { profile: 'provider', color: 'indigo' }}>
       <div className="min-h-screen relative bg-white">
-        {/* Only render dashboard if profile is chosen */}
-        {profile && !showOnboarding && (
+        {/* Only render dashboard if profile is chosen and no modals are showing */}
+        {profile && !showOnboarding && !showPasswordUpdate && !showAccountingSetup && (
           <div>
             <Header 
               profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />}
@@ -99,6 +181,25 @@ export function App() {
           </div>
         )}
         {showOnboarding && <OnboardingModal onSelect={handleOnboardingSelect} />}
+        {showPasswordUpdate && (
+          <PasswordUpdateModal
+            isOpen={showPasswordUpdate}
+            onClose={handlePasswordUpdateClose}
+            onSuccess={handlePasswordUpdateSuccess}
+            email={currentEmail}
+            accountingUrl={accountingUrl}
+          />
+        )}
+        {showAccountingSetup && (
+          <AccountingSetupModal
+            isOpen={showAccountingSetup}
+            onClose={handleAccountingSetupClose}
+            onSuccess={handleAccountingSetupSuccess}
+            email={currentEmail}
+            accountingUrl={accountingUrl}
+            reason={accountingSetupReason}
+          />
+        )}
       </div>
     </ThemeContext.Provider>
   );

@@ -10,6 +10,18 @@ interface DailyMetrics {
   pending_count: number;
 }
 
+interface AppMetrics {
+  app_name: string;
+  query_count: number;
+  total_earned: number;
+  total_spent: number;
+  net_profit: number;
+  completed_count: number;
+  pending_count: number;
+  success_rate: number;
+  avg_amount_per_query: number;
+}
+
 interface AnalyticsSummary {
   total_days: number;
   avg_daily_queries: number;
@@ -25,6 +37,7 @@ interface AnalyticsSummary {
 
 interface AnalyticsData {
   daily_metrics: DailyMetrics[];
+  app_metrics: AppMetrics[];
   summary: AnalyticsSummary;
 }
 
@@ -198,6 +211,43 @@ export function AnalyticsDashboard({ data, loading, error }: AnalyticsDashboardP
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${metric.total_spent.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${metric.net_profit.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{metric.completed_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* App Metrics Table */}
+      {data.app_metrics && data.app_metrics.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">App Performance</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">App Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queries</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Earned</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Spent</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Amount</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.app_metrics.map((metric) => (
+                  <tr key={metric.app_name} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{metric.app_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{metric.query_count}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${metric.total_earned.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">${metric.total_spent.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${metric.net_profit.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{metric.success_rate.toFixed(1)}%</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${metric.avg_amount_per_query.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

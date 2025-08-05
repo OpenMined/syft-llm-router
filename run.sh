@@ -94,6 +94,19 @@ echo "Copying frontend build to backend..."
 mkdir -p backend/static
 cp -r frontend/dist/* backend/static/
 
+# Setup environment file from example.env
+echo "Setting up environment configuration..."
+if [ ! -f ".env" ]; then
+    if [ -f "example.env" ]; then
+        cp example.env .env
+        echo "📝 Created .env file from example.env template."
+    else
+        echo "⚠️  Warning: example.env not found."
+    fi
+else
+    echo "✅ .env file already exists."
+fi
+
 # Start the application
 SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8080}
 cd backend

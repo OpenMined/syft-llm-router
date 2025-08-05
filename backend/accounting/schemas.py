@@ -1,32 +1,30 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import List, Optional
 from datetime import datetime
-from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class AccountingConfig(BaseModel):
     """Accounting configuration."""
 
-    email: str
-    password: str
     url: str
 
 
 class UserAccount(BaseModel):
     """User account information."""
 
-    id: str
     email: EmailStr
     balance: float = Field(ge=0.0, default=0.0)
     password: str
+    organization: Optional[str] = None
 
 
 class UserAccountView(BaseModel):
     """User account view (without password)."""
 
-    id: str
     email: EmailStr
     balance: float = Field(ge=0.0, default=0.0)
+    organization: Optional[str] = None
 
 
 class TransactionToken(BaseModel):
@@ -45,6 +43,8 @@ class TransactionDetail(BaseModel):
     sender_email: EmailStr
     recipient_email: EmailStr
     status: str
+    app_name: Optional[str] = None
+    app_ep_path: Optional[str] = None
 
 
 class TransactionHistory(BaseModel):
@@ -108,8 +108,23 @@ class AnalyticsSummary(BaseModel):
     success_rate: float
 
 
+class AppMetrics(BaseModel):
+    """App-specific metrics for analytics."""
+
+    app_name: str
+    query_count: int
+    total_earned: float
+    total_spent: float
+    net_profit: float
+    completed_count: int
+    pending_count: int
+    success_rate: float
+    avg_amount_per_query: float
+
+
 class AnalyticsResponse(BaseModel):
-    """Analytics response with daily metrics and summary."""
+    """Analytics response with daily metrics, app metrics, and summary."""
 
     daily_metrics: List[DailyMetrics]
+    app_metrics: List[AppMetrics]
     summary: AnalyticsSummary

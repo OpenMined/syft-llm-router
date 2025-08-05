@@ -1,21 +1,21 @@
-from pathlib import Path
 import hashlib
+from pathlib import Path
+
+from accounting.api import build_accounting_api
+from accounting.manager import AccountingManager
+from accounting.repository import AccountingRepository
+from accounting.schemas import AccountingConfig
 from fastapi import HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-
-from syft_core.config import SyftClientConfig
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastsyftbox import FastSyftBox
-
 from router.api import build_router_api
 from router.manager import RouterManager
 from router.repository import RouterRepository
-from shared.database import Database
-from accounting.api import build_accounting_api
-from accounting.manager import AccountingManager
-from accounting.schemas import AccountingConfig
 from settings.app_settings import settings
+from shared.database import Database
+from syft_core.config import SyftClientConfig
 
 # Initialize FastAPI app with SyftBox
 syftbox_config = SyftClientConfig.load(settings.syftbox_config_path)
@@ -51,8 +51,10 @@ db.create_db_and_tables()
 def init_router_manager() -> RouterManager:
     """Initialize the router manager."""
     router_repository = RouterRepository(db=db)
+    accounting_repository = AccountingRepository(db=db)
     router_manager = RouterManager(
         repository=router_repository,
+        accounting_repository=accounting_repository,
         syftbox_config=syftbox_config,
         syftbox_client=app.syftbox_client,
         router_app_dir=app.syftbox_client.workspace.data_dir / "apps",
@@ -63,33 +65,19 @@ def init_router_manager() -> RouterManager:
 
 def init_accounting_manager() -> AccountingManager:
     """Initialize the accounting manager."""
-
-    accounting_config = AccountingConfig(
-        email=settings.accounting_email,
-        password=settings.accounting_password,
-        url=settings.accounting_url,
-    )
+    accounting_repository = AccountingRepository(db=db)
+    accounting_config = AccountingConfig(url=settings.accounting_service_url)
     accounting_manager = AccountingManager(
         syftbox_config=app.syftbox_config,
+        repository=accounting_repository,
         accounting_config=accounting_config,
     )
-    try:
-        accounting_manager.get_or_create_user_account()
-    except Exception as e:
-        error_msg = (
-            f"Error initializing accounting manager. "
-            f"Please check your accounting server is running and your credentials are correct: {e}"
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=error_msg,
-        )
     return accounting_manager
 
 
 # Include router API
-app.include_router(build_router_api(init_router_manager()))
 app.include_router(build_accounting_api(init_accounting_manager()))
+app.include_router(build_router_api(init_router_manager()))
 
 # Mount static files for frontend
 static_dir = Path(__file__).parent / "static"
