@@ -39,7 +39,7 @@ class OllamaChatService(ChatService):
 
         self.app_name = self.config.project.name
 
-    def __make_chat_request(self, payload: dict) -> dict:
+    def __make_chat_request(self, payload: dict) -> str:
         """Make a search request to the Ollama API."""
         response = requests.post(
             f"{self.base_url}/api/chat",
@@ -67,7 +67,7 @@ class OllamaChatService(ChatService):
             # Prepare request payload
             payload = {
                 "model": model,
-                "messages": [msg.dict() for msg in messages],
+                "messages": [msg.model_dump(exclude_none=True) for msg in messages],
                 "stream": False,
             }
 

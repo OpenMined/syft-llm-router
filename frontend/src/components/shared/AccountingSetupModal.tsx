@@ -162,7 +162,12 @@ export function AccountingSetupModal({
                   </div>
                   <div>
                     <span className="text-xs font-medium text-indigo-700">Service URL</span>
-                    <p className="text-sm text-indigo-900 font-mono">{accountingUrl}</p>
+                    <p 
+                      className="text-sm text-indigo-900 font-mono truncate" 
+                      title={accountingUrl}
+                    >
+                      {accountingUrl}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -236,7 +241,12 @@ export function AccountingSetupModal({
                   </div>
                   <div>
                     <span className="text-xs font-medium text-blue-700">Service URL</span>
-                    <p className="text-sm text-blue-900 font-mono">{accountingUrl}</p>
+                    <p 
+                      className="text-sm text-blue-900 font-mono truncate" 
+                      title={accountingUrl}
+                    >
+                      {accountingUrl}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -318,14 +328,23 @@ export function AccountingSetupModal({
                           {createdAccount.password}
                         </p>
                         <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(createdAccount.password);
-                            // You could add a toast notification here
+                          onClick={async () => {
+                            const success = await copyToClipboard(createdAccount.password);
+                            if (success) {
+                              setCopySuccess(true);
+                              setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+                            } else {
+                              console.error('Failed to copy password');
+                            }
                           }}
-                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-all duration-200 flex-shrink-0 font-medium"
+                          className={`px-2 py-1 text-xs rounded transition-all duration-200 flex-shrink-0 font-medium ${
+                            copySuccess 
+                              ? 'bg-green-200 text-green-800' 
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
                           title="Copy password"
                         >
-                          📋 Copy
+                          {copySuccess ? '✅ Copied!' : '📋 Copy'}
                         </button>
                       </div>
                     </div>

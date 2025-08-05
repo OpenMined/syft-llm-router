@@ -190,7 +190,12 @@ export function AccountModal({ isOpen, onClose, onSuccess, initialEmail }: Accou
                 <div className="space-y-2">
                   <div>
                     <span className="text-xs font-medium text-blue-600">Accounting URL:</span>
-                    <p className="text-sm text-blue-900">{accountingUrl}</p>
+                    <p 
+                      className="text-sm text-blue-900 truncate" 
+                      title={accountingUrl}
+                    >
+                      {accountingUrl}
+                    </p>
                   </div>
                   <div>
                     <span className="text-xs font-medium text-blue-600">Email:</span>
