@@ -11,6 +11,7 @@ from .schemas import (
     AccountingConfig,
     AnalyticsResponse,
     AnalyticsSummary,
+    AppMetrics,
     DailyMetrics,
     PaginatedTransactionHistory,
     PaginationInfo,
@@ -275,9 +276,12 @@ class AccountingManager:
                     continue
                 filtered_transactions.append(transaction)
 
-            # Group transactions by date
+            # Group transactions by date and app
             daily_data = {}
+            app_data = {}
+
             for transaction in filtered_transactions:
+                # Group by date
                 date_str = transaction.createdAt.strftime("%Y-%m-%d")
                 if date_str not in daily_data:
                     daily_data[date_str] = {
@@ -299,6 +303,30 @@ class AccountingManager:
                 elif transaction.status.value.lower() == "pending":
                     daily_data[date_str]["pending_count"] += 1
 
+                # Group by app
+                app_name = transaction.appName or "Unknown"
+                if app_name not in app_data:
+                    app_data[app_name] = {
+                        "query_count": 0,
+                        "total_earned": 0.0,
+                        "total_spent": 0.0,
+                        "completed_count": 0,
+                        "pending_count": 0,
+                        "total_amount": 0.0,
+                    }
+
+                app_data[app_name]["query_count"] += 1
+                app_data[app_name]["total_amount"] += transaction.amount
+
+                if transaction.status.value.lower() == "completed":
+                    app_data[app_name]["completed_count"] += 1
+                    if transaction.recipientEmail == self.client.email:
+                        app_data[app_name]["total_earned"] += transaction.amount
+                    if transaction.senderEmail == self.client.email:
+                        app_data[app_name]["total_spent"] += transaction.amount
+                elif transaction.status.value.lower() == "pending":
+                    app_data[app_name]["pending_count"] += 1
+
             # Convert to DailyMetrics objects
             daily_metrics = []
             for date_str, data in sorted(daily_data.items()):
@@ -312,6 +340,35 @@ class AccountingManager:
                         net_profit=net_profit,
                         completed_count=data["completed_count"],
                         pending_count=data["pending_count"],
+                    )
+                )
+
+            # Convert to AppMetrics objects
+            app_metrics = []
+            for app_name, data in sorted(app_data.items()):
+                net_profit = data["total_earned"] - data["total_spent"]
+                success_rate = (
+                    (data["completed_count"] / data["query_count"] * 100)
+                    if data["query_count"] > 0
+                    else 0
+                )
+                avg_amount_per_query = (
+                    data["total_amount"] / data["query_count"]
+                    if data["query_count"] > 0
+                    else 0
+                )
+
+                app_metrics.append(
+                    AppMetrics(
+                        app_name=app_name,
+                        query_count=data["query_count"],
+                        total_earned=data["total_earned"],
+                        total_spent=data["total_spent"],
+                        net_profit=net_profit,
+                        completed_count=data["completed_count"],
+                        pending_count=data["pending_count"],
+                        success_rate=success_rate,
+                        avg_amount_per_query=avg_amount_per_query,
                     )
                 )
 
@@ -346,6 +403,7 @@ class AccountingManager:
 
             return AnalyticsResponse(
                 daily_metrics=daily_metrics,
+                app_metrics=app_metrics,
                 summary=summary,
             )
 
