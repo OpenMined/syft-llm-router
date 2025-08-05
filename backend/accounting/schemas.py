@@ -43,6 +43,8 @@ class TransactionDetail(BaseModel):
     sender_email: EmailStr
     recipient_email: EmailStr
     status: str
+    app_name: Optional[str] = None
+    app_ep_path: Optional[str] = None
 
 
 class TransactionHistory(BaseModel):

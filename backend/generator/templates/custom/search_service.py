@@ -35,6 +35,7 @@ class CustomSearchService(SearchService):
         self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
         logger.info("Initialized custom search service")
+        self.app_name = self.config.project.name
 
     def search_documents(
         self,
@@ -62,6 +63,8 @@ class CustomSearchService(SearchService):
         #         user_email,
         #         amount=self.pricing,
         #         token=transaction_token,
+        #         app_name=self.app_name,
+        #         app_ep_path="/search",
         #     ) as payment_txn:
         #         # Make request to your search service
         #         response = requests.post("your_search_api_endpoint", json=payload)

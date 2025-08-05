@@ -36,6 +36,7 @@ class CustomChatService(ChatService):
         self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
         logger.info("Initialized custom chat service")
+        self.app_name = self.config.project.name
 
     def generate_chat(
         self,
@@ -72,6 +73,8 @@ class CustomChatService(ChatService):
         #         user_email,
         #         amount=self.pricing,
         #         token=transaction_token,
+        #         app_name=self.app_name,
+        #         app_ep_path="/chat",
         #     ) as payment_txn:
         #         # Make request to your chat service
         #         response = requests.post("your_api_endpoint", json=payload)

@@ -182,9 +182,9 @@ class AccountingManager:
             # Calculate totals for completed transactions only (to match balance calculation)
             for transaction in filtered_transactions:
                 if transaction.status.value.lower() == "completed":
-                    if transaction.senderEmail == self.accounting_config.email:
+                    if transaction.senderEmail == self.client.email:
                         total_debited += transaction.amount
-                    if transaction.recipientEmail == self.accounting_config.email:
+                    if transaction.recipientEmail == self.client.email:
                         total_credited += transaction.amount
 
             # Apply pagination
@@ -219,6 +219,8 @@ class AccountingManager:
                         recipient_email=transaction.recipientEmail,
                         status=transaction.status.value.lower(),  # Convert to lowercase to match frontend expectations
                         amount=transaction.amount,
+                        app_name=transaction.appName,
+                        app_ep_path=transaction.appEpPath,
                     )
                 )
 
@@ -290,9 +292,9 @@ class AccountingManager:
 
                 if transaction.status.value.lower() == "completed":
                     daily_data[date_str]["completed_count"] += 1
-                    if transaction.recipientEmail == self.accounting_config.email:
+                    if transaction.recipientEmail == self.client.email:
                         daily_data[date_str]["total_earned"] += transaction.amount
-                    if transaction.senderEmail == self.accounting_config.email:
+                    if transaction.senderEmail == self.client.email:
                         daily_data[date_str]["total_spent"] += transaction.amount
                 elif transaction.status.value.lower() == "pending":
                     daily_data[date_str]["pending_count"] += 1

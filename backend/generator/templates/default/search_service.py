@@ -37,6 +37,7 @@ class LocalSearchService(SearchService):
         self.rag_client = httpx.Client(base_url=self.rag_url)
         self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
+        self.app_name = self.config.project.name
 
         self._check_if_rag_is_ready()
 
@@ -82,6 +83,8 @@ class LocalSearchService(SearchService):
                     user_email,
                     amount=self.pricing,
                     token=transaction_token,
+                    app_name=self.app_name,
+                    app_ep_path="/search",
                 ) as payment_txn:
                     results = self.__make_search_request(query, limit)
 

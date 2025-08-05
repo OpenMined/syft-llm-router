@@ -37,6 +37,8 @@ class OllamaChatService(ChatService):
         self.accounting_client: UserClient = self.config.accounting_client()
         logger.info(f"Initialized accounting client: {self.accounting_client}")
 
+        self.app_name = self.config.project.name
+
     def __make_chat_request(self, payload: dict) -> dict:
         """Make a search request to the Ollama API."""
         response = requests.post(
@@ -89,6 +91,8 @@ class OllamaChatService(ChatService):
                     user_email,
                     amount=self.pricing,
                     token=transaction_token,
+                    app_name=self.app_name,
+                    app_ep_path="/chat",
                 ) as payment_txn:
                     # Make request to Ollama
                     content = self.__make_chat_request(payload)
