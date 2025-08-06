@@ -6,7 +6,7 @@ from pathlib import Path
 # Load environment variables from .env if present
 load_dotenv(override=True)
 
-DEFAULT_ACCOUNTING_SERVICE_URL = "http://syftaccounting.centralus.cloudapp.azure.com"
+DEFAULT_ACCOUNTING_SERVICE_URL = "https://syftaccounting.centralus.cloudapp.azure.com"
 
 
 class AppSettings(BaseSettings):
