@@ -24,16 +24,25 @@ export function App() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [accountingUrl, setAccountingUrl] = useState('');
   const [accountingSetupReason, setAccountingSetupReason] = useState<'no_credentials' | 'auth_failed'>('no_credentials');
+  const [trustedGatekeeping, setTrustedGatekeeping] = useState<boolean>(false);
 
   // Load profile from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(PROFILE_KEY) as ProfileType | null;
-    if (stored === 'provider' || stored === 'client') {
+    if (stored === 'provider' || stored === 'client' || stored === 'gatekeeper') {
       setProfile(stored);
       // After profile is loaded, validate account
       validateAccount();
     } else {
       setShowOnboarding(true);
+    }
+  }, []);
+
+  // Load trusted gatekeeping setting from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('trustedGatekeeping');
+    if (stored !== null) {
+      setTrustedGatekeeping(stored === 'true');
     }
   }, []);
 
@@ -150,16 +159,24 @@ export function App() {
     setProfile(newProfile);
   };
 
+  // Handler for trusted gatekeeping toggle
+  const handleTrustedGatekeepingChange = (newValue: boolean) => {
+    setTrustedGatekeeping(newValue);
+    localStorage.setItem('trustedGatekeeping', newValue.toString());
+  };
+
   return (
-    <ThemeContext.Provider value={profile ? { profile, color: profile === 'provider' ? 'indigo' : 'teal' } : { profile: 'provider', color: 'indigo' }}>
+    <ThemeContext.Provider value={profile ? { profile, color: profile === 'provider' ? 'indigo' : profile === 'client' ? 'teal' : 'blue' } : { profile: 'provider', color: 'indigo' }}>
       <div className="min-h-screen relative bg-white">
         {/* Only render dashboard if profile is chosen and no modals are showing */}
         {profile && !showOnboarding && !showPasswordUpdate && !showAccountingSetup && (
           <div>
             <Header 
-              profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />}
+              profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} trustedGatekeeping={trustedGatekeeping} />}
               onTabChange={handleTabChange}
               activeTab={activeTab}
+              trustedGatekeeping={trustedGatekeeping}
+              onTrustedGatekeepingChange={handleTrustedGatekeepingChange}
             />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {route.page === 'list' ? (

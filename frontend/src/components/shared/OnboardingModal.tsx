@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks';
+import { ProfileType } from './ProfileToggle';
 
 interface OnboardingModalProps {
-  onSelect: (profile: 'provider' | 'client') => void;
+  onSelect: (profile: ProfileType) => void;
 }
 
 export function OnboardingModal({ onSelect }: OnboardingModalProps) {

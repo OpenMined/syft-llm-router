@@ -6,13 +6,16 @@ interface HeaderProps {
   profileToggle: h.JSX.Element;
   onTabChange?: (tab: 'routers' | 'chat' | 'usage') => void;
   activeTab?: 'routers' | 'chat' | 'usage';
+  trustedGatekeeping: boolean;
+  onTrustedGatekeepingChange: (value: boolean) => void;
 }
 
-export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
+export function Header({ profileToggle, onTabChange, activeTab = 'routers', trustedGatekeeping, onTrustedGatekeepingChange }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
   const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
   const [accountInfo, setAccountInfo] = useState<{ id: string; email: string; balance: number } | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -58,6 +61,40 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
     });
     return () => { mounted = false; };
   }, []);
+
+  // Toggle trusted gatekeeping via callback
+  const toggleTrustedGatekeeping = () => {
+    const newValue = !trustedGatekeeping;
+    onTrustedGatekeepingChange(newValue);
+  };
+
+  // Toggle user menu visibility
+  const toggleUserMenu = () => {
+    setShowUserMenu(!showUserMenu);
+  };
+
+  // Close user menu
+  const closeUserMenu = () => {
+    setShowUserMenu(false);
+  };
+
+  // Handle click outside to close menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showUserMenu && !target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -130,10 +167,60 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
           <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
-                {/* User icon */}
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                {/* User icon - clickable for user menu */}
+                <div className="relative group user-menu-container">
+                  <svg 
+                    className={`h-4 w-4 cursor-pointer transition-colors duration-200 ${
+                      trustedGatekeeping 
+                        ? 'text-green-600 hover:text-green-700' 
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                    onClick={toggleUserMenu}
+                    title="User settings"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    {/* Small shield overlay when gatekeeping is enabled */}
+                    {trustedGatekeeping && (
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={1.5} 
+                        d="M9 12l2 2 4-4" 
+                        className="text-green-600"
+                      />
+                    )}
+                  </svg>
+
+                  {/* Dropdown Menu */}
+                  {showUserMenu && (
+                    <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <div className="text-xs font-medium text-gray-900">User Settings</div>
+                      </div>
+                      <button
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between"
+                        onClick={() => {
+                          toggleTrustedGatekeeping();
+                          closeUserMenu();
+                        }}
+                      >
+                        <span>Allow trusted gatekeeping</span>
+                        <div className={`w-10 h-5 rounded-full transition-colors duration-200 relative ${
+                          trustedGatekeeping ? 'bg-green-500' : 'bg-gray-300'
+                        }`}>
+                          <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-200 ${
+                            trustedGatekeeping ? 'translate-x-5' : 'translate-x-0.5'
+                          }`}></div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+
+                </div>
                 <span className="text-xs text-gray-700">
                   User: <span className="font-medium">{accountInfo?.email || username}</span>
                 </span>

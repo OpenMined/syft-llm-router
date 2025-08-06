@@ -1,14 +1,15 @@
-export type ProfileType = 'provider' | 'client';
+export type ProfileType = 'provider' | 'client' | 'gatekeeper';
 
 interface ProfileToggleProps {
   profile: ProfileType;
   onChange: (profile: ProfileType) => void;
+  trustedGatekeeping?: boolean;
 }
 
-export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
+export function ProfileToggle({ profile, onChange, trustedGatekeeping = false }: ProfileToggleProps) {
   // Utility for active/inactive button
   const getButtonClasses = (isActive: boolean, type: ProfileType) => {
-    const accent = type === 'provider' ? 'indigo' : 'teal';
+    const accent = type === 'provider' ? 'indigo' : type === 'client' ? 'teal' : 'blue';
     if (isActive) {
       return [
         `bg-${accent}-600`,
@@ -64,6 +65,17 @@ export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
       >
         Client
       </button>
+      {trustedGatekeeping && (
+        <button
+          className={getButtonClasses(profile === 'gatekeeper', 'gatekeeper')}
+          onClick={() => onChange('gatekeeper')}
+          aria-pressed={profile === 'gatekeeper'}
+          tabIndex={0}
+          style={{ minWidth: 100 }}
+        >
+          Gatekeeper
+        </button>
+      )}
     </div>
   );
 } 
