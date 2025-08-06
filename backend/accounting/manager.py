@@ -138,6 +138,7 @@ class AccountingManager:
 
     def create_txn_token(self, recipient_email: str) -> TransactionToken:
         """Create a transaction token for a user email using given user authentication."""
+        logger.info(f"Creating transaction token for recipient_email: '{recipient_email}' (type: {type(recipient_email)}, repr: {repr(recipient_email)})")
         try:
             token = self.client.create_transaction_token(recipientEmail=recipient_email)
         except ServiceException as e:
