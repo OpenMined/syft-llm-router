@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { accountingService, type CreateAccountRequest, type UpdateCredentialsRequest, type UserAccount } from '../../services/accountingService';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface AccountingSetupModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function AccountingSetupModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [createdAccount, setCreatedAccount] = useState<UserAccount | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -33,6 +35,7 @@ export function AccountingSetupModal({
       setOrganization('');
       setError('');
       setCreatedAccount(null);
+      setCopySuccess(false);
       setStep('create');
     }
   }, [isOpen]);
