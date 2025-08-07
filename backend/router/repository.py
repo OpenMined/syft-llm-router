@@ -1,10 +1,24 @@
 from typing import List, Optional
 
+from pydantic import EmailStr
 from shared.database import BaseRepository
 from sqlmodel import select
 
-from .models import RouterMetadataModel, RouterModel, RouterServiceModel
-from .schemas import Router, RouterCreate, RouterUpdate
+from .models import (
+    DelegateControlAuditModel,
+    RouterMetadataModel,
+    RouterModel,
+    RouterServiceModel,
+)
+from .schemas import (
+    DelegateControlAuditCreate,
+    DelegateControlAuditLogs,
+    DelegateControlAuditLogsResponse,
+    DelegateControlAuditView,
+    Router,
+    RouterCreate,
+    RouterUpdate,
+)
 
 
 class RouterRepository(BaseRepository):
@@ -181,3 +195,83 @@ class RouterRepository(BaseRepository):
             session.refresh(router_orm)
 
             return Router.model_validate(router_orm)
+
+    def delegate_router(
+        self, router_name: str, delegate_email: EmailStr
+    ) -> Optional[Router]:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            router_orm.router_metadata.delegate_email = delegate_email
+
+            session.add(router_orm)
+            session.commit()
+            session.refresh(router_orm)
+
+            return Router.model_validate(router_orm)
+
+    def revoke_delegation(self, router_name: str) -> Optional[Router]:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            router_orm.router_metadata.delegate_email = None
+
+            session.add(router_orm)
+            session.commit()
+            session.refresh(router_orm)
+
+            return Router.model_validate(router_orm)
+
+    def log_delegate_control_action(
+        self, audit_data: DelegateControlAuditCreate
+    ) -> None:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == audit_data.router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            session.add(
+                DelegateControlAuditModel(
+                    router_id=router_orm.id,
+                    delegate_email=audit_data.delegate_email,
+                    control_type=audit_data.control_type,
+                    control_data=audit_data.control_data,
+                    reason=audit_data.reason,
+                )
+            )
+            session.commit()
+
+    def get_delegate_control_audit_logs(
+        self, router_name: str
+    ) -> List[DelegateControlAuditView]:
+        with self.db.get_session() as session:
+            audit_logs = session.exec(
+                select(DelegateControlAuditModel).where(
+                    DelegateControlAuditModel.router_id == router_name
+                )
+            ).all()
+            return [
+                DelegateControlAuditView(
+                    router_name=audit_log.router.name,
+                    delegate_email=audit_log.delegate_email,
+                    control_type=audit_log.control_type,
+                    control_data=audit_log.control_data,
+                    reason=audit_log.reason,
+                    created_at=audit_log.created_at,
+                    updated_at=audit_log.updated_at,
+                )
+                for audit_log in audit_logs
+            ]

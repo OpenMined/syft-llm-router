@@ -9,18 +9,30 @@ from generator.service import (
     SimplifiedProjectGenerator,
     UserAccountingConfig,
 )
+from pydantic import EmailStr
 from settings.app_settings import settings
 from shared.exceptions import APIException
 from syft_core import Client as SyftClient
 from syft_core.config import SyftClientConfig
 
+from .constants import PUBLIC_ROUTER_DIR_NAME, ROUTER_DIR_NAME, DelegateControlType
 from .models import PricingChargeType, RouterServiceType
 from .publish import publish_project, unpublish_project
 from .repository import RouterRepository
 from .schemas import (
+    AvailableDelegatesResponse,
     CreateRouterRequest,
     CreateRouterResponse,
+    DCALogsResponse,
+    DelegateControlAuditCreate,
+    DelegateControlRequest,
+    DelegateControlResponse,
+    DelegateRouterResponse,
+    PricingUpdateData,
+    ProjectMetadata,
     PublishRouterRequest,
+    RevokeDelegationResponse,
+    Router,
     RouterCreate,
     RouterDetails,
     RouterList,
@@ -226,6 +238,7 @@ class RouterManager:
                         router.router_metadata.summary if router.router_metadata else ""
                     ),
                     author=router.author,
+                    delegate_email=router.router_metadata.delegate_email,
                     services=[
                         ServiceOverview(
                             type=service.type,
@@ -246,7 +259,7 @@ class RouterManager:
                 continue
 
             # Get routers directory
-            routers_dir = datasite / "public" / "routers"
+            routers_dir = datasite / PUBLIC_ROUTER_DIR_NAME / ROUTER_DIR_NAME
 
             # Skip if routers directory does not exist
             if not routers_dir.exists():
@@ -259,22 +272,23 @@ class RouterManager:
                     continue
 
                 # Load metadata
-                metadata = json.loads(metadata_path.read_text())
+                metadata = ProjectMetadata.load_from_file(metadata_path)
 
                 all_routers.append(
                     RouterOverview(
-                        name=metadata["project_name"],
+                        name=metadata.project_name,
                         published=True,
-                        author=metadata["author"],
-                        summary=metadata["summary"],
+                        author=metadata.author,
+                        summary=metadata.summary,
+                        delegate_email=metadata.delegate_email,
                         services=[
                             ServiceOverview(
-                                type=service["type"],
-                                pricing=service["pricing"],
-                                charge_type=service["charge_type"],
-                                enabled=service["enabled"],
+                                type=service.type,
+                                pricing=service.pricing,
+                                charge_type=service.charge_type,
+                                enabled=service.enabled,
                             )
-                            for service in metadata["services"]
+                            for service in metadata.services
                         ],
                     )
                 )
@@ -290,8 +304,8 @@ class RouterManager:
         if router.published:
             public_metadata_path = (
                 self.syftbox_client.my_datasite
-                / "public"
-                / "routers"
+                / PUBLIC_ROUTER_DIR_NAME
+                / ROUTER_DIR_NAME
                 / router_name
                 / "metadata.json"
             )
@@ -354,8 +368,8 @@ class RouterManager:
             router_dir = (
                 self.syftbox_client.datasites
                 / author
-                / "public"
-                / "routers"
+                / PUBLIC_ROUTER_DIR_NAME
+                / ROUTER_DIR_NAME
                 / router_name
             )
             if not router_dir.exists():
@@ -436,3 +450,298 @@ class RouterManager:
     def router_exists(self, name: str) -> bool:
         """Check if a router with the given name exists."""
         return self.repository.get_router_by_name(name) is not None
+
+    def make_user_a_delegate(self) -> bool:
+        """Make user a delegate.
+
+        This function will make the current user a delegate.
+        It will create a delegate file in the current user's public directory.
+        """
+        router_public_dir = (
+            self.syftbox_client.my_datasite / PUBLIC_ROUTER_DIR_NAME / ROUTER_DIR_NAME
+        )
+        router_public_dir.mkdir(parents=True, exist_ok=True)
+        delegate_file = router_public_dir / f"{self.get_current_user()}.delegate"
+        delegate_file.touch(exist_ok=True)
+        return True
+
+    def revoke_delegate_status(self) -> bool:
+        """Revoke delegate status.
+
+        This function will revoke the delegate status of the current user.
+        It will delete the delegate file from the current user's public directory.
+        """
+        router_public_dir = (
+            self.syftbox_client.my_datasite / PUBLIC_ROUTER_DIR_NAME / ROUTER_DIR_NAME
+        )
+        delegate_file = router_public_dir / f"{self.get_current_user()}.delegate"
+        delegate_file.unlink(missing_ok=True)
+        return True
+
+    def get_available_delegates(self) -> AvailableDelegatesResponse:
+        """Get list of available delegates.
+
+        This function will list all the datasites that have a delegate file in their public directory.
+        Exclude the current user's datasite.
+        """
+        delegates = []
+        for datasite in self.syftbox_client.datasites.iterdir():
+            # Skip current user's datasite
+            if datasite.name == self.get_current_user():
+                continue
+
+            # Check if datasite has a routers directory
+            router_public_dir = datasite / PUBLIC_ROUTER_DIR_NAME / ROUTER_DIR_NAME
+            if not router_public_dir.exists():
+                continue
+
+            # Check if datasite has a delegate file
+            delegate_file = router_public_dir / f"{datasite.name}.delegate"
+            if not delegate_file.exists():
+                continue
+
+            delegates.append(EmailStr(datasite.name))
+
+        return AvailableDelegatesResponse(delegates=delegates)
+
+    def delegate_router(
+        self, router_name: str, delegate_email: EmailStr
+    ) -> DelegateRouterResponse:
+        """Delegate a router to a delegate.
+
+        This function will delegate a router to a delegate.
+        It will create a delegate file in the delegate's public directory.
+        """
+        router = self.repository.get_router_by_name(router_name)
+
+        if not router.published:
+            raise APIException(
+                f"Router {router_name} is not published. Please publish it first.",
+                400,
+            )
+
+        if router.router_metadata.delegate_email is not None:
+            raise APIException(
+                f"Router {router_name} is already delegated to {router.router_metadata.delegate_email}. "
+                "Please revoke the delegation first.",
+                400,
+            )
+
+        if router.author == delegate_email:
+            raise APIException(
+                f"{router.author} is already the author of the router {router_name}.",
+                400,
+            )
+
+        # Check if email is a valid delegate
+        router_dir = (
+            self.syftbox_client.datasites
+            / delegate_email
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+        )
+        delegate_file = router_dir / f"{delegate_email}.delegate"
+        if not router_dir.exists() or not delegate_file.exists():
+            raise APIException(
+                f"Email {delegate_email} is not a valid delegate.",
+                400,
+            )
+
+        # Update router metadata
+        router = self.repository.delegate_router(
+            router_name,
+            delegate_email,
+        )
+
+        # Update router published metadata with delegate email
+        project_metadata_path = (
+            self.syftbox_client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "metadata.json"
+        )
+
+        # Check if router is published
+        if not project_metadata_path.exists():
+            raise APIException(
+                f"Router {router_name} is not published. Please publish it first.",
+                400,
+            )
+
+        # Update router published metadata with delegate email
+        project_metadata = ProjectMetadata.load_from_file(project_metadata_path)
+        project_metadata.delegate_email = delegate_email
+        project_metadata.save_to_file(project_metadata_path)
+
+        return DelegateRouterResponse(router=router)
+
+    def revoke_delegation(self, router_name: str) -> RevokeDelegationResponse:
+        """Revoke delegation of a router.
+
+        This function will revoke the delegation of a router.
+        It will delete the delegate's email from the router's published metadata.
+        It will delete delegate's email from router's metadata.
+        """
+        router = self.repository.get_router_by_name(router_name)
+
+        if router.router_metadata.delegate_email is None:
+            raise APIException(
+                f"Router {router_name} is not delegated. Please delegate it first.",
+                400,
+            )
+
+        # Update router metadata
+        router = self.repository.revoke_delegation(router_name)
+
+        # Remove delegate's email from router published metadata
+        project_metadata_path = (
+            self.syftbox_client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "metadata.json"
+        )
+
+        # Check if published metadata exists
+        if not project_metadata_path.exists():
+            raise APIException(
+                f"Router {router_name} is not published.",
+                404,
+            )
+
+        # Remove delegate's email from router published metadata
+        project_metadata = ProjectMetadata.load_from_file(project_metadata_path)
+        project_metadata.delegate_email = None
+        project_metadata.save_to_file(project_metadata_path)
+
+        return RevokeDelegationResponse(
+            router_name=router_name,
+            delegate_email=router.router_metadata.delegate_email,
+        )
+
+    def delegate_control_router(
+        self, request: DelegateControlRequest
+    ) -> DelegateControlResponse:
+        """Delegate control of a router.
+
+        This function will handle the control request from a delegate.
+        It will return the updated router.
+
+        Args:
+            request: The control request from a delegate.
+
+        Returns:
+            The response to the delegate control request.
+        """
+        # Check if router exists
+        router = self.repository.get_router_by_name(request.router_name)
+
+        # Check if router exists
+        if router is None:
+            raise APIException(f"Router {request.router_name} not found", 404)
+
+        # Check if router is delegated to the delegate
+        if router.router_metadata.delegate_email != request.delegate_email:
+            raise APIException(
+                f"Router {request.router_name} is not delegated to {request.delegate_email}.",
+                401,
+            )
+
+        # Check if control type is valid
+        if request.control_type not in DelegateControlType.all_types():
+            raise APIException(
+                f"Invalid control type: {request.control_type}",
+                400,
+            )
+
+        # Handle pricing update
+        if request.control_type == DelegateControlType.UPDATE_PRICING:
+            pricing_update_data = PricingUpdateData.model_validate(request.control_data)
+            router = self._handle_delegate_pricing_update(
+                router.name, pricing_update_data
+            )
+
+        # Log audit
+        self.repository.log_delegate_control_action(
+            DelegateControlAuditCreate(
+                router_name=router.name,
+                delegate_email=request.delegate_email,
+                control_type=request.control_type,
+                control_data=request.control_data,
+                reason=request.reason,
+            )
+        )
+
+        # Return success response
+        return DelegateControlResponse(
+            success=True,
+            router_name=router.name,
+            message=f"Pricing updated successfully for router {router.name}.",
+        )
+
+    def _handle_delegate_pricing_update(
+        self, router_name: str, pricing_data: PricingUpdateData
+    ) -> Router:
+        """Handle pricing update from delegate.
+
+        This function will update the router's services pricing.
+        It will update the router's published metadata with the new pricing.
+        It will return the updated router.
+
+        Args:
+            router_name: The name of the router to update.
+            pricing_data: The pricing data to update.
+
+        Returns:
+            The updated router.
+        """
+
+        router_update = RouterUpdate(
+            services=[
+                RouterService(
+                    type=service.service_type,
+                    pricing=service.new_pricing,
+                    charge_type=service.new_charge_type,
+                )
+                for service in pricing_data.service_pricing
+            ],
+        )
+
+        router = self.repository.create_or_update_router(
+            router_name=router_name,
+            router_update=router_update,
+        )
+
+        # Update published metadata
+        metadata_path = (
+            self.syftbox_client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "metadata.json"
+        )
+
+        metadata = ProjectMetadata.load_from_file(metadata_path)
+        metadata.services = [
+            ServiceOverview(
+                type=service.type,
+                pricing=service.pricing,
+                charge_type=service.charge_type,
+                enabled=service.enabled,
+            )
+            for service in router.services
+        ]
+
+        metadata.save_to_file(metadata_path)
+
+        return router
+
+    def get_delegate_control_audit_logs(self, router_name: str) -> DCALogsResponse:
+        """Get delegate control audit logs.
+
+        This function will get the audit logs for a router.
+        """
+        return DCALogsResponse(
+            audit_logs=self.repository.get_delegate_control_audit_logs(router_name)
+        )

@@ -11,6 +11,7 @@ from syft_core import Client
 from syft_core.permissions import PERM_FILE, SyftPermission
 from typer import Abort
 
+from .constants import PUBLIC_ROUTER_DIR_NAME, ROUTER_DIR_NAME
 from .schemas import ProjectMetadata, ServiceOverview
 
 
@@ -138,14 +139,14 @@ class PublishService:
         # Write metadata.json
         metadata_path = (
             self.client.my_datasite
-            / "public"
-            / "routers"
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
             / project_name
             / "metadata.json"
         )
 
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
-        metadata_path.write_text(metadata.model_dump_json())
+        metadata.save_to_file(metadata_path)
 
         return metadata, metadata_path
 
@@ -156,8 +157,8 @@ class PublishService:
         """
         metadata_path = (
             self.client.my_datasite
-            / "public"
-            / "routers"
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
             / project_name
             / "metadata.json"
         )
@@ -165,7 +166,12 @@ class PublishService:
         metadata_path.unlink(missing_ok=True)
 
         # Delete the project folder
-        project_path = self.client.my_datasite / "public" / "routers" / project_name
+        project_path = (
+            self.client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / project_name
+        )
         shutil.rmtree(project_path, ignore_errors=True)
 
         # Make RPC endpoints private i.e. only visible to the owner

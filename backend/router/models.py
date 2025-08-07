@@ -1,11 +1,17 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
+from pydantic import EmailStr
 from sqlalchemy import JSON
 from sqlmodel import Field, Relationship, SQLModel
 
-from .constants import PricingChargeType, RouterServiceType, RouterType
+from .constants import (
+    DelegateControlType,
+    PricingChargeType,
+    RouterServiceType,
+    RouterType,
+)
 
 
 class RouterModel(SQLModel, table=True):
@@ -30,9 +36,8 @@ class RouterMetadataModel(SQLModel, table=True):
     description: str
     tags: list[str] = Field(sa_type=JSON)
     code_hash: str
-    router_id: UUID = Field(
-        foreign_key="routermodel.id"
-    )  # Fixed: reference correct table name
+    router_id: UUID = Field(foreign_key="routermodel.id")
+    delegate_email: EmailStr = Field(default=None)
     router: "RouterModel" = Relationship(back_populates="router_metadata")
 
 
@@ -48,3 +53,15 @@ class RouterServiceModel(SQLModel, table=True):
 
     pricing: float = Field(default=0.0, ge=0.0)
     charge_type: PricingChargeType = Field(default=PricingChargeType.PER_REQUEST)
+
+
+class DelegateControlAuditModel(SQLModel, table=True):
+    id: UUID = Field(primary_key=True, default_factory=uuid4)
+    router_id: UUID = Field(foreign_key="routermodel.id")
+    router: "RouterModel" = Relationship(back_populates="delegate_control_audits")
+    delegate_email: EmailStr
+    control_type: DelegateControlType
+    control_data: Dict[str, Any]
+    reason: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
