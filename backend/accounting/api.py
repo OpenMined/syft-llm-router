@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from urllib.parse import unquote
 
 from fastapi import APIRouter, HTTPException, Query
 from shared.exceptions import APIException
@@ -19,10 +20,12 @@ def build_accounting_api(accounting_manager: AccountingManager) -> APIRouter:
 
     router = APIRouter(prefix="/account")
 
-    @router.post("/token/create", response_model=TransactionToken)
-    async def create_txn_token(recipient_email: str) -> TransactionToken:
+    @router.post("/token/create", response_model=TransactionToken, tags=["syftbox"])
+    async def create_txn_token(recipient_email: str = Query(..., description="Email of the recipient")) -> TransactionToken:
         try:
-            return accounting_manager.create_txn_token(recipient_email)
+            # URL decode the email parameter in case it's encoded
+            decoded_email = unquote(recipient_email)
+            return accounting_manager.create_txn_token(decoded_email)
         except APIException as e:
             raise HTTPException(status_code=e.status_code, detail=e.message)
 
