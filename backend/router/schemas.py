@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import jwt
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from .constants import (
     DelegateControlType,
@@ -155,6 +155,10 @@ class ProjectMetadata(BaseModel):
         None,
         description="Datasite email to whom router is delegated to.",
     )
+    delegate_control_types: Optional[List[DelegateControlType]] = Field(
+        None,
+        description="Types of control the delegate has over the router.",
+    )
 
     @classmethod
     def load_from_file(cls, file_path: Path) -> "ProjectMetadata":
@@ -210,17 +214,6 @@ class RevokeDelegationResponse(BaseModel):
     delegate_email: EmailStr
 
 
-class DelegateControlRequest(BaseModel):
-    """Request to delegate control of a router."""
-
-    router_name: str
-    delegate_email: EmailStr
-    control_type: DelegateControlType
-    control_data: Dict[str, Any]
-    delegate_access_token: str
-    reason: Optional[str] = None
-
-
 class ServicePricingUpdate(BaseModel):
     """Data for updating pricing of a service."""
 
@@ -229,10 +222,41 @@ class ServicePricingUpdate(BaseModel):
     new_charge_type: PricingChargeType
 
 
-class PricingUpdateData(BaseModel):
-    """Data for updating pricing of a router."""
+class ControlDataOptions(BaseModel):
+    """Options for control data.
 
-    service_pricing: List[ServicePricingUpdate]
+    TODO: Later with more control types, we can add more options here and make them
+    optional. For now, we only have pricing updates.
+    """
+
+    pricing_updates: Optional[List[ServicePricingUpdate]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_at_least_one_update(cls, values):
+        """Ensure at least one type of update is provided."""
+        if isinstance(values, dict):
+            has_updates = any(
+                values.get(field) is not None and values.get(field) != []
+                for field in [
+                    "pricing_updates",
+                    # TODO: Add more control types here
+                ]
+            )
+            if not has_updates:
+                raise ValueError("At least one type of update must be provided")
+        return values
+
+
+class DelegateControlRequest(BaseModel):
+    """Request to delegate control of a router."""
+
+    router_name: str
+    delegate_email: EmailStr
+    control_type: DelegateControlType
+    control_data: ControlDataOptions
+    delegate_access_token: str
+    reason: Optional[str] = None
 
 
 class DelegateControlResponse(BaseModel):

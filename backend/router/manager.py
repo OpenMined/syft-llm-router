@@ -2,6 +2,7 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 import jwt
 from accounting.repository import AccountingRepository
@@ -32,7 +33,7 @@ from .schemas import (
     DelegateControlResponse,
     DelegateRouterResponse,
     JWTTokenPayload,
-    PricingUpdateData,
+    ServicePricingUpdate,
     ProjectMetadata,
     PublishRouterRequest,
     RevokeDelegationResponse,
@@ -590,6 +591,7 @@ class RouterManager:
         # Update router published metadata with delegate email
         project_metadata = ProjectMetadata.load_from_file(project_metadata_path)
         project_metadata.delegate_email = delegate_email
+        project_metadata.delegate_control_types = [DelegateControlType.UPDATE_PRICING]
         project_metadata.save_to_file(project_metadata_path)
 
         # Generate delegate access token
@@ -788,9 +790,16 @@ class RouterManager:
 
         # Handle pricing update
         if request.control_type == DelegateControlType.UPDATE_PRICING:
-            pricing_update_data = PricingUpdateData.model_validate(request.control_data)
+            # Check if pricing updates are provided
+            if request.control_data.pricing_updates is None:
+                raise APIException(
+                    "No pricing updates provided.",
+                    400,
+                )
+
+            # Handle pricing update
             router = self._handle_delegate_pricing_update(
-                router.name, pricing_update_data
+                router.name, request.control_data.pricing_updates
             )
 
         # Log audit
@@ -839,7 +848,7 @@ class RouterManager:
         return token_file.read_text()
 
     def _handle_delegate_pricing_update(
-        self, router_name: str, pricing_data: PricingUpdateData
+        self, router_name: str, pricing_data: List[ServicePricingUpdate]
     ) -> Router:
         """Handle pricing update from delegate.
 
@@ -863,7 +872,7 @@ class RouterManager:
                     charge_type=service.new_charge_type,
                     enabled=True,
                 )
-                for service in pricing_data.service_pricing
+                for service in pricing_data
             ],
         )
 
