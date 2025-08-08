@@ -1,7 +1,9 @@
 import json
 import shutil
+from datetime import datetime
 from pathlib import Path
 
+import jwt
 from accounting.repository import AccountingRepository
 from generator.common.config import StateFile
 from generator.service import (
@@ -14,6 +16,7 @@ from settings.app_settings import settings
 from shared.exceptions import APIException
 from syft_core import Client as SyftClient
 from syft_core.config import SyftClientConfig
+from syft_core.permissions import PERM_FILE, SyftPermission
 
 from .constants import PUBLIC_ROUTER_DIR_NAME, ROUTER_DIR_NAME, DelegateControlType
 from .models import PricingChargeType, RouterServiceType
@@ -28,6 +31,7 @@ from .schemas import (
     DelegateControlRequest,
     DelegateControlResponse,
     DelegateRouterResponse,
+    JWTTokenPayload,
     PricingUpdateData,
     ProjectMetadata,
     PublishRouterRequest,
@@ -220,7 +224,7 @@ class RouterManager:
             if updated_router is None:
                 raise APIException(f"Failed to update router {router_name}", 500)
         except Exception as e:
-            raise APIException(f"Error unpublishing router {router_name}: {e}", 500)
+            raise APIException(f"Error un publishing router {router_name}: {e}", 500)
 
         return {"message": "Router unpublished successfully."}
 
@@ -238,7 +242,11 @@ class RouterManager:
                         router.router_metadata.summary if router.router_metadata else ""
                     ),
                     author=router.author,
-                    delegate_email=router.router_metadata.delegate_email,
+                    delegate_email=(
+                        router.router_metadata.delegate_email
+                        if router.router_metadata
+                        else None
+                    ),
                     services=[
                         ServiceOverview(
                             type=service.type,
@@ -463,6 +471,9 @@ class RouterManager:
         router_public_dir.mkdir(parents=True, exist_ok=True)
         delegate_file = router_public_dir / f"{self.get_current_user()}.delegate"
         delegate_file.touch(exist_ok=True)
+
+        delegate_file.write_text(f"{self.get_current_user()} is now a delegate.")
+
         return True
 
     def revoke_delegate_status(self) -> bool:
@@ -500,17 +511,21 @@ class RouterManager:
             if not delegate_file.exists():
                 continue
 
-            delegates.append(EmailStr(datasite.name))
+            delegates.append(datasite.name)
 
         return AvailableDelegatesResponse(delegates=delegates)
 
-    def delegate_router(
-        self, router_name: str, delegate_email: EmailStr
+    def grant_delegate_access(
+        self,
+        router_name: str,
+        delegate_email: EmailStr,
+        control_type: DelegateControlType = DelegateControlType.UPDATE_PRICING,
     ) -> DelegateRouterResponse:
-        """Delegate a router to a delegate.
+        """Grant delegate access to a router.
 
-        This function will delegate a router to a delegate.
+        This function will grant delegate access to a router.
         It will create a delegate file in the delegate's public directory.
+        It will also generate a delegate access token for the delegate.
         """
         router = self.repository.get_router_by_name(router_name)
 
@@ -574,7 +589,66 @@ class RouterManager:
         project_metadata.delegate_email = delegate_email
         project_metadata.save_to_file(project_metadata_path)
 
+        # Generate delegate access token
+        self.generate_delegate_access_token(
+            router.name,
+            router.author,
+            delegate_email,
+            control_type,
+        )
+
         return DelegateRouterResponse(router=router)
+
+    def generate_delegate_access_token(
+        self,
+        router_name: str,
+        router_author: str,
+        delegate_email: EmailStr,
+        control_type: DelegateControlType,
+    ) -> None:
+        """Generate a delegate access token.
+
+        This function will generate a delegate access token for a router.
+        It will return the token.
+        """
+
+        # Create directory for delegate access token
+        access_token_dir = (
+            self.syftbox_client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "token"
+        )
+        access_token_dir.mkdir(parents=True, exist_ok=True)
+
+        # Set permissions for the directory
+        perms_file_path = access_token_dir / PERM_FILE
+
+        if not perms_file_path.exists():
+            syft_perms = SyftPermission.create(self.syftbox_client, access_token_dir)
+            syft_perms.terminal = True
+            syft_perms.add_rule(
+                path="**",
+                user=delegate_email,
+                permission=["read"],
+            )
+            syft_perms.save(access_token_dir)
+
+        # Create JWT token
+        jwt_payload = JWTTokenPayload(
+            router_name=router_name,
+            router_author=router_author,
+            delegate_email=delegate_email,
+            control_type=control_type,
+            created_at=datetime.now(),
+        )
+
+        # Create token file with random string
+        jwt_token = jwt_payload.encode(settings.jwt_secret)
+
+        token_file = access_token_dir / "delegation.jwt"
+        token_file.write_text(jwt_token)
 
     def revoke_delegation(self, router_name: str) -> RevokeDelegationResponse:
         """Revoke delegation of a router.
@@ -590,6 +664,8 @@ class RouterManager:
                 f"Router {router_name} is not delegated. Please delegate it first.",
                 400,
             )
+
+        delegate_email = router.router_metadata.delegate_email
 
         # Update router metadata
         router = self.repository.revoke_delegation(router_name)
@@ -615,9 +691,46 @@ class RouterManager:
         project_metadata.delegate_email = None
         project_metadata.save_to_file(project_metadata_path)
 
+        # Remove Token directory
+        token_dir = (
+            self.syftbox_client.my_datasite
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "token"
+        )
+        if token_dir.exists():
+            shutil.rmtree(token_dir)
+
         return RevokeDelegationResponse(
             router_name=router_name,
-            delegate_email=router.router_metadata.delegate_email,
+            delegate_email=delegate_email,
+        )
+
+    def _validate_delegate_access_token(
+        self,
+        access_token: str,
+        router_name: str,
+        delegate_email: EmailStr,
+        control_type: DelegateControlType,
+        router_author: str,
+    ) -> bool:
+        """Validate delegate access token.
+
+        This function will validate the delegate access token.
+        """
+        # JWT Token decode
+        jwt_payload = JWTTokenPayload.decode(
+            access_token,
+            settings.jwt_secret,
+        )
+
+        # Validate JWT payload
+        return (
+            jwt_payload.router_name == router_name
+            and jwt_payload.router_author == router_author
+            and jwt_payload.delegate_email == delegate_email
+            and jwt_payload.control_type == control_type
         )
 
     def delegate_control_router(
@@ -648,11 +761,26 @@ class RouterManager:
                 401,
             )
 
+        # Validate access token
+        valid_access_token = self._validate_delegate_access_token(
+            request.delegate_access_token,
+            router.name,
+            request.delegate_email,
+            request.control_type,
+            router.author,
+        )
+
         # Check if control type is valid
         if request.control_type not in DelegateControlType.all_types():
             raise APIException(
                 f"Invalid control type: {request.control_type}",
                 400,
+            )
+
+        if not valid_access_token:
+            raise APIException(
+                "Invalid access token. Please check the access token and try again.",
+                401,
             )
 
         # Handle pricing update
@@ -680,6 +808,33 @@ class RouterManager:
             message=f"Pricing updated successfully for router {router.name}.",
         )
 
+    def get_delegate_access_token(
+        self,
+        router_name: str,
+        router_author: str,
+    ) -> str:
+        """Get delegate access token.
+
+        This function will get the delegate access token for a router.
+        """
+        token_file = (
+            self.syftbox_client.datasites
+            / router_author
+            / PUBLIC_ROUTER_DIR_NAME
+            / ROUTER_DIR_NAME
+            / router_name
+            / "token"
+            / "delegation.jwt"
+        )
+
+        if not token_file.exists():
+            raise APIException(
+                f"Delegate access token not found for router {router_name}.",
+                404,
+            )
+
+        return token_file.read_text()
+
     def _handle_delegate_pricing_update(
         self, router_name: str, pricing_data: PricingUpdateData
     ) -> Router:
@@ -703,6 +858,7 @@ class RouterManager:
                     type=service.service_type,
                     pricing=service.new_pricing,
                     charge_type=service.new_charge_type,
+                    enabled=True,
                 )
                 for service in pricing_data.service_pricing
             ],

@@ -1,7 +1,8 @@
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env if present
 load_dotenv(override=True)
@@ -17,6 +18,9 @@ class AppSettings(BaseSettings):
     accounting_service_url: str = Field(
         DEFAULT_ACCOUNTING_SERVICE_URL, env="ACCOUNTING_SERVICE_URL"
     )
+    jwt_secret: str = Field(..., env="JWT_SECRET")
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @field_validator("syftbox_config_path", mode="before")
     def validate_syftbox_config_path(cls, v):
@@ -26,10 +30,6 @@ class AppSettings(BaseSettings):
         if not path.exists():
             raise ValueError(f"Syftbox config path {path} does not exist")
         return path
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Singleton instance for global access

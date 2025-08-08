@@ -115,13 +115,15 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
     @router.post("/delegate/grant", response_model=DelegateRouterResponse)
-    async def delegate_router(
+    async def grant_delegate_access(
         request: DelegateRouterRequest,
         service: RouterManager = Depends(get_router_service),
     ):
         """Delegate a router to a delegate."""
         try:
-            return service.delegate_router(request)
+            return service.grant_delegate_access(
+                request.router_name, request.delegate_email
+            )
         except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
@@ -132,7 +134,7 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
     ):
         """Revoke delegation of a router."""
         try:
-            return service.revoke_delegation(request)
+            return service.revoke_delegation(request.router_name)
         except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
@@ -144,14 +146,13 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
-    @router.get("/mark-as-delegate", response_class=JSONResponse)
-    async def mark_as_delegate(
+    @router.post("/opt-in-as-delegate", response_class=JSONResponse)
+    async def opt_in_as_delegate(
         service: RouterManager = Depends(get_router_service),
     ):
-        """Mark a router as a delegate.
+        """Opt in as a delegate.
 
-        This function will mark a router as a delegate.
-        It will update the router's metadata to include the delegate's email.
+        This function will opt in the current user as a delegate.
         """
         try:
             is_success = service.make_user_a_delegate()
@@ -181,6 +182,25 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         """Delegate control of a router."""
         try:
             return service.delegate_control_router(request)
+        except APIException as e:
+            raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
+
+    @router.get("/delegate/access-token", response_class=JSONResponse)
+    async def get_delegate_access_token(
+        router_name: str,
+        router_author: str,
+        service: RouterManager = Depends(get_router_service),
+    ):
+        """Get delegate access token."""
+        try:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "access_token": service.get_delegate_access_token(
+                        router_name, router_author
+                    )
+                },
+            )
         except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 

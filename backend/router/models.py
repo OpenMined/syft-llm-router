@@ -23,6 +23,9 @@ class RouterModel(SQLModel, table=True):
     router_metadata: Optional["RouterMetadataModel"] = Relationship(
         back_populates="router"
     )
+    delegate_control_audits: list["DelegateControlAuditModel"] = Relationship(
+        back_populates="router"
+    )
 
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -37,7 +40,7 @@ class RouterMetadataModel(SQLModel, table=True):
     tags: list[str] = Field(sa_type=JSON)
     code_hash: str
     router_id: UUID = Field(foreign_key="routermodel.id")
-    delegate_email: EmailStr = Field(default=None)
+    delegate_email: Optional[str] = Field(default=None, index=True)
     router: "RouterModel" = Relationship(back_populates="router_metadata")
 
 
@@ -61,7 +64,7 @@ class DelegateControlAuditModel(SQLModel, table=True):
     router: "RouterModel" = Relationship(back_populates="delegate_control_audits")
     delegate_email: EmailStr
     control_type: DelegateControlType
-    control_data: Dict[str, Any]
-    reason: Optional[str] = None
+    control_data: Dict[str, Any] = Field(sa_type=JSON)
+    reason: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)

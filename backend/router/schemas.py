@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+import jwt
 from pydantic import BaseModel, EmailStr, Field
 
 from .constants import (
@@ -216,6 +217,7 @@ class DelegateControlRequest(BaseModel):
     delegate_email: EmailStr
     control_type: DelegateControlType
     control_data: Dict[str, Any]
+    delegate_access_token: str
     reason: Optional[str] = None
 
 
@@ -267,3 +269,24 @@ class DCALogsResponse(BaseModel):
     """View of a delegate control audit logs."""
 
     audit_logs: List[DelegateControlAuditView]
+
+
+class JWTTokenPayload(BaseModel):
+    """Payload for a JWT token."""
+
+    router_name: str
+    router_author: str
+    delegate_email: EmailStr
+    control_type: DelegateControlType
+    created_at: datetime
+
+    def encode(self, secret_key: str) -> str:
+        """Generate a JWT token."""
+        return jwt.encode(self.model_dump(mode="json"), secret_key, algorithm="HS256")
+
+    @classmethod
+    def decode(cls, access_token: str, secret_key: str) -> "JWTTokenPayload":
+        """Decode a JWT token."""
+        return cls.model_validate(
+            jwt.decode(access_token, secret_key, algorithms=["HS256"])
+        )

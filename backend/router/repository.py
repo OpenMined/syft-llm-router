@@ -12,8 +12,6 @@ from .models import (
 )
 from .schemas import (
     DelegateControlAuditCreate,
-    DelegateControlAuditLogs,
-    DelegateControlAuditLogsResponse,
     DelegateControlAuditView,
     Router,
     RouterCreate,
@@ -98,6 +96,7 @@ class RouterRepository(BaseRepository):
                         description=router_update.router_metadata.description,
                         tags=router_update.router_metadata.tags,
                         code_hash=router_update.router_metadata.code_hash,
+                        delegate_email=router_update.router_metadata.delegate_email,
                         router_id=router_orm.id,
                     )
                 else:
@@ -112,6 +111,10 @@ class RouterRepository(BaseRepository):
                     router_orm.router_metadata.code_hash = (
                         router_update.router_metadata.code_hash
                     )
+                    if router_update.router_metadata.delegate_email is not None:
+                        router_orm.router_metadata.delegate_email = (
+                            router_update.router_metadata.delegate_email
+                        )
 
             # Handle services: create if doesn't exist, update if exists
             if router_update.services is not None:
@@ -120,7 +123,6 @@ class RouterRepository(BaseRepository):
                     service.type: service for service in router_orm.services
                 }
 
-                updated_services = []
                 for service_dto in router_update.services:
                     if service_dto.type in existing_services:
                         # Update existing service
@@ -128,7 +130,6 @@ class RouterRepository(BaseRepository):
                         existing_service.enabled = service_dto.enabled
                         existing_service.pricing = service_dto.pricing
                         existing_service.charge_type = service_dto.charge_type
-                        updated_services.append(existing_service)
                     else:
                         # Create new service
                         new_service = RouterServiceModel(
@@ -138,9 +139,7 @@ class RouterRepository(BaseRepository):
                             charge_type=service_dto.charge_type,
                             router_id=router_orm.id,
                         )
-                        updated_services.append(new_service)
-
-                router_orm.services = updated_services
+                        router_orm.services.append(new_service)
 
             session.add(router_orm)
             session.commit()
@@ -258,9 +257,17 @@ class RouterRepository(BaseRepository):
         self, router_name: str
     ) -> List[DelegateControlAuditView]:
         with self.db.get_session() as session:
+
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return []
+
             audit_logs = session.exec(
                 select(DelegateControlAuditModel).where(
-                    DelegateControlAuditModel.router_id == router_name
+                    DelegateControlAuditModel.router_id == router_orm.id
                 )
             ).all()
             return [
