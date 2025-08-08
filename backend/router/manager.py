@@ -218,11 +218,14 @@ class RouterManager:
             raise APIException(f"Router {router_name} is not published", 400)
 
         try:
+            # Revoke router from delegate
+            self.revoke_delegation(router_name)
+
+            # Unpublish router
             unpublish_project(router_name, self.syftbox_config.path)
 
-            updated_router = self.repository.set_published_status(router_name, False)
-            if updated_router is None:
-                raise APIException(f"Failed to update router {router_name}", 500)
+            # Update router published status
+            self.repository.set_published_status(router_name, False)
         except Exception as e:
             raise APIException(f"Error un publishing router {router_name}: {e}", 500)
 
