@@ -103,6 +103,18 @@ class RouterService {
 
       const data = await response.json();
 
+      // Check if this is a polling response (async request)
+      if (data.data && data.data.poll_url) {
+        return {
+          success: true,
+          data: {
+            ...data,
+            isAsync: true,
+            message: data.message || 'Request has been accepted. Please check back later.'
+          },
+        };
+      }
+
       if (!response.ok) {
         return {
           success: false,
@@ -291,7 +303,17 @@ class RouterService {
     routerName: string,
     services: any[]
   ): Promise<ApiResponse<DelegateControlResponse>> {
-    // First get the access token
+    // First get the current user's email
+    const accountResponse = await this.getAccountInfo();
+    if (!accountResponse.success || !accountResponse.data) {
+      return {
+        success: false,
+        error: 'Failed to get current user info',
+      };
+    }
+    const currentUserEmail = accountResponse.data.email;
+
+    // Then get the access token
     const tokenResponse = await this.getGatekeeperAccessToken(routerName, authorEmail);
     if (!tokenResponse.success || !tokenResponse.data) {
       return {
@@ -302,7 +324,7 @@ class RouterService {
 
     const request: DelegateControlRequest = {
       router_name: routerName,
-      delegate_email: '', // Will be set by the backend based on token
+      delegate_email: currentUserEmail, // Set to current user's email
       control_type: 'update_pricing',
       control_data: {
         pricing_updates: services.map(service => ({
@@ -330,6 +352,19 @@ class RouterService {
       });
 
       const data = await response.json();
+      
+      // Check if this is a polling response (async request) - also check for 202 status
+      if ((data.data && data.data.poll_url) || response.status === 202) {
+        console.log('Detected async response (poll_url or 202 status)');
+        return {
+          success: true,
+          data: {
+            ...data,
+            isAsync: true,
+            message: data.message || 'Request has been accepted. Please check back later.'
+          },
+        };
+      }
 
       if (!response.ok) {
         return {

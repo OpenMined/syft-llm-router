@@ -18,10 +18,13 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
   const [success, setSuccess] = useState(false);
   const [syftboxUrl, setSyftboxUrl] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>('Pricing updated successfully!');
 
   useEffect(() => {
     setServices(initialServices);
     setEditedServices(initialServices);
+    setSuccess(false);
+    setSuccessMessage('Pricing updated successfully!');
   }, [initialServices]);
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
     setEditedServices(updatedServices);
     setError(null);
     setSuccess(false);
+    setSuccessMessage('Pricing updated successfully!');
   };
 
   const handleEnabledChange = (serviceType: string, enabled: boolean) => {
@@ -67,6 +71,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
     setEditedServices(updatedServices);
     setError(null);
     setSuccess(false);
+    setSuccessMessage('Pricing updated successfully!');
   };
 
   const handleSave = async () => {
@@ -78,6 +83,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
     setSaving(true);
     setError(null);
     setSuccess(false);
+    setSuccessMessage('Pricing updated successfully!');
 
     try {
       const response = await routerService.updateGatekeeperControl(
@@ -88,9 +94,18 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
       );
 
       if (response.success) {
-        setSuccess(true);
-        setServices(editedServices);
-        setTimeout(() => setSuccess(false), 3000);
+        // Check if this is an async request (polling response)
+        if (response.data && response.data.isAsync) {
+          setSuccess(true);
+          setSuccessMessage(`Request submitted to ${routerName} router, please check after some time.`);
+          // Don't update services immediately for async requests
+          // The message will indicate the request is being processed
+        } else {
+          setSuccess(true);
+          setSuccessMessage('Pricing updated successfully!');
+          setServices(editedServices);
+        }
+        setTimeout(() => setSuccess(false), 5000); // Longer timeout for async messages
       } else {
         setError(response.error || 'Failed to update pricing');
       }
@@ -105,6 +120,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
     setEditedServices(services);
     setError(null);
     setSuccess(false);
+    setSuccessMessage('Pricing updated successfully!');
   };
 
   const getServiceIcon = (serviceType: string) => {
@@ -222,7 +238,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
       
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
-          Pricing updated successfully!
+          {successMessage}
         </div>
       )}
 

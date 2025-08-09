@@ -167,7 +167,10 @@ export interface RouterRunStatus {
 
 export interface ApiResponse<T> {
   success: boolean;
-  data?: T;
+  data?: T & {
+    isAsync?: boolean;
+    message?: string;
+  };
   error?: string;
   message?: string;
   statusCode?: number;
