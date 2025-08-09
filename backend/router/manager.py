@@ -220,7 +220,8 @@ class RouterManager:
 
         try:
             # Revoke router from delegate
-            self.revoke_delegation(router_name)
+            if router.router_metadata.delegate_email is not None:
+                self.revoke_delegation(router_name)
 
             # Unpublish router
             unpublish_project(router_name, self.syftbox_config.path)
