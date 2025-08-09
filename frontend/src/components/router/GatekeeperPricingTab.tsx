@@ -58,22 +58,6 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
     setSuccessMessage('Pricing updated successfully!');
   };
 
-  const handleEnabledChange = (serviceType: string, enabled: boolean) => {
-    const updatedServices = editedServices.map(service => {
-      if (service.type === serviceType) {
-        return {
-          ...service,
-          enabled
-        };
-      }
-      return service;
-    });
-    setEditedServices(updatedServices);
-    setError(null);
-    setSuccess(false);
-    setSuccessMessage('Pricing updated successfully!');
-  };
-
   const handleSave = async () => {
     if (!syftboxUrl) {
       setError('SyftBox URL not available');
@@ -164,7 +148,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
           </svg>
           <div className="text-sm text-blue-800">
             <p className="font-medium">You are managing this router as a {GATEKEEPER_TERM}</p>
-            <p className="mt-1">You have permission to update service pricing and availability.</p>
+            <p className="mt-1">You have permission to update service pricing. Service availability is managed by the router owner.</p>
           </div>
         </div>
       </div>
@@ -180,22 +164,16 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
             <div className="space-y-4">
               {editedServices.map((service) => (
                 <div key={service.type} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {getServiceIcon(service.type)}
-                      <span className="font-medium text-gray-900 capitalize">
-                        {service.type} Service
+                  <div className="flex items-center gap-2 mb-3">
+                    {getServiceIcon(service.type)}
+                    <span className="font-medium text-gray-900 capitalize">
+                      {service.type} Service
+                    </span>
+                    {!service.enabled && (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        Disabled
                       </span>
-                    </div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={service.enabled}
-                        onChange={(e) => handleEnabledChange(service.type, (e.target as HTMLInputElement).checked)}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">Enabled</span>
-                    </label>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -209,8 +187,7 @@ export function GatekeeperPricingTab({ routerName, author, services: initialServ
                         step="0.01"
                         value={service.pricing}
                         onChange={(e) => handlePricingChange(service.type, (e.target as HTMLInputElement).value)}
-                        disabled={!service.enabled}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     </div>
                     <div>

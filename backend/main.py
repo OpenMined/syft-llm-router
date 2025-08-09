@@ -121,7 +121,7 @@ async def sburl():
     return {"url": str(app.syftbox_config.server_url)}
 
 
-@app.get("/delegate/opt-in")
+@app.post("/delegate/opt-in")
 async def delegate_opt_in():
     """Opt in as a delegate."""
     make_user_a_delegate(app.syftbox_client, app.syftbox_client.email)
