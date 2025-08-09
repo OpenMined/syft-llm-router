@@ -808,7 +808,7 @@ class RouterManager:
                 router_name=router.name,
                 delegate_email=request.delegate_email,
                 control_type=request.control_type,
-                control_data=request.control_data,
+                control_data=request.control_data.model_dump(),
                 reason=request.reason,
             )
         )
