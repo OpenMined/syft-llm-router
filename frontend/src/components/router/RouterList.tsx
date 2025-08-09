@@ -6,6 +6,7 @@ import { PublishRouterModal } from './PublishRouterModal';
 import { routerService } from '../../services/routerService';
 import type { Router } from '../../types/router';
 import type { ProfileType } from '../shared/ProfileToggle';
+import { GATEKEEPER_TERM } from '../../utils/constants';
 
 interface RouterListProps {
   onRouterClick?: (routerName: string, published: boolean, author: string) => void;
@@ -64,6 +65,7 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [publishModalRouter, setPublishModalRouter] = useState<string | null>(null);
   const [publishModalDetails, setPublishModalDetails] = useState<any>(null);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
 
   const fetchRouters = async () => {
     setLoading(true);
@@ -84,6 +86,12 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
 
   useEffect(() => {
     fetchRouters();
+    // Fetch current username
+    routerService.getUsername().then(resp => {
+      if (resp.success && resp.data) {
+        setCurrentUsername(resp.data.username);
+      }
+    });
   }, []);
 
   const handleCreateSuccess = () => {
@@ -126,16 +134,26 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
 
 
 
-  // Filter routers for client profile
-  const visibleRouters = profile === 'client' ? routers.filter(r => r.published) : routers;
+  // Filter routers based on profile
+  const visibleRouters = profile === 'client' 
+    ? routers.filter(r => r.published)
+    : profile === 'gatekeeper'
+    ? routers.filter(r => r.delegate_email === currentUsername && r.published) // Only show published routers where user is delegate
+    : routers;
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Routers</h1>
-          <p className="text-gray-600 mt-1">Manage your AI router projects</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {profile === 'gatekeeper' ? `${GATEKEEPER_TERM} Routers` : 'Routers'}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {profile === 'gatekeeper' 
+              ? `Routers you are managing as ${GATEKEEPER_TERM}`
+              : 'Manage your AI router projects'}
+          </p>
         </div>
         {profile === 'provider' && (
           <Button 
@@ -181,6 +199,11 @@ export function RouterList({ onRouterClick, profile }: RouterListProps) {
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
                     Author: {router.author}
+                    {router.delegate_email && (
+                      <span className="ml-2 text-primary-600">
+                        • {GATEKEEPER_TERM}: {router.delegate_email}
+                      </span>
+                    )}
                   </div>
                   {router.summary && (
                     <div className="text-sm text-gray-700 max-w-md bg-gray-50 rounded px-3 py-2 mb-3 break-words">

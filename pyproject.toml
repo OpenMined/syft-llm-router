@@ -15,7 +15,8 @@ dependencies = [
     "typer>=0.15.2",
     "python-dotenv>=1.1.1",
     "pydantic-settings>=2.10.1",
-    "syft-accounting-sdk @ git+https://github.com/OpenMined/accounting-sdk.git"
+    "syft-accounting-sdk @ git+https://github.com/OpenMined/accounting-sdk.git",
+    "PyJWT>=2.10.1",
 ]
 
 

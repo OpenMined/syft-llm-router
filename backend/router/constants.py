@@ -1,5 +1,18 @@
 from enum import Enum
 
+PUBLIC_ROUTER_DIR_NAME = "public"
+ROUTER_DIR_NAME = "routers"
+
+
+class DelegateControlType(str, Enum):
+    """Types of controls delegates can perform."""
+
+    UPDATE_PRICING = "update_pricing"
+
+    @classmethod
+    def all_types(cls):
+        return [control.value for control in cls]
+
 
 class PricingChargeType(str, Enum):
     PER_REQUEST = "per_request"

@@ -1,10 +1,22 @@
 from typing import List, Optional
 
+from pydantic import EmailStr
 from shared.database import BaseRepository
 from sqlmodel import select
 
-from .models import RouterMetadataModel, RouterModel, RouterServiceModel
-from .schemas import Router, RouterCreate, RouterUpdate
+from .models import (
+    DelegateControlAuditModel,
+    RouterMetadataModel,
+    RouterModel,
+    RouterServiceModel,
+)
+from .schemas import (
+    DelegateControlAuditCreate,
+    DelegateControlAuditView,
+    Router,
+    RouterCreate,
+    RouterUpdate,
+)
 
 
 class RouterRepository(BaseRepository):
@@ -84,6 +96,7 @@ class RouterRepository(BaseRepository):
                         description=router_update.router_metadata.description,
                         tags=router_update.router_metadata.tags,
                         code_hash=router_update.router_metadata.code_hash,
+                        delegate_email=router_update.router_metadata.delegate_email,
                         router_id=router_orm.id,
                     )
                 else:
@@ -98,6 +111,10 @@ class RouterRepository(BaseRepository):
                     router_orm.router_metadata.code_hash = (
                         router_update.router_metadata.code_hash
                     )
+                    if router_update.router_metadata.delegate_email is not None:
+                        router_orm.router_metadata.delegate_email = (
+                            router_update.router_metadata.delegate_email
+                        )
 
             # Handle services: create if doesn't exist, update if exists
             if router_update.services is not None:
@@ -106,7 +123,6 @@ class RouterRepository(BaseRepository):
                     service.type: service for service in router_orm.services
                 }
 
-                updated_services = []
                 for service_dto in router_update.services:
                     if service_dto.type in existing_services:
                         # Update existing service
@@ -114,7 +130,6 @@ class RouterRepository(BaseRepository):
                         existing_service.enabled = service_dto.enabled
                         existing_service.pricing = service_dto.pricing
                         existing_service.charge_type = service_dto.charge_type
-                        updated_services.append(existing_service)
                     else:
                         # Create new service
                         new_service = RouterServiceModel(
@@ -124,9 +139,7 @@ class RouterRepository(BaseRepository):
                             charge_type=service_dto.charge_type,
                             router_id=router_orm.id,
                         )
-                        updated_services.append(new_service)
-
-                router_orm.services = updated_services
+                        router_orm.services.append(new_service)
 
             session.add(router_orm)
             session.commit()
@@ -181,3 +194,91 @@ class RouterRepository(BaseRepository):
             session.refresh(router_orm)
 
             return Router.model_validate(router_orm)
+
+    def delegate_router(
+        self, router_name: str, delegate_email: EmailStr
+    ) -> Optional[Router]:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            router_orm.router_metadata.delegate_email = delegate_email
+
+            session.add(router_orm)
+            session.commit()
+            session.refresh(router_orm)
+
+            return Router.model_validate(router_orm)
+
+    def revoke_delegation(self, router_name: str) -> Optional[Router]:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            router_orm.router_metadata.delegate_email = None
+
+            session.add(router_orm)
+            session.commit()
+            session.refresh(router_orm)
+
+            return Router.model_validate(router_orm)
+
+    def log_delegate_control_action(
+        self, audit_data: DelegateControlAuditCreate
+    ) -> None:
+        with self.db.get_session() as session:
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == audit_data.router_name)
+            ).first()
+
+            if not router_orm:
+                return None
+
+            session.add(
+                DelegateControlAuditModel(
+                    router_id=router_orm.id,
+                    delegate_email=audit_data.delegate_email,
+                    control_type=audit_data.control_type,
+                    control_data=audit_data.control_data,
+                    reason=audit_data.reason,
+                )
+            )
+            session.commit()
+
+    def get_delegate_control_audit_logs(
+        self, router_name: str
+    ) -> List[DelegateControlAuditView]:
+        with self.db.get_session() as session:
+
+            router_orm = session.exec(
+                select(RouterModel).where(RouterModel.name == router_name)
+            ).first()
+
+            if not router_orm:
+                return []
+
+            audit_logs = session.exec(
+                select(DelegateControlAuditModel).where(
+                    DelegateControlAuditModel.router_id == router_orm.id
+                )
+            ).all()
+            return [
+                DelegateControlAuditView(
+                    router_name=audit_log.router.name,
+                    delegate_email=audit_log.delegate_email,
+                    control_type=audit_log.control_type,
+                    control_data=audit_log.control_data,
+                    reason=audit_log.reason,
+                    created_at=audit_log.created_at,
+                    updated_at=audit_log.updated_at,
+                )
+                for audit_log in audit_logs
+            ]

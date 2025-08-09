@@ -6,8 +6,18 @@ import type {
   RouterDetails,
   RouterList,
   ApiResponse,
-  RouterRunStatus
+  RouterRunStatus,
+  AvailableDelegatesResponse,
+  DelegateRouterRequest,
+  DelegateRouterResponse,
+  RevokeDelegationRequest,
+  RevokeDelegationResponse,
+  DelegateControlRequest,
+  DelegateControlResponse,
+  DCALogsResponse,
+  DelegateStatus
 } from '../types/router';
+import { GATEKEEPER_API } from '../utils/constants';
 
 const API_BASE_URL = '';
 
@@ -92,6 +102,18 @@ class RouterService {
       });
 
       const data = await response.json();
+
+      // Check if this is a polling response (async request)
+      if (data.data && data.data.poll_url) {
+        return {
+          success: true,
+          data: {
+            ...data,
+            isAsync: true,
+            message: data.message || 'Request has been accepted. Please check back later.'
+          },
+        };
+      }
 
       if (!response.ok) {
         return {
@@ -232,6 +254,135 @@ class RouterService {
     }
 
     return this.request<AnalyticsResponse>(`/account/analytics?${params.toString()}`);
+  }
+
+  // Gatekeeper/Delegation Methods
+  async optInAsGatekeeper(): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request<{ success: boolean }>(GATEKEEPER_API.OPT_IN, {
+      method: 'POST',
+    });
+  }
+
+  async getGatekeeperStatus(): Promise<ApiResponse<DelegateStatus>> {
+    return this.request<DelegateStatus>(GATEKEEPER_API.STATUS);
+  }
+
+  async listGatekeepers(): Promise<ApiResponse<AvailableDelegatesResponse>> {
+    return this.request<AvailableDelegatesResponse>(GATEKEEPER_API.LIST);
+  }
+
+  async grantGatekeeper(request: DelegateRouterRequest): Promise<ApiResponse<DelegateRouterResponse>> {
+    return this.request<DelegateRouterResponse>(GATEKEEPER_API.GRANT, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async revokeGatekeeper(request: RevokeDelegationRequest): Promise<ApiResponse<RevokeDelegationResponse>> {
+    return this.request<RevokeDelegationResponse>(GATEKEEPER_API.REVOKE, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getGatekeeperLogs(routerName: string): Promise<ApiResponse<DCALogsResponse>> {
+    return this.request<DCALogsResponse>(`${GATEKEEPER_API.LOGS}?router_name=${encodeURIComponent(routerName)}`);
+  }
+
+  async getGatekeeperAccessToken(routerName: string, routerAuthor: string): Promise<ApiResponse<{ access_token: string }>> {
+    const params = new URLSearchParams({
+      router_name: routerName,
+      router_author: routerAuthor
+    });
+    return this.request<{ access_token: string }>(`${GATEKEEPER_API.ACCESS_TOKEN}?${params.toString()}`);
+  }
+
+  async updateGatekeeperControl(
+    syftboxUrl: string,
+    authorEmail: string,
+    routerName: string,
+    services: any[]
+  ): Promise<ApiResponse<DelegateControlResponse>> {
+    // First get the current user's email
+    const accountResponse = await this.getAccountInfo();
+    if (!accountResponse.success || !accountResponse.data) {
+      return {
+        success: false,
+        error: 'Failed to get current user info',
+      };
+    }
+    const currentUserEmail = accountResponse.data.email;
+
+    // Then get the access token
+    const tokenResponse = await this.getGatekeeperAccessToken(routerName, authorEmail);
+    if (!tokenResponse.success || !tokenResponse.data) {
+      return {
+        success: false,
+        error: 'Failed to get access token',
+      };
+    }
+
+    const request: DelegateControlRequest = {
+      router_name: routerName,
+      delegate_email: currentUserEmail, // Set to current user's email
+      control_type: 'update_pricing',
+      control_data: {
+        pricing_updates: services.map(service => ({
+          service_type: service.type,
+          new_pricing: service.pricing,
+          new_charge_type: service.charge_type
+        }))
+      },
+      delegate_access_token: tokenResponse.data.access_token
+    };
+
+    // Special handling for delegate control through cache server
+    const syftUrl = `syft://${authorEmail}/app_data/SyftRouter/rpc${GATEKEEPER_API.CONTROL}`;
+    // Fix double slash issue by ensuring proper URL concatenation
+    const baseUrl = syftboxUrl.endsWith('/') ? syftboxUrl.slice(0, -1) : syftboxUrl;
+    const cacheUrl = `${baseUrl}/api/v1/send/msg?x-syft-url=${encodeURIComponent(syftUrl)}&x-syft-from=syft@guest.org`;
+    
+    try {
+      const response = await fetch(cacheUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const data = await response.json();
+      
+      // Check if this is a polling response (async request) - also check for 202 status
+      if ((data.data && data.data.poll_url) || response.status === 202) {
+        console.log('Detected async response (poll_url or 202 status)');
+        return {
+          success: true,
+          data: {
+            ...data,
+            isAsync: true,
+            message: data.message || 'Request has been accepted. Please check back later.'
+          },
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
   }
 }
 

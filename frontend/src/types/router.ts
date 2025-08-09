@@ -25,6 +25,7 @@ export interface Router {
   summary: string;
   author: string;
   services: ServiceOverview[];
+  delegate_email?: string;
 }
 
 export interface CreateRouterRequest {
@@ -166,8 +167,74 @@ export interface RouterRunStatus {
 
 export interface ApiResponse<T> {
   success: boolean;
-  data?: T;
+  data?: T & {
+    isAsync?: boolean;
+    message?: string;
+  };
   error?: string;
   message?: string;
   statusCode?: number;
+}
+
+// Gatekeeper/Delegation Types (matching backend schemas)
+export interface AvailableDelegatesResponse {
+  delegates: string[];
+}
+
+export interface DelegateRouterRequest {
+  router_name: string;
+  delegate_email: string;
+}
+
+export interface DelegateRouterResponse {
+  router: Router;
+}
+
+export interface RevokeDelegationRequest {
+  router_name: string;
+}
+
+export interface RevokeDelegationResponse {
+  success: boolean;
+  message?: string;
+}
+
+export interface DelegateControlRequest {
+  router_name: string;
+  delegate_email: string;
+  control_type: 'update_pricing';
+  control_data: {
+    pricing_updates: Array<{
+      service_type: string;
+      new_pricing: number;
+      new_charge_type: string;
+    }>;
+  };
+  delegate_access_token: string;
+  reason?: string;
+}
+
+export interface DelegateControlResponse {
+  success: boolean;
+  router_name: string;
+  message?: string;
+}
+
+export interface DelegateLog {
+  router_name: string;
+  delegate_email: string;
+  control_type: string;
+  control_data: Record<string, any>;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DCALogsResponse {
+  audit_logs: DelegateLog[];
+}
+
+export interface DelegateStatus {
+  is_delegate: boolean;
+  delegated_routers?: string[];
 } 
