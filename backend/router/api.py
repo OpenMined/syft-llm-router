@@ -146,20 +146,6 @@ def build_router_api(router_manager: RouterManager) -> APIRouter:
         except APIException as e:
             raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
 
-    @router.post("/opt-in-as-delegate", response_class=JSONResponse)
-    async def opt_in_as_delegate(
-        service: RouterManager = Depends(get_router_service),
-    ):
-        """Opt in as a delegate.
-
-        This function will opt in the current user as a delegate.
-        """
-        try:
-            is_success = service.make_user_a_delegate()
-            return JSONResponse(status_code=200, content={"success": is_success})
-        except APIException as e:
-            raise FastAPIHTTPException(status_code=e.status_code, detail=e.message)
-
     @router.get("/delegate/logs", response_model=DCALogsResponse)
     async def get_delegate_control_audit_logs(
         router_name: str, service: RouterManager = Depends(get_router_service)

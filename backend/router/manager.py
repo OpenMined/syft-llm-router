@@ -463,23 +463,6 @@ class RouterManager:
         """Check if a router with the given name exists."""
         return self.repository.get_router_by_name(name) is not None
 
-    def make_user_a_delegate(self) -> bool:
-        """Make user a delegate.
-
-        This function will make the current user a delegate.
-        It will create a delegate file in the current user's public directory.
-        """
-        router_public_dir = (
-            self.syftbox_client.my_datasite / PUBLIC_ROUTER_DIR_NAME / ROUTER_DIR_NAME
-        )
-        router_public_dir.mkdir(parents=True, exist_ok=True)
-        delegate_file = router_public_dir / f"{self.get_current_user()}.delegate"
-        delegate_file.touch(exist_ok=True)
-
-        delegate_file.write_text(f"{self.get_current_user()} is now a delegate.")
-
-        return True
-
     def revoke_delegate_status(self) -> bool:
         """Revoke delegate status.
 

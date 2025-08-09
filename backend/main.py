@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastsyftbox import FastSyftBox
 from router.api import build_router_api
+from router.utils import is_user_a_delegate, make_user_a_delegate
 from router.manager import RouterManager
 from router.repository import RouterRepository
 from settings.app_settings import settings
@@ -118,6 +119,21 @@ async def user_details():
 async def sburl():
     """Get SyftBox URL"""
     return {"url": str(app.syftbox_config.server_url)}
+
+
+@app.get("/delegate/opt-in")
+async def delegate_opt_in():
+    """Opt in as a delegate."""
+    make_user_a_delegate(app.syftbox_client, app.syftbox_client.email)
+    return {"success": True}
+
+
+@app.get("/delegate/status")
+async def delegate_status():
+    """Get delegate status."""
+    return {
+        "is_delegate": is_user_a_delegate(app.syftbox_client, app.syftbox_client.email)
+    }
 
 
 # Catch-all route for SPA routing - serve index.html for any frontend route
