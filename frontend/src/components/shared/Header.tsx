@@ -1,18 +1,28 @@
 import { h } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useState, useRef } from 'preact/hooks';
 import { routerService } from '../../services/routerService';
+import { GATEKEEPER_TERM } from '../../utils/constants';
+import { useDelegateStatus } from '../../hooks/useDelegateStatus';
+import type { DelegateStatus } from '../../types/router';
 
 interface HeaderProps {
   profileToggle: h.JSX.Element;
   onTabChange?: (tab: 'routers' | 'chat' | 'usage') => void;
   activeTab?: 'routers' | 'chat' | 'usage';
+  onGatekeeperStatusChange?: (status: DelegateStatus) => void;
 }
 
-export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: HeaderProps) {
+export function Header({ profileToggle, onTabChange, activeTab = 'routers', onGatekeeperStatusChange }: HeaderProps) {
   const [username, setUsername] = useState<string>('Loading...');
   const [syftBoxUrl, setSyftBoxUrl] = useState<string | null>(null);
   const [accountInfo, setAccountInfo] = useState<{ id: string; email: string; balance: number } | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isOptingIn, setIsOptingIn] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Use the delegate status hook
+  const { status: gatekeeperStatus, optIn } = useDelegateStatus();
 
   useEffect(() => {
     let mounted = true;
@@ -58,6 +68,44 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
     });
     return () => { mounted = false; };
   }, []);
+
+  // Notify parent when gatekeeper status changes
+  useEffect(() => {
+    if (gatekeeperStatus) {
+      onGatekeeperStatusChange?.(gatekeeperStatus);
+    }
+  }, [gatekeeperStatus, onGatekeeperStatusChange]);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleOptInAsGatekeeper = async () => {
+    setIsOptingIn(true);
+    try {
+      const result = await optIn();
+      if (result.success) {
+        setShowUserDropdown(false);
+        alert('Successfully opted in as a Gatekeeper! You can now be assigned to manage routers.');
+      } else {
+        console.error('Failed to opt in as gatekeeper:', result.error);
+        alert('Failed to opt in as Gatekeeper: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error opting in as gatekeeper:', error);
+      alert('Error opting in as Gatekeeper');
+    } finally {
+      setIsOptingIn(false);
+    }
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -130,10 +178,58 @@ export function Header({ profileToggle, onTabChange, activeTab = 'routers' }: He
           <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
-                {/* User icon */}
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                {/* User icon with dropdown toggle */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    className="flex items-center space-x-1 hover:bg-gray-100 p-1 rounded transition-colors"
+                    title="User menu"
+                  >
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <svg className="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showUserDropdown && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                      <div className="py-1">
+                        <div className="px-4 py-2 border-b border-gray-100">
+                          <p className="text-sm font-medium text-gray-900">{accountInfo?.email || username}</p>
+                          {gatekeeperStatus?.is_delegate && (
+                            <p className="text-xs text-primary-600 mt-1">✓ {GATEKEEPER_TERM}</p>
+                          )}
+                        </div>
+                        
+                        {!gatekeeperStatus?.is_delegate && (
+                          <button
+                            onClick={handleOptInAsGatekeeper}
+                            disabled={isOptingIn}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isOptingIn ? 'Opting in...' : `Opt in as ${GATEKEEPER_TERM}`}
+                          </button>
+                        )}
+                        
+                        {gatekeeperStatus?.delegated_routers && gatekeeperStatus.delegated_routers.length > 0 && (
+                          <div className="px-4 py-2 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-1">Managing:</p>
+                            {gatekeeperStatus.delegated_routers.slice(0, 3).map(router => (
+                              <p key={router} className="text-xs text-gray-700 truncate">• {router}</p>
+                            ))}
+                            {gatekeeperStatus.delegated_routers.length > 3 && (
+                              <p className="text-xs text-gray-500">+{gatekeeperStatus.delegated_routers.length - 3} more</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
                 <span className="text-xs text-gray-700">
                   User: <span className="font-medium">{accountInfo?.email || username}</span>
                 </span>

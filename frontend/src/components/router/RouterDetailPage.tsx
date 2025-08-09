@@ -8,7 +8,12 @@ import { PublishRouterModal } from './PublishRouterModal';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import type { RouterDetails as RouterDetailsType, ServiceOverview, OpenAPISpecification, OpenAPIOperation, RouterRunStatus } from '../../types/router';
+import type { RouterDetails as RouterDetailsType, ServiceOverview, OpenAPISpecification, OpenAPIOperation, RouterRunStatus, DelegateLog } from '../../types/router';
+import { GATEKEEPER_TERM } from '../../utils/constants';
+import { AssignGatekeeperModal } from './AssignGatekeeperModal';
+import { GatekeeperPricingTab } from './GatekeeperPricingTab';
+import { GatekeeperActivityTab } from './GatekeeperActivityTab';
+import { delegateStatusService } from '../../services/delegateStatusService';
 
 interface RouterDetailProps {
   routerName: string;
@@ -325,7 +330,7 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [details, setDetails] = useState<RouterDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documentation'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documentation' | 'gatekeeper-activity' | 'gatekeeper-control'>('overview');
   const [routerStatus, setRouterStatus] = useState<RouterRunStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const { color } = useTheme();
@@ -333,6 +338,8 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
+  const [showAssignGatekeeperModal, setShowAssignGatekeeperModal] = useState(false);
+  const [delegateEmail, setDelegateEmail] = useState<string | null>(null);
 
 
 
@@ -371,19 +378,27 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
     }
   };
 
-  useEffect(() => {
+  const fetchRouterDetails = () => {
     setLoading(true);
     setError(null);
     routerService.getRouterDetails(routerName, author, published)
       .then((resp) => {
         if (resp.success && resp.data) {
           setDetails(resp.data);
+          // Extract delegate email from metadata if available
+          if (resp.data.metadata && typeof resp.data.metadata === 'object' && 'delegate_email' in resp.data.metadata) {
+            setDelegateEmail((resp.data.metadata as any).delegate_email || null);
+          }
         } else {
           setError(resp.error || 'Failed to load router details.');
         }
       })
       .catch(() => setError('Failed to load router details.'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchRouterDetails();
   }, [routerName, author, published]);
 
   // Fetch router status if router belongs to current user
@@ -431,6 +446,25 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'overview' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('overview')}>Overview</button>
             <button className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'documentation' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} onClick={() => setActiveTab('documentation')}>API Documentation</button>
             
+            {/* Gatekeeper Activity Tab - visible for router owner */}
+            {currentUser && author === currentUser && published && delegateEmail && (
+              <button 
+                className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'gatekeeper-activity' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} 
+                onClick={() => setActiveTab('gatekeeper-activity')}
+              >
+                {GATEKEEPER_TERM} Activity
+              </button>
+            )}
+            
+            {/* Gatekeeper Control Tab - visible for delegates */}
+            {currentUser && delegateEmail === currentUser && (
+              <button 
+                className={`px-4 py-2 text-base font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'gatekeeper-control' ? t.border600 + ' ' + t.text600 : 'border-transparent text-gray-400'} bg-white focus:outline-none`} 
+                onClick={() => setActiveTab('gatekeeper-control')}
+              >
+                {GATEKEEPER_TERM} Control
+              </button>
+            )}
           </div>
 
           {activeTab === 'overview' && details && (
@@ -472,7 +506,38 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                       ))}
                   </div>
                 )}
-                {/* Publish/Unpublish Buttons (if provider) */}
+                {/* Gatekeeper Info Section - shown if router has delegate */}
+                {details.published && delegateEmail && (
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-blue-900">
+                            {GATEKEEPER_TERM} Assigned
+                          </p>
+                          <p className="text-sm text-blue-700">
+                            <span className="font-medium">{delegateEmail}</span> is managing this router
+                          </p>
+                        </div>
+                      </div>
+                      {currentUser && author === currentUser && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setShowAssignGatekeeperModal(true)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 text-xs"
+                        >
+                          Change {GATEKEEPER_TERM}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Publish/Unpublish/Gatekeeper Buttons (if provider) */}
                 {profile === 'provider' && (
                   <div className="flex justify-end mt-6 gap-3">
                     {!details.published ? (
@@ -480,13 +545,26 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
                       Publish Router
                     </Button>
                     ) : currentUser && author === currentUser ? (
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => setShowUnpublishModal(true)}
-                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                      >
-                        Unpublish Router
-                      </Button>
+                      <>
+                        {/* Only show Assign Gatekeeper button if no delegate is assigned */}
+                        {!delegateEmail && (
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={() => setShowAssignGatekeeperModal(true)}
+                            className="text-sm"
+                          >
+                            Assign {GATEKEEPER_TERM}
+                          </Button>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => setShowUnpublishModal(true)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        >
+                          Unpublish Router
+                        </Button>
+                      </>
                     ) : null}
                   </div>
                 )}
@@ -609,6 +687,25 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
             </div>
           )}
 
+          {/* Gatekeeper Activity Tab - for router owners */}
+          {activeTab === 'gatekeeper-activity' && currentUser && author === currentUser && (
+            <GatekeeperActivityTab 
+              routerName={routerName}
+              onRevoke={() => {
+                // Refresh router details after revocation
+                fetchRouterDetails();
+              }}
+            />
+          )}
+
+          {/* Gatekeeper Control Tab - for delegates */}
+          {activeTab === 'gatekeeper-control' && currentUser && delegateEmail === currentUser && details && (
+            <GatekeeperPricingTab 
+              routerName={routerName}
+              author={author}
+              services={details.services || []}
+            />
+          )}
 
         </>
       )}
@@ -650,6 +747,20 @@ export function RouterDetailPage({ routerName, published, author, onBack, profil
         confirmVariant="error"
         loading={unpublishing}
       />
+
+      {/* Assign Gatekeeper Modal */}
+      {showAssignGatekeeperModal && (
+        <AssignGatekeeperModal
+          isOpen={showAssignGatekeeperModal}
+          onClose={() => setShowAssignGatekeeperModal(false)}
+          routerName={routerName}
+          currentDelegate={delegateEmail}
+          onSuccess={() => {
+            setShowAssignGatekeeperModal(false);
+            fetchRouterDetails();
+          }}
+        />
+      )}
     </div>
   );
 } 

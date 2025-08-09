@@ -122,6 +122,7 @@ class RouterMetadataResponse(BaseModel):
     tags: list[str]
     code_hash: str
     author: str
+    delegate_email: Optional[EmailStr] = None
     # endpoints: Optional[dict[str, Any]] = None
 
 

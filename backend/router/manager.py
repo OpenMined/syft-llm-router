@@ -354,6 +354,7 @@ class RouterManager:
                     tags=router.router_metadata.tags,
                     code_hash=router.router_metadata.code_hash,
                     author=router.author,
+                    delegate_email=router.router_metadata.delegate_email,
                 )
 
             if router.services:
@@ -391,26 +392,27 @@ class RouterManager:
 
             # Load metadata if it exists
             if metadata_path.exists():
-                metadata_json = json.loads(metadata_path.read_text())
+                published_metadata = ProjectMetadata.load_from_file(metadata_path)
 
                 metadata = RouterMetadataResponse(
-                    summary=metadata_json["summary"],
-                    description=metadata_json["description"],
-                    tags=metadata_json["tags"],
-                    code_hash=metadata_json["code_hash"],
-                    author=metadata_json["author"],
+                    summary=published_metadata.summary,
+                    description=published_metadata.description,
+                    tags=published_metadata.tags,
+                    code_hash=published_metadata.code_hash,
+                    author=published_metadata.author,
+                    delegate_email=published_metadata.delegate_email,
                 )
 
-                endpoints = metadata_json["documented_endpoints"]
+                endpoints = published_metadata.documented_endpoints
 
                 services = [
                     ServiceOverview(
-                        type=RouterServiceType(service["type"]),
-                        pricing=service["pricing"],
-                        charge_type=service["charge_type"],
-                        enabled=service["enabled"],
+                        type=service.type,
+                        pricing=service.pricing,
+                        charge_type=service.charge_type,
+                        enabled=service.enabled,
                     )
-                    for service in metadata_json["services"]
+                    for service in published_metadata.services
                 ]
             published = True
 

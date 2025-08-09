@@ -10,13 +10,15 @@ import { PasswordUpdateModal } from './components/shared/PasswordUpdateModal';
 import { AccountingSetupModal } from './components/shared/AccountingSetupModal';
 import { ThemeContext } from './components/shared/ThemeContext';
 import { accountingService, type UserAccount } from './services/accountingService';
+import { useDelegateStatus } from './hooks/useDelegateStatus';
+import type { DelegateStatus } from './types/router';
 
 const PROFILE_KEY = 'syftbox_profile';
 
 // Simple route state
 export function App() {
   const [route, setRoute] = useState<{ page: 'list' } | { page: 'detail'; routerName: string; published: boolean; author: string } | { page: 'chat' } | { page: 'usage' }>({ page: 'list' });
-  const [activeTab, setActiveTab] = useState<'routers' | 'chat' | 'usage'>('routers');
+  const [activeTab, setActiveTab] = useState<'routers' | 'chat' | 'usage' | 'gatekeeper'>('routers');
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
@@ -24,6 +26,9 @@ export function App() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [accountingUrl, setAccountingUrl] = useState('');
   const [accountingSetupReason, setAccountingSetupReason] = useState<'no_credentials' | 'auth_failed'>('no_credentials');
+  
+  // Use cached delegate status
+  const { status: gatekeeperStatus } = useDelegateStatus();
 
   // Load profile from localStorage on mount
   useEffect(() => {
@@ -99,9 +104,9 @@ export function App() {
   };
 
   // Handler for tab changes
-  const handleTabChange = (tab: 'routers' | 'chat' | 'usage') => {
+  const handleTabChange = (tab: 'routers' | 'chat' | 'usage' | 'gatekeeper') => {
     setActiveTab(tab);
-    if (tab === 'routers') {
+    if (tab === 'routers' || tab === 'gatekeeper') {
       setRoute({ page: 'list' });
     } else if (tab === 'chat') {
       setRoute({ page: 'chat' });
@@ -148,18 +153,37 @@ export function App() {
   // Handler for profile toggle
   const handleProfileToggle = (newProfile: ProfileType) => {
     setProfile(newProfile);
+    // Update active tab when switching to/from gatekeeper
+    if (newProfile === 'gatekeeper') {
+      setActiveTab('gatekeeper');
+      setRoute({ page: 'list' });
+    } else if (activeTab === 'gatekeeper') {
+      setActiveTab('routers');
+      setRoute({ page: 'list' });
+    }
+  };
+
+  // Handler for gatekeeper status change (still needed for Header compatibility)
+  const handleGatekeeperStatusChange = (status: DelegateStatus) => {
+    // Status is now handled by the hook, this is just for compatibility
+    // The actual status updates happen through the delegateStatusService
   };
 
   return (
-    <ThemeContext.Provider value={profile ? { profile, color: profile === 'provider' ? 'indigo' : 'teal' } : { profile: 'provider', color: 'indigo' }}>
+    <ThemeContext.Provider value={profile ? { profile, color: profile === 'provider' ? 'indigo' : profile === 'client' ? 'teal' : 'purple' } : { profile: 'provider', color: 'indigo' }}>
       <div className="min-h-screen relative bg-white">
         {/* Only render dashboard if profile is chosen and no modals are showing */}
         {profile && !showOnboarding && !showPasswordUpdate && !showAccountingSetup && (
           <div>
             <Header 
-              profileToggle={<ProfileToggle profile={profile} onChange={handleProfileToggle} />}
+              profileToggle={<ProfileToggle 
+                profile={profile} 
+                onChange={handleProfileToggle} 
+                showGatekeeper={gatekeeperStatus?.is_delegate || false}
+              />}
               onTabChange={handleTabChange}
               activeTab={activeTab}
+              onGatekeeperStatusChange={handleGatekeeperStatusChange}
             />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {route.page === 'list' ? (

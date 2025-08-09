@@ -1,14 +1,17 @@
-export type ProfileType = 'provider' | 'client';
+import { GATEKEEPER_TERM } from '../../utils/constants';
+
+export type ProfileType = 'provider' | 'client' | 'gatekeeper';
 
 interface ProfileToggleProps {
   profile: ProfileType;
   onChange: (profile: ProfileType) => void;
+  showGatekeeper?: boolean;
 }
 
-export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
+export function ProfileToggle({ profile, onChange, showGatekeeper = false }: ProfileToggleProps) {
   // Utility for active/inactive button
   const getButtonClasses = (isActive: boolean, type: ProfileType) => {
-    const accent = type === 'provider' ? 'indigo' : 'teal';
+    const accent = type === 'provider' ? 'indigo' : type === 'client' ? 'teal' : 'purple';
     if (isActive) {
       return [
         `bg-${accent}-600`,
@@ -51,7 +54,7 @@ export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
         onClick={() => onChange('provider')}
         aria-pressed={profile === 'provider'}
         tabIndex={0}
-        style={{ minWidth: 100 }}
+        style={{ minWidth: showGatekeeper ? 90 : 100 }}
       >
         Provider
       </button>
@@ -60,10 +63,21 @@ export function ProfileToggle({ profile, onChange }: ProfileToggleProps) {
         onClick={() => onChange('client')}
         aria-pressed={profile === 'client'}
         tabIndex={0}
-        style={{ minWidth: 100 }}
+        style={{ minWidth: showGatekeeper ? 90 : 100 }}
       >
         Client
       </button>
+      {showGatekeeper && (
+        <button
+          className={getButtonClasses(profile === 'gatekeeper', 'gatekeeper')}
+          onClick={() => onChange('gatekeeper')}
+          aria-pressed={profile === 'gatekeeper'}
+          tabIndex={0}
+          style={{ minWidth: 90 }}
+        >
+          {GATEKEEPER_TERM}
+        </button>
+      )}
     </div>
   );
 } 
