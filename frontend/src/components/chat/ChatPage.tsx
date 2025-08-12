@@ -474,7 +474,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: `You are a helpful AI assistant that answers questions based on the provided source context.\n\nUse the provided sources to answer the user's question accurately and comprehensively. If you do not know the answer from the sources, say so.`
+          content: `You are a helpful AI assistant that answers questions based on the provided source context.\n\nUse the provided sources to answer the user's question accurately and comprehensively. If you do not know the answer from the sources, say so. If no sources are provided, then you can only answer based on your knowledge.`
         },
         ...chatHistory,
         { role: 'user', content: message }
