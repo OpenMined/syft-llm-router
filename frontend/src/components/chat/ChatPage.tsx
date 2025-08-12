@@ -474,7 +474,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: `You are a helpful AI assistant that answers questions based on the provided source context.\n\nUse the provided sources to answer the user's question accurately and comprehensively. If you do not know the answer from the sources, say so. If no sources are provided, then you can only answer based on your knowledge.`
+          content: `You are a helpful AI assistant that can answer questions using both provided sources and your general knowledge.\n\nWhen sources are provided, use them as your primary information and supplement with your general knowledge when helpful. If you don't know the answer from the sources, you can still use your general knowledge to provide a helpful response.\n\nWhen no sources are provided, rely on your general knowledge to answer the question comprehensively.`
         },
         ...chatHistory,
         { role: 'user', content: message }
