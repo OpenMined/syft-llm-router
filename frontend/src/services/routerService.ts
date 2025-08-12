@@ -340,7 +340,7 @@ class RouterService {
     const syftUrl = `syft://${authorEmail}/app_data/SyftRouter/rpc${GATEKEEPER_API.CONTROL}`;
     // Fix double slash issue by ensuring proper URL concatenation
     const baseUrl = syftboxUrl.endsWith('/') ? syftboxUrl.slice(0, -1) : syftboxUrl;
-    const cacheUrl = `${baseUrl}/api/v1/send/msg?x-syft-url=${encodeURIComponent(syftUrl)}&x-syft-from=syft@guest.org`;
+    const cacheUrl = `${baseUrl}/api/v1/send/msg?x-syft-url=${encodeURIComponent(syftUrl)}&x-syft-from=guest@syft.org`;
     
     try {
       const response = await fetch(cacheUrl, {
