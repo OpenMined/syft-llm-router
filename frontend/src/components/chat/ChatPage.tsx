@@ -417,7 +417,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                 router.name, 
                 router.author, 
                 message,
-                searchPricing > 0 ? { user_email: userEmail!, transaction_token: searchTransactionToken } : undefined
+                { user_email: userEmail!, ...(searchPricing > 0 ? { transaction_token: searchTransactionToken } : {}) }
               );
               
               if (searchResponse.success && searchResponse.data) {
@@ -498,7 +498,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
         chatRouter.name,
         chatRouter.author,
         messages,
-        chatPricing > 0 ? { user_email: userEmail!, transaction_token: transactionToken } : undefined
+        { user_email: userEmail!, ...(chatPricing > 0 ? { transaction_token: transactionToken } : {}) }
       );
       
       if (chatResponse.success && chatResponse.data) {
