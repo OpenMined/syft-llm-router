@@ -17,14 +17,14 @@ interface SearchResponse {
   data: {
     message: {
       body: {
-        cost: number;
-        id: string;
-        providerInfo: {
+        cost?: number;
+        id?: string;
+        providerInfo?: {
           provider: string;
         };
-        query: string;
-        results: SearchResult[];
-      };
+        query?: string;
+        results?: SearchResult[];
+      } | string; // Can be either JSON object or string (for error messages)
       created: string;
       expires: string;
       headers: {
@@ -55,11 +55,22 @@ interface ChatResponse {
   request_id: string;
   data: {
     message: {
+      status_code: number;
       body: {
-        message: {
+        message?: {
           content: string;
         };
+      } | string; // Can be either JSON object or string (for error messages)
+      created: string;
+      expires: string;
+      headers: {
+        'content-length': string;
+        'content-type': string;
       };
+      id: string;
+      method: string;
+      sender: string;
+      url: string;
     };
     poll_url?: string;
   };
@@ -129,7 +140,16 @@ class ChatService {
         ...options,
       });
 
-      const data = await response.json();
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If response is not JSON, return error
+        return {
+          success: false,
+          error: 'Invalid response format. Please try again later.',
+        };
+      }
 
       if (!response.ok) {
         return {
@@ -170,7 +190,7 @@ class ChatService {
         }
 
         const statusCode = data?.data?.message?.status_code;
-        const errorBody = data?.data?.message?.body || null;
+        const messageBody = data?.data?.message?.body;
 
         if (response.status === 200 && statusCode === 200) {
           return {
@@ -183,10 +203,20 @@ class ChatService {
           continue;
         } else {
           // Stop polling on any other status or error
+          // Handle case where message.body might not be JSON
+          let errorDetails: string | undefined = undefined;
+          if (messageBody) {
+            if (typeof messageBody === 'string') {
+              errorDetails = messageBody;
+            } else if (typeof messageBody === 'object') {
+              errorDetails = JSON.stringify(messageBody);
+            }
+          }
+          
           return {
             success: false,
             error: 'Something bad happened. Please try again later.',
-            errorDetails: errorBody ?? undefined,
+            errorDetails,
           };
         }
       } catch (error) {
@@ -234,8 +264,13 @@ class ChatService {
 
     // Propagate errorDetails if present in the response
     let errorDetails: string | undefined = undefined;
-    if (!response.success && typeof response.data?.data?.message?.body === 'string') {
-      errorDetails = response.data.data.message.body;
+    if (!response.success && response.data?.data?.message?.body) {
+      const messageBody = response.data.data.message.body;
+      if (typeof messageBody === 'string') {
+        errorDetails = messageBody;
+      } else if (typeof messageBody === 'object') {
+        errorDetails = JSON.stringify(messageBody);
+      }
     }
     return { ...response, errorDetails };
   }
@@ -260,7 +295,7 @@ class ChatService {
     author: string,
     messages: ChatMessage[],
     options?: { user_email?: string; transaction_token?: string }
-  ): Promise<ApiResponse<ChatResponse>> {
+  ): Promise<ApiResponse<ChatResponse> & { errorDetails?: string }> {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/chat`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
@@ -283,7 +318,17 @@ class ChatService {
       return this.pollForResponse<ChatResponse>(response.data.data.poll_url);
     }
 
-    return response;
+    // Propagate errorDetails if present in the response
+    let errorDetails: string | undefined = undefined;
+    if (!response.success && response.data?.data?.message?.body) {
+      const messageBody = response.data.data.message.body;
+      if (typeof messageBody === 'string') {
+        errorDetails = messageBody;
+      } else if (typeof messageBody === 'object') {
+        errorDetails = JSON.stringify(messageBody);
+      }
+    }
+    return { ...response, errorDetails };
   }
 
 }

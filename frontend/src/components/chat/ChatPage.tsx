@@ -421,15 +421,34 @@ export function ChatPage({ onBack }: ChatPageProps) {
               );
               
               if (searchResponse.success && searchResponse.data) {
-                const results = searchResponse.data.data.message.body.results;
-                searchResults.push(...results);
+                // Check if the response has a successful status code
+                const statusCode = searchResponse.data?.data?.message?.status_code;
+                if (statusCode !== 200) {
+                  console.warn(`Search request failed for router ${routerName} with status code: ${statusCode}`);
+                  continue; // Skip this search service and try the next one
+                }
                 
-                // Collect unique filenames
-                results.forEach((result: SearchResult) => {
-                  if (result.metadata?.filename) {
-                    uniqueFiles.add(result.metadata.filename);
-                  }
-                });
+                // Safely extract search results with proper error handling
+                const messageBody = searchResponse.data?.data?.message?.body;
+                if (typeof messageBody === 'string') {
+                  // Body is a string (error message)
+                  console.warn(`Search request failed for router ${routerName}:`, messageBody);
+                  continue; // Skip this search service and try the next one
+                }
+                
+                const results = messageBody?.results;
+                if (results && Array.isArray(results)) {
+                  searchResults.push(...results);
+                  
+                  // Collect unique filenames
+                  results.forEach((result: SearchResult) => {
+                    if (result.metadata?.filename) {
+                      uniqueFiles.add(result.metadata.filename);
+                    }
+                  });
+                } else {
+                  console.warn(`Invalid search results format for router ${routerName}:`, searchResponse.data);
+                }
               }
             } catch (error) {
               console.error(`Error searching router ${routerName}:`, error);
@@ -502,9 +521,39 @@ export function ChatPage({ onBack }: ChatPageProps) {
       );
       
       if (chatResponse.success && chatResponse.data) {
+        // Check if the response has a successful status code
+        const statusCode = chatResponse.data?.data?.message?.status_code;
+        if (statusCode !== 200) {
+          setError(`Chat request failed with status code: ${statusCode}`);
+          setErrorDetails(`The chat service returned an error status code: ${statusCode}`);
+          setShowErrorDetails(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Safely extract the content with proper error handling
+        const messageBody = chatResponse.data?.data?.message?.body;
+        if (typeof messageBody === 'string') {
+          // Body is a string (error message)
+          setError('Chat service returned an error.');
+          setErrorDetails(messageBody);
+          setShowErrorDetails(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        const messageContent = messageBody?.message?.content;
+        if (!messageContent) {
+          setError('Invalid response format from chat service. Please try again.');
+          setErrorDetails('The response did not contain the expected message content.');
+          setShowErrorDetails(false);
+          setIsLoading(false);
+          return;
+        }
+        
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: chatResponse.data.data.message.body.message.content
+          content: messageContent
         };
         setChatHistory(prev => [...prev, assistantMessage]);
       } else {
