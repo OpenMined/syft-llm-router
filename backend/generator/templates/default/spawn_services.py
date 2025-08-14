@@ -30,7 +30,6 @@ class ServiceManager:
     """Manages service spawning, monitoring, and state tracking."""
 
     def __init__(self, project_name: str, config_path: str):
-
         client = Client.load(config_path)
 
         # metadata path
@@ -165,41 +164,62 @@ class ServiceManager:
             )
             return False
 
-    def spawn_local_rag(self) -> bool:
-        """Spawn and verify Local RAG service."""
-        logger.info("🔍 Setting up Local RAG service...")
+    def _install_app_on_syftbox(self, repo_url: str, app_name: str) -> bool:
+        """Install an app on syftbox."""
+        logger.info(f"🔍 Installing {repo_url} on syftbox...")
+
+        using_syftbox_cli = True
 
         try:
-            # Check if syftbox is available
+            client = Client.load(self.config.syft_config.path)
+            # Check if syftbox cli is available
             result = subprocess.run(
                 ["syftbox", "--version"], capture_output=True, text=True, timeout=10
             )
 
             if result.returncode != 0:
-                logger.error("❌ syftbox not found. Please install syftbox first.")
-                self.config.state.update_service_state(
-                    "search", status="failed", error="syftbox not installed"
+                logger.error("❌ syftbox cli not found. Defaulting to SyftUI Client")
+                using_syftbox_cli = False
+
+                # Check if syftbox client is available
+                response = requests.get(
+                    f"{client.config.client_url}/api/apps",
+                    headers={"Authorization": f"Bearer {client.config.client_token}"},
+                    timeout=10,
                 )
-                return False
 
-            logger.info(f"✅ syftbox found: {result.stdout.strip()}")
+                # If syftbox client is not available, return False
+                if response.status_code != 200:
+                    logger.error("❌ syftbox client not found")
+                    self.config.state.update_service_state(
+                        "search", status="failed", error="syftbox client not found"
+                    )
+                    return False
 
-            # Check if local-rag is already installed
-            result = subprocess.run(
-                ["syftbox", "app", "list", "-c", self.config.syft_config.path],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+                logger.info("✅ syftbox client found")
+            else:
+                logger.info(f"✅ syftbox cli found: {result.stdout.strip()}")
 
-            if "local-rag" not in result.stdout:
-                logger.info("📥 Installing local-rag...")
+            # If syftbox cli present, the use syftbox cli to check and install app
+            if using_syftbox_cli:
+                result = subprocess.run(
+                    ["syftbox", "app", "list", "-c", self.config.syft_config.path],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+
+                if app_name in result.stdout:
+                    logger.info(f"✅ {app_name} already installed")
+                    return True
+
+                # Install app using syftbox cli
                 install_result = subprocess.run(
                     [
                         "syftbox",
                         "app",
                         "install",
-                        "https://github.com/OpenMined/local-rag",
+                        repo_url,
                         "--config",
                         self.config.syft_config.path,
                     ],
@@ -208,17 +228,82 @@ class ServiceManager:
                     timeout=300,  # 5 minutes timeout for installation
                 )
 
+                # If app is not installed, install it using syftbox cli
                 if install_result.returncode != 0:
                     logger.error(
-                        f"❌ Failed to install local-rag: {install_result.stderr}"
+                        f"❌ Failed to install {repo_url}: {install_result.stderr}"
                     )
                     self.config.state.update_service_state(
-                        "search",
-                        status=RunStatus.FAILED,
-                        error="Installation failed",
+                        "search", status="failed", error="Installation failed"
                     )
                     return False
 
+            # If syftbox client is not available, use syftbox client to check and install app
+            else:
+                # List available apps
+                response = requests.get(
+                    f"{client.config.client_url}/api/apps",
+                    headers={"Authorization": f"Bearer {client.config.client_token}"},
+                    timeout=10,
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"❌ Failed to list apps: {response.text}")
+                    self.config.state.update_service_state(
+                        "search", status="failed", error="Failed to list apps"
+                    )
+                    return False
+
+                # Check if app is already installed
+                apps_list = response.json().get("apps", [])
+                for app in apps_list:
+                    if app["name"] == app_name:
+                        logger.info(f"✅ {app_name} already installed")
+                        return True
+
+                # Install app using syftbox client
+                install_result = requests.post(
+                    f"{client.config.client_url}/api/apps/",
+                    headers={"Authorization": f"Bearer {client.config.client_token}"},
+                    json={
+                        "repoURL": repo_url,
+                        "branch": "main",
+                        "force": False,
+                    },
+                    timeout=300,
+                )
+
+                if install_result.status_code != 200:
+                    logger.error(
+                        f"❌ Failed to install {repo_url}: {install_result.text}: {install_result.status_code}"
+                    )
+                    self.config.state.update_service_state(
+                        "search", status="failed", error="Failed to install app"
+                    )
+                    return False
+
+            logger.info(f"✅ {app_name} installed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to install {repo_url}:{app_name}: {e}")
+            self.config.state.update_service_state(
+                "search", status="failed", error=f"Failed to install {repo_url}: {e}"
+            )
+            return False
+
+    def spawn_local_rag(self) -> bool:
+        """Spawn and verify Local RAG service."""
+        logger.info("🔍 Setting up Local RAG service...")
+
+        try:
+            if not self._install_app_on_syftbox(
+                "https://github.com/OpenMined/local-rag",
+                "com.github.openmined.local-rag",
+            ):
+                logger.error("❌ Failed to install local-rag")
+                return False
+            else:
                 logger.info("✅ local-rag installed successfully")
 
             # Wait for local-rag to be ready and discover its URL
