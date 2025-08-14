@@ -5,21 +5,19 @@ from typing import List, Optional
 from uuid import uuid4
 
 import requests
-from loguru import logger
-
 from base_services import ChatService
+from config import RouterConfig
+from loguru import logger
+from pydantic import EmailStr
 from schema import (
     ChatResponse,
+    ChatUsage,
     GenerationOptions,
     Message,
-    ChatUsage,
     PublishedMetadata,
     RouterServiceType,
 )
-from config import RouterConfig
-from pydantic import EmailStr
 from syft_accounting_sdk import UserClient
-
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 

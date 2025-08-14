@@ -6,13 +6,15 @@ Handles spawning and monitoring of Ollama and Local RAG services.
 
 import argparse
 import logging
+import shutil
 import subprocess
 import sys
 import time
 from datetime import datetime
+
 import requests
-from syft_core import Client
 from config import RunStatus, load_config
+from syft_core import Client
 
 # Configure verbose logging
 logging.basicConfig(
@@ -172,18 +174,15 @@ class ServiceManager:
 
         try:
             client = Client.load(self.config.syft_config.path)
-            # Check if syftbox cli is available
-            result = subprocess.run(
-                ["syftbox", "--version"], capture_output=True, text=True, timeout=10
-            )
 
-            if result.returncode != 0:
-                logger.error("❌ syftbox cli not found. Defaulting to SyftUI Client")
+            # Check if syftbox cli is available
+            if shutil.which("syftbox") is None:
+                logger.error("❌ syftbox cli not found. Defaulting to SyftUI Client.")
                 using_syftbox_cli = False
 
                 # Check if syftbox client is available
                 response = requests.get(
-                    f"{client.config.client_url}/api/apps",
+                    f"{client.config.client_url}/v1/apps",
                     headers={"Authorization": f"Bearer {client.config.client_token}"},
                     timeout=10,
                 )
@@ -198,7 +197,7 @@ class ServiceManager:
 
                 logger.info("✅ syftbox client found")
             else:
-                logger.info(f"✅ syftbox cli found: {result.stdout.strip()}")
+                logger.info("✅ syftbox cli found")
 
             # If syftbox cli present, the use syftbox cli to check and install app
             if using_syftbox_cli:
@@ -242,7 +241,7 @@ class ServiceManager:
             else:
                 # List available apps
                 response = requests.get(
-                    f"{client.config.client_url}/api/apps",
+                    f"{client.config.client_url}/v1/apps",
                     headers={"Authorization": f"Bearer {client.config.client_token}"},
                     timeout=10,
                 )
@@ -263,7 +262,7 @@ class ServiceManager:
 
                 # Install app using syftbox client
                 install_result = requests.post(
-                    f"{client.config.client_url}/api/apps/",
+                    f"{client.config.client_url}/v1/apps/",
                     headers={"Authorization": f"Bearer {client.config.client_token}"},
                     json={
                         "repoURL": repo_url,

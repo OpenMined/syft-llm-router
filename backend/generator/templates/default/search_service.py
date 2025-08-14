@@ -4,21 +4,19 @@ import os
 from typing import Optional
 from uuid import uuid4
 
-from loguru import logger
 import httpx
-
 from base_services import SearchService
+from config import RouterConfig
+from loguru import logger
+from pydantic import EmailStr
 from schema import (
     DocumentResult,
-    SearchOptions,
-    SearchResponse,
     PublishedMetadata,
     RouterServiceType,
+    SearchOptions,
+    SearchResponse,
 )
-from config import RouterConfig
-from pydantic import EmailStr
 from syft_accounting_sdk import UserClient
-
 
 MAX_DOCUMENT_LIMIT_PER_QUERY = 10
 
@@ -76,7 +74,6 @@ class LocalSearchService(SearchService):
         query_cost = 0.0
 
         try:
-
             if self.pricing > 0 and transaction_token:
                 # If pricing is not zero, then we need to create a transaction
                 with self.accounting_client.delegated_transfer(
