@@ -26,9 +26,10 @@ interface SingleSelectDropdownProps {
   placeholder: string;
   type: 'search' | 'chat';
   getRouterHealth: (routerName: string) => 'online' | 'offline' | 'unknown';
+  isRouterChecking: (routerName: string) => boolean;
 }
 
-function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, getRouterHealth }: SingleSelectDropdownProps) {
+function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, getRouterHealth, isRouterChecking }: SingleSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -118,9 +119,11 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, 
                             ? 'bg-green-100 text-green-800' 
                             : healthStatus === 'offline'
                             ? 'bg-red-100 text-red-800'
+                            : isRouterChecking(router.name)
+                            ? 'bg-blue-100 text-blue-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : '⚪ Checking...'}
+                          {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : isRouterChecking(router.name) ? '⏳ Checking...' : '⚪ Unknown'}
                         </span>
                         {pricing > 0 && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -162,9 +165,10 @@ interface MultiSelectDropdownProps {
   placeholder: string;
   type: 'search' | 'chat';
   getRouterHealth: (routerName: string) => 'online' | 'offline' | 'unknown';
+  isRouterChecking: (routerName: string) => boolean;
 }
 
-function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, getRouterHealth }: MultiSelectDropdownProps) {
+function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, getRouterHealth, isRouterChecking }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -269,9 +273,11 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
                               ? 'bg-green-100 text-green-800' 
                               : healthStatus === 'offline'
                               ? 'bg-red-100 text-red-800'
+                              : isRouterChecking(router.name)
+                              ? 'bg-blue-100 text-blue-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : '⚪ Checking...'}
+                            {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : isRouterChecking(router.name) ? '⏳ Checking...' : '⚪ Unknown'}
                           </span>
                           {pricing > 0 && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -334,7 +340,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Health checking for all routers
-  const { getRouterHealth, isChecking: isHealthChecking } = useRouterHealth([...searchRouters, ...chatRouters], {
+  const { getRouterHealth, isRouterChecking, isChecking: isHealthChecking } = useRouterHealth([...searchRouters, ...chatRouters], {
     checkInterval: 30000, // Check every 5 minutes
     enabled: true
   });
@@ -822,6 +828,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                     placeholder="Select a chat model"
                     type="chat"
                     getRouterHealth={getRouterHealth}
+                    isRouterChecking={isRouterChecking}
                   />
                 )}
               </div>
@@ -858,6 +865,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                       placeholder="Select data sources"
                       type="search"
                       getRouterHealth={getRouterHealth}
+                      isRouterChecking={isRouterChecking}
                     />
                     
                     {/* Preview of available sources */}
