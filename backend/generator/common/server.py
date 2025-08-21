@@ -191,23 +191,34 @@ async def health_check(request: Request):
     if not router:
         raise HTTPException(status_code=503, detail="Router not initialized")
 
-    syftbox_client = request.app.state.syftbox_client
+    try:
+        # Get syftbox client
+        syftbox_client = request.state.syftbox_client
 
-    published_metadata_dir = (
-        syftbox_client.my_datasite / "public" / "routers" / app_name
-    )
-    config = load_config(
-        syft_config_path=syftbox_client.config_path,
-        metadata_path=published_metadata_dir / "metadata.json",
-    )
+        # Get published metadata directory
+        published_metadata_dir = (
+            syftbox_client.my_datasite / "public" / "routers" / app_name
+        )
 
-    # Check service availability
-    services = config.state.services.model_dump()
+        # Load config
+        config = load_config(
+            syft_config_path=syftbox_client.config_path,
+            metadata_path=published_metadata_dir / "metadata.json",
+        )
+
+        # Get service availability
+        service_availability = {
+            service_name: service.status
+            for service_name, service in config.state.services.items()
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail="Health check failed.")
 
     return HealthResponse(
         status="healthy",
         project_name=config.project_name,
-        services=services,
+        services=service_availability,
     )
 
 
