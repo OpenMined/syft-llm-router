@@ -60,6 +60,15 @@ setup_bun_path() {
     fi
 }
 
+# Check if uv is installed
+check_and_install_uv() {
+    if ! command -v uv &> /dev/null; then
+        echo "uv is not installed. Installing..."
+        install_uv
+        setup_uv_path
+    fi
+}
+
 # Main script starts here
 echo "Starting application setup..."
 
@@ -67,9 +76,8 @@ echo "Starting application setup..."
 rm -rf backend/.venv
 cd backend
 
-# Install and setup uv
-install_uv
-setup_uv_path
+# Check and install uv if not present
+check_and_install_uv
 
 # Create virtual environment and install dependencies
 uv venv -p 3.12 .venv
