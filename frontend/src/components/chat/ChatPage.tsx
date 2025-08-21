@@ -4,6 +4,7 @@ import { Button } from '../shared/Button';
 import { chatService, type SearchResult, type ChatMessage } from '../../services/chatService';
 import { routerService } from '../../services/routerService';
 import type { Router } from '../../types/router';
+import { useRouterHealth } from '../../hooks/useRouterHealth';
 
 interface ChatPageProps {
   onBack: () => void;
@@ -24,9 +25,10 @@ interface SingleSelectDropdownProps {
   onSelect: (value: string) => void;
   placeholder: string;
   type: 'search' | 'chat';
+  getRouterHealth: (routerName: string) => 'online' | 'offline' | 'unknown';
 }
 
-function SingleSelectDropdown({ options, selected, onSelect, placeholder, type }: SingleSelectDropdownProps) {
+function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, getRouterHealth }: SingleSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -45,9 +47,11 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type }
 
   const getRouterStatus = (router: Router) => {
     const service = router.services.find(s => s.type === type);
+    const healthStatus = getRouterHealth(router.name);
     return {
       isEnabled: service?.enabled || false,
-      pricing: service?.pricing || 0
+      pricing: service?.pricing || 0,
+      healthStatus
     };
   };
 
@@ -84,7 +88,7 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type }
             <div className="px-4 py-3 text-gray-500 text-center">No options available</div>
           ) : (
             options.map((router) => {
-              const { isEnabled, pricing } = getRouterStatus(router);
+              const { isEnabled, pricing, healthStatus } = getRouterStatus(router);
               return (
                 <button
                   key={router.name}
@@ -108,6 +112,15 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type }
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {isEnabled ? '✓ Available' : '✗ Disabled'}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          healthStatus === 'online' 
+                            ? 'bg-green-100 text-green-800' 
+                            : healthStatus === 'offline'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : '⚪ Checking...'}
                         </span>
                         {pricing > 0 && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -148,9 +161,10 @@ interface MultiSelectDropdownProps {
   onToggle: (value: string) => void;
   placeholder: string;
   type: 'search' | 'chat';
+  getRouterHealth: (routerName: string) => 'online' | 'offline' | 'unknown';
 }
 
-function MultiSelectDropdown({ options, selected, onToggle, placeholder, type }: MultiSelectDropdownProps) {
+function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, getRouterHealth }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -167,9 +181,11 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type }:
 
   const getRouterStatus = (router: Router) => {
     const service = router.services.find(s => s.type === type);
+    const healthStatus = getRouterHealth(router.name);
     return {
       isEnabled: service?.enabled || false,
-      pricing: service?.pricing || 0
+      pricing: service?.pricing || 0,
+      healthStatus
     };
   };
 
@@ -225,7 +241,7 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type }:
                 </div>
               )}
               {options.map((router) => {
-                const { isEnabled, pricing } = getRouterStatus(router);
+                const { isEnabled, pricing, healthStatus } = getRouterStatus(router);
                 const isSelected = selected.includes(router.name);
                 return (
                   <button
@@ -247,6 +263,15 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type }:
                               : 'bg-red-100 text-red-800'
                           }`}>
                             {isEnabled ? '✓ Available' : '✗ Disabled'}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            healthStatus === 'online' 
+                              ? 'bg-green-100 text-green-800' 
+                              : healthStatus === 'offline'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : '⚪ Checking...'}
                           </span>
                           {pricing > 0 && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -307,6 +332,12 @@ export function ChatPage({ onBack }: ChatPageProps) {
 
   // Add state for user email
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Health checking for all routers
+  const { getRouterHealth, isChecking: isHealthChecking } = useRouterHealth([...searchRouters, ...chatRouters], {
+    checkInterval: 30000, // Check every 5 minutes
+    enabled: true
+  });
 
   // Calculate total price for selected items
   const calculateTotalPrice = () => {
@@ -628,6 +659,14 @@ export function ChatPage({ onBack }: ChatPageProps) {
                       )}</div>
                     </div>
                   )}
+                  {isHealthChecking && (
+                    <div className="text-sm text-blue-500 mt-1">
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-1"></div>
+                        Checking router health...
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -782,6 +821,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                     onSelect={setSelectedChatSource}
                     placeholder="Select a chat model"
                     type="chat"
+                    getRouterHealth={getRouterHealth}
                   />
                 )}
               </div>
@@ -817,6 +857,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                       onToggle={handleDataSourceToggle}
                       placeholder="Select data sources"
                       type="search"
+                      getRouterHealth={getRouterHealth}
                     />
                     
                     {/* Preview of available sources */}
@@ -827,6 +868,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
                           const service = router.services.find(s => s.type === 'search');
                           const isEnabled = service?.enabled || false;
                           const pricing = service?.pricing || 0;
+                          const healthStatus = getRouterHealth(router.name);
                           
                           return (
                             <div key={router.name} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
@@ -841,6 +883,15 @@ export function ChatPage({ onBack }: ChatPageProps) {
                                     : 'bg-red-100 text-red-800'
                                 }`}>
                                   {isEnabled ? '✓' : '✗'}
+                                </span>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  healthStatus === 'online' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : healthStatus === 'offline'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {healthStatus === 'online' ? '🟢' : healthStatus === 'offline' ? '🔴' : '⚪'}
                                 </span>
                                 {pricing === 0 && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">

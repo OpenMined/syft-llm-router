@@ -26,6 +26,8 @@ export interface Router {
   author: string;
   services: ServiceOverview[];
   delegate_email?: string;
+  health_status?: 'online' | 'offline' | 'unknown';
+  last_health_check?: string;
 }
 
 export interface CreateRouterRequest {

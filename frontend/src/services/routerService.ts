@@ -297,6 +297,33 @@ class RouterService {
     return this.request<{ access_token: string }>(`${GATEKEEPER_API.ACCESS_TOKEN}?${params.toString()}`);
   }
 
+  async checkRouterHealth(routerName: string, routerAuthor: string, syftboxUrl: string): Promise<ApiResponse<{ status: 'online' | 'offline' }>> {
+    try {
+      const healthUrl = `${syftboxUrl}api/v1/send/msg?x-syft-from=guest@syft.org&x-syft-url=${encodeURIComponent(`syft://${routerAuthor}/app_data/${routerName}/rpc/health`)}`;
+      
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Consider 200 status and response.data.status_code === 200 as online, anything else as offline
+      const data = await response.json();
+      const status = response.status === 200 && data.data.status_code === 200 ? 'online' : 'offline';
+      
+      return {
+        success: true,
+        data: { status }
+      };
+    } catch (error) {
+      return {
+        success: true,
+        data: { status: 'offline' }
+      };
+    }
+  }
+
   async updateGatekeeperControl(
     syftboxUrl: string,
     authorEmail: string,
