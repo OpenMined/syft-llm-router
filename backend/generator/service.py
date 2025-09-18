@@ -231,7 +231,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "syft-core>=0.2.7",
-    "fastsyftbox>=0.1.19",
+    "fastsyftbox>=0.1.20",
     "pydantic>=2.0.0",
     "loguru>=0.7.0",
     "requests>=2.31.0",
