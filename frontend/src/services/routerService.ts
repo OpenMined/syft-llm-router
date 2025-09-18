@@ -299,7 +299,7 @@ class RouterService {
 
   async checkRouterHealth(routerName: string, routerAuthor: string, syftboxUrl: string): Promise<ApiResponse<{ status: 'online' | 'offline' }>> {
     try {
-      const healthUrl = `${syftboxUrl}api/v1/send/msg?sender-suffix=true&timeout=5000&x-syft-from=guest@syftbox.net&x-syft-url=${encodeURIComponent(`syft://${routerAuthor}/app_data/${routerName}/rpc/health`)}`;
+      const healthUrl = `${syftboxUrl}api/v1/send/msg?suffix-sender=true&timeout=5000&x-syft-from=guest@syftbox.net&x-syft-url=${encodeURIComponent(`syft://${routerAuthor}/app_data/${routerName}/rpc/health`)}`;
       
       const response = await fetch(healthUrl, {
         method: 'GET',
@@ -367,7 +367,7 @@ class RouterService {
     const syftUrl = `syft://${authorEmail}/app_data/SyftRouter/rpc${GATEKEEPER_API.CONTROL}`;
     // Fix double slash issue by ensuring proper URL concatenation
     const baseUrl = syftboxUrl.endsWith('/') ? syftboxUrl.slice(0, -1) : syftboxUrl;
-    const cacheUrl = `${baseUrl}/api/v1/send/msg?sender-suffix=true&x-syft-url=${encodeURIComponent(syftUrl)}&x-syft-from=guest@syftbox.net`;
+    const cacheUrl = `${baseUrl}/api/v1/send/msg?suffix-sender=true&x-syft-url=${encodeURIComponent(syftUrl)}&x-syft-from=guest@syftbox.net`;
     
     try {
       const response = await fetch(cacheUrl, {
