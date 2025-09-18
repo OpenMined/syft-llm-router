@@ -244,7 +244,7 @@ class ChatService {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/search`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
     
-    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
+    const endpoint = `/api/v1/send/msg?sender-suffix=true&x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syftbox.net`;
     
     const payload: any = {
       query,
@@ -298,9 +298,9 @@ class ChatService {
   ): Promise<ApiResponse<ChatResponse> & { errorDetails?: string }> {
     const syftUrl = `syft://${author}/app_data/${routerName}/rpc/chat`;
     const encodedSyftUrl = encodeURIComponent(syftUrl);
-    
-    const endpoint = `/api/v1/send/msg?x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syft.org`;
-    
+
+    const endpoint = `/api/v1/send/msg?sender-suffix=true&x-syft-url=${encodedSyftUrl}&x-syft-from=guest@syftbox.net`;
+
     const payload: any = {
       model: "tinyllama:latest",
       messages,
