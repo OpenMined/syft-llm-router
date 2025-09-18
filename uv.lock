@@ -131,7 +131,7 @@ name = "click"
 version = "8.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/59/87/84326af34517fca8c58418d148f2403df25303e02736832403587318e9e8/click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e", size = 331147 }
 wheels = [
@@ -224,7 +224,7 @@ wheels = [
 
 [[package]]
 name = "fastsyftbox"
-version = "0.1.19"
+version = "0.1.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -234,9 +234,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/54/d6082ca5541c74292b375bed21f3fbb53e08e9d68805dbb97f9f093003da/fastsyftbox-0.1.19.tar.gz", hash = "sha256:cf283852cbde022cf43bc76e413c8d4b20f1a70d1538f1532cf1f1009c9eae6f", size = 30396 }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/ca/7f30e50b52efa1d4cb4176e9e9606dca39582348b3316e2c49b983c7769a/fastsyftbox-0.1.20.tar.gz", hash = "sha256:026d1a97d9c753df0efa7cffb78559a1a54dc90056fc734cf4a4fa4f4cf4d2d7", size = 30430 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/3a/85bf650fbc1d4c7bb082c5192ac052ddb553922fe2e589e6e885442ec42a/fastsyftbox-0.1.19-py3-none-any.whl", hash = "sha256:57faec727044a34b6931ba673ae6c2ce12d28fd1370593e15112395e1c3e2e93", size = 34849 },
+    { url = "https://files.pythonhosted.org/packages/2c/6b/5d057015118b96f9504da73f843f18549bfaca237309ce9cc1a43504ed48/fastsyftbox-0.1.20-py3-none-any.whl", hash = "sha256:d372586275cde5879c9600ff3f2d5037dac7cc28921581c593b087e7eedd97c6", size = 34885 },
 ]
 
 [[package]]
@@ -1058,7 +1058,7 @@ wheels = [
 
 [[package]]
 name = "syft-event"
-version = "0.2.8"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "loguru" },
@@ -1067,9 +1067,9 @@ dependencies = [
     { name = "syft-rpc" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/db/30cb16d456bbe8d97fcc27bc6c872654be01b6e6a00752c7ea224580e190/syft_event-0.2.8.tar.gz", hash = "sha256:fa92c3918fb7c8088e19788b823f6686da5aee2aa08d5851a7c3bb157cb773bd", size = 9780 }
+sdist = { url = "https://files.pythonhosted.org/packages/85/0f/dfc416fb026629f3f7709838a70777df24d3eec0fd55a675bc8d851b3fdc/syft_event-0.4.0.tar.gz", hash = "sha256:43d06a40599fa19e64d29bd4cc2d7318da1495e0770b8490c05d054efc66e281", size = 15556 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/8d/941b0ba95e2bf12997263d7c48e659c8d07e766b046a475aee7fa6e3161e/syft_event-0.2.8-py3-none-any.whl", hash = "sha256:c06e746ef4944a730bdf501c0868a67b51145b858381e35dc6d6f3611c481011", size = 10978 },
+    { url = "https://files.pythonhosted.org/packages/aa/1b/e1dc632a827b5009ce84a0da0600e5ad7eea8dea892f671d1aa24e4150c9/syft_event-0.4.0-py3-none-any.whl", hash = "sha256:18ee4b9decb2fb487bcb715b24480eac1cdce403a0684784af98da62c5eeb635", size = 17492 },
 ]
 
 [[package]]
@@ -1098,7 +1098,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastsyftbox", specifier = ">=0.1.19" },
+    { name = "fastsyftbox", specifier = ">=0.1.20" },
     { name = "ipython", specifier = ">=8.18.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic", specifier = ">=2.11.2" },
@@ -1134,7 +1134,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
