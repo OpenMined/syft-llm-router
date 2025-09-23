@@ -305,6 +305,17 @@ class ServiceManager:
             else:
                 logger.info("✅ local-rag installed successfully")
 
+            # Set router context for local-rag
+            client = Client.load(self.config.syft_config.path)
+            app_folder = (
+                client.workspace.data_dir / "apps" / "com.github.openmined.local-rag"
+            )
+            
+            # Create router context file
+            # router_context_file = app_folder / ".env.router"
+            # router_context_file.write_text(f"CURRENT_ROUTER_ID={self.config.project.name}\n")
+            # logger.info(f"✅ Set router context: {self.config.project.name}")
+
             # Wait for local-rag to be ready and discover its URL
             logger.info("⏳ Waiting for local-rag to be ready...")
 
