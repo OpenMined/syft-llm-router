@@ -5,6 +5,8 @@ import { chatService, type SearchResult, type ChatMessage } from '../../services
 import { routerService } from '../../services/routerService';
 import type { Router } from '../../types/router';
 import { useRouterHealth } from '../../hooks/useRouterHealth';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 interface ChatPageProps {
   onBack: () => void;
@@ -16,6 +18,13 @@ function extractFilenames(text: string): string[] {
   if (!matches) return [];
   // Remove brackets
   return Array.from(new Set(matches.map(m => m.slice(1, -1))));
+}
+
+// Helper to safely render markdown content
+function renderMarkdown(content: string): string {
+  // Handle both sync and async marked behavior
+  const rawHtml = marked(content) as string;
+  return DOMPurify.sanitize(rawHtml);
 }
 
 // Single Select Dropdown Component
@@ -108,13 +117,6 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, 
                       <div className="text-sm text-gray-500 truncate">by {router.author}</div>
                       <div className="mt-1 flex items-center space-x-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          isEnabled 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {isEnabled ? '✓ Available' : '✗ Disabled'}
-                        </span>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           healthStatus === 'online' 
                             ? 'bg-green-100 text-green-800' 
                             : healthStatus === 'offline'
@@ -126,12 +128,12 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, 
                           {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : isRouterChecking(router.name) ? '⏳ Checking...' : '⚪ Unknown'}
                         </span>
                         {pricing > 0 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2 py-1 text-xs text-gray-600">
                             ${pricing}/req
                           </span>
                         )}
                         {pricing === 0 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2 py-1 text-xs text-gray-600">
                             Free
                           </span>
                         )}
@@ -262,13 +264,6 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
                         <div className="text-sm text-gray-500 truncate">by {router.author}</div>
                         <div className="mt-1 flex items-center space-x-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            isEnabled 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {isEnabled ? '✓ Available' : '✗ Disabled'}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             healthStatus === 'online' 
                               ? 'bg-green-100 text-green-800' 
                               : healthStatus === 'offline'
@@ -280,12 +275,12 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
                             {healthStatus === 'online' ? '🟢 Online' : healthStatus === 'offline' ? '🔴 Offline' : isRouterChecking(router.name) ? '⏳ Checking...' : '⚪ Unknown'}
                           </span>
                           {pricing > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <span className="inline-flex items-center px-2 py-1 text-xs text-gray-600">
                               ${pricing}/req
                             </span>
                           )}
                           {pricing === 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-2 py-1 text-xs text-gray-600">
                               Free
                             </span>
                           )}
@@ -709,7 +704,14 @@ export function ChatPage({ onBack }: ChatPageProps) {
                               : 'bg-gray-100 text-gray-900 rounded-bl-md'
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          {msg.role === 'user' ? (
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          ) : (
+                            <div 
+                              className="text-sm leading-relaxed markdown-content"
+                              dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                            />
+                          )}
                           {/* References section for assistant messages */}
                           {isAssistant && lastSearchResults.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
@@ -873,9 +875,6 @@ export function ChatPage({ onBack }: ChatPageProps) {
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Check out latest sources..</p>
                       <div className="space-y-2">
                         {searchRouters.slice(0, 3).map((router) => {
-                          const service = router.services.find(s => s.type === 'search');
-                          const isEnabled = service?.enabled || false;
-                          const pricing = service?.pricing || 0;
                           const healthStatus = getRouterHealth(router.name);
                           
                           return (
@@ -886,13 +885,6 @@ export function ChatPage({ onBack }: ChatPageProps) {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  isEnabled 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {isEnabled ? '✓' : '✗'}
-                                </span>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                   healthStatus === 'online' 
                                     ? 'bg-green-100 text-green-800' 
                                     : healthStatus === 'offline'
@@ -901,11 +893,6 @@ export function ChatPage({ onBack }: ChatPageProps) {
                                 }`}>
                                   {healthStatus === 'online' ? '🟢' : healthStatus === 'offline' ? '🔴' : '⚪'}
                                 </span>
-                                {pricing === 0 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Free
-                                  </span>
-                                )}
                               </div>
                             </div>
                           );

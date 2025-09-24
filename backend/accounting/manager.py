@@ -158,7 +158,52 @@ class AccountingManager:
     ) -> PaginatedTransactionHistory:
         """Get user transactions with pagination and optional status filtering."""
         try:
-            transactions = self.client.get_transaction_history()
+            try:
+                transactions = self.client.get_transaction_history()
+            except Exception as validation_error:
+                # Handle validation errors from transactions with amount=0 
+                # Try to get raw transaction data and filter manually
+                logger.warning(f"Validation error in transaction history: {validation_error}")
+                try:
+                    # Get raw response and handle zero-amount transactions manually
+                    raw_response = self.client._make_request("GET", "/transactions")
+                    transactions_data = raw_response.get("transactions", [])
+                    
+                    # Filter out invalid transactions and create valid ones
+                    valid_transactions = []
+                    for txn_data in transactions_data:
+                        if txn_data.get("amount", 0) >= 0:  # Accept 0 and positive amounts
+                            # Convert to our internal format
+                            try:
+                                # Create a simplified transaction object
+                                class SimpleTransaction:
+                                    def __init__(self, data):
+                                        self.id = data.get("id", "")
+                                        self.amount = float(data.get("amount", 0))
+                                        self.senderEmail = data.get("senderEmail", "")
+                                        self.recipientEmail = data.get("recipientEmail", "")
+                                        self.appName = data.get("appName")
+                                        self.createdAt = datetime.fromisoformat(
+                                            data.get("createdAt", "").replace("Z", "+00:00")
+                                        ) if data.get("createdAt") else datetime.now()
+                                        # Map status string to enum-like object
+                                        status_value = data.get("status", "pending").lower()
+                                        self.status = type('Status', (), {'value': status_value})()
+                                
+                                valid_transactions.append(SimpleTransaction(txn_data))
+                            except Exception as parse_error:
+                                logger.debug(f"Skipping invalid transaction: {parse_error}")
+                                continue
+                    
+                    transactions = valid_transactions
+                    
+                except Exception as fallback_error:
+                    logger.error(f"Failed to get raw transaction data: {fallback_error}")
+                    return PaginatedTransactionHistory(
+                        data=TransactionHistory(transactions=[], total_credits=0, total_debits=0),
+                        pagination=PaginationInfo(total=0, page=page, page_size=page_size, total_pages=0),
+                        summary=TransactionSummary(completed_count=0, pending_count=0, total_spent=0),
+                    )
             total_credited = 0
             total_debited = 0
             txn_details = []
@@ -265,7 +310,63 @@ class AccountingManager:
     ) -> AnalyticsResponse:
         """Get analytics data with daily metrics and summary."""
         try:
-            transactions = self.client.get_transaction_history()
+            try:
+                transactions = self.client.get_transaction_history()
+            except Exception as validation_error:
+                # Handle validation errors from transactions with amount=0 
+                # Try to get raw transaction data and filter manually
+                logger.warning(f"Validation error in transaction history: {validation_error}")
+                try:
+                    # Get raw response and handle zero-amount transactions manually
+                    raw_response = self.client._make_request("GET", "/transactions")
+                    transactions_data = raw_response.get("transactions", [])
+                    
+                    # Filter out invalid transactions and create valid ones
+                    valid_transactions = []
+                    for txn_data in transactions_data:
+                        if txn_data.get("amount", 0) >= 0:  # Accept 0 and positive amounts
+                            # Convert to our internal format
+                            try:
+                                # Create a simplified transaction object
+                                class SimpleTransaction:
+                                    def __init__(self, data):
+                                        self.id = data.get("id", "")
+                                        self.amount = float(data.get("amount", 0))
+                                        self.senderEmail = data.get("senderEmail", "")
+                                        self.recipientEmail = data.get("recipientEmail", "")
+                                        self.appName = data.get("appName")
+                                        self.createdAt = datetime.fromisoformat(
+                                            data.get("createdAt", "").replace("Z", "+00:00")
+                                        ) if data.get("createdAt") else datetime.now()
+                                        # Map status string to enum-like object
+                                        status_value = data.get("status", "pending").lower()
+                                        self.status = type('Status', (), {'value': status_value})()
+                                
+                                valid_transactions.append(SimpleTransaction(txn_data))
+                            except Exception as parse_error:
+                                logger.debug(f"Skipping invalid transaction: {parse_error}")
+                                continue
+                    
+                    transactions = valid_transactions
+                    
+                except Exception as fallback_error:
+                    logger.error(f"Failed to get raw transaction data: {fallback_error}")
+                    return AnalyticsResponse(
+                        daily_metrics=[],
+                        app_metrics=[],
+                        summary=AnalyticsSummary(
+                            total_days=0,
+                            avg_daily_queries=0.0,
+                            avg_daily_earned=0.0,
+                            avg_daily_spent=0.0,
+                            avg_daily_profit=0.0,
+                            total_queries=0,
+                            total_earned=0.0,
+                            total_spent=0.0,
+                            total_profit=0.0,
+                            success_rate=0.0,
+                        ),
+                    )
 
             # Filter transactions by date if provided
             filtered_transactions = []

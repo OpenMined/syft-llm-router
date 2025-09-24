@@ -107,10 +107,24 @@ class OllamaChatService(ChatService):
                 )
 
             else:
-                # If pricing is zero, then we make a request to Ollama without creating a transaction
-                # We don't need to create a transaction because the service is free
-                # Make request to Ollama
-                content = self.__make_chat_request(payload)
+                # If pricing is zero, create a $0.00 transaction for analytics tracking
+                if transaction_token:
+                    with self.accounting_client.delegated_transfer(
+                        user_email,
+                        amount=0.0,  # Free service
+                        token=transaction_token,
+                        app_name=self.app_name,
+                        app_ep_path="/chat",
+                    ) as payment_txn:
+                        # Make request to Ollama
+                        content = self.__make_chat_request(payload)
+                        
+                        # Confirm the free transaction for analytics tracking
+                        if content:
+                            payment_txn.confirm()
+                else:
+                    # No transaction token provided for free service - just make the request
+                    content = self.__make_chat_request(payload)
 
             # Convert Ollama response to our schema
             assistant_message = Message(

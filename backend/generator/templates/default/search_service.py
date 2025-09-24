@@ -94,9 +94,23 @@ class LocalSearchService(SearchService):
                     "Transaction token is required for paid services. Please provide a transaction token."
                 )
             else:
-                # If pricing is zero, then we make a request to RAG without creating a transaction
-                # We don't need to create a transaction because the service is free
-                results = self.__make_search_request(query, limit)
+                # If pricing is zero, create a $0.00 transaction for analytics tracking
+                if transaction_token:
+                    with self.accounting_client.delegated_transfer(
+                        user_email,
+                        amount=0.0,  # Free service
+                        token=transaction_token,
+                        app_name=self.app_name,
+                        app_ep_path="/search",
+                    ) as payment_txn:
+                        results = self.__make_search_request(query, limit)
+                        
+                        # Confirm the free transaction for analytics tracking
+                        if len(results) > 0:
+                            payment_txn.confirm()
+                else:
+                    # No transaction token provided for free service - just make the request
+                    results = self.__make_search_request(query, limit)
 
             documents = [
                 DocumentResult(
