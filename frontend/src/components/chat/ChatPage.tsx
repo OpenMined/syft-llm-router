@@ -65,6 +65,19 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, 
     };
   };
 
+  // Sort options to show online routers first
+  const sortedOptions = [...options].sort((a, b) => {
+    const aStatus = getRouterStatus(a);
+    const bStatus = getRouterStatus(b);
+    
+    // First, sort by health status (online first)
+    if (aStatus.healthStatus === 'online' && bStatus.healthStatus !== 'online') return -1;
+    if (bStatus.healthStatus === 'online' && aStatus.healthStatus !== 'online') return 1;
+    
+    // If both have same health status, sort alphabetically
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -94,10 +107,10 @@ function SingleSelectDropdown({ options, selected, onSelect, placeholder, type, 
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-auto">
-          {options.length === 0 ? (
+          {sortedOptions.length === 0 ? (
             <div className="px-4 py-3 text-gray-500 text-center">No options available</div>
           ) : (
-            options.map((router) => {
+            sortedOptions.map((router) => {
               const { isEnabled, pricing, healthStatus } = getRouterStatus(router);
               return (
                 <button
@@ -195,6 +208,19 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
     };
   };
 
+  // Sort options to show online routers first
+  const sortedOptions = [...options].sort((a, b) => {
+    const aStatus = getRouterStatus(a);
+    const bStatus = getRouterStatus(b);
+    
+    // First, sort by health status (online first)
+    if (aStatus.healthStatus === 'online' && bStatus.healthStatus !== 'online') return -1;
+    if (bStatus.healthStatus === 'online' && aStatus.healthStatus !== 'online') return 1;
+    
+    // If both have same health status, sort alphabetically
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -229,7 +255,7 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-auto">
-          {options.length === 0 ? (
+          {sortedOptions.length === 0 ? (
             <div className="px-4 py-3 text-gray-500 text-center">No options available</div>
           ) : (
             <>
@@ -246,7 +272,7 @@ function MultiSelectDropdown({ options, selected, onToggle, placeholder, type, g
                   </button>
                 </div>
               )}
-              {options.map((router) => {
+              {sortedOptions.map((router) => {
                 const { isEnabled, pricing, healthStatus } = getRouterStatus(router);
                 const isSelected = selected.includes(router.name);
                 return (
@@ -328,8 +354,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
   const [selectedDataSources, setSelectedDataSources] = useState<string[]>([]);
   const [selectedChatSource, setSelectedChatSource] = useState<string>('');
 
-  // Add a ref to keep track of the latest searchResults for tooltips
-  const [lastSearchResults, setLastSearchResults] = useState<SearchResult[]>([]);
+  // Note: Removed lastSearchResults state - sources are now stored per message
 
   // Add state for user email
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -488,8 +513,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
           }
         }
 
-        // Update lastSearchResults state for tooltips
-        setLastSearchResults(searchResults);
+        // Sources will be stored with the assistant message below
       }
 
       // Add user message to chat history
@@ -585,7 +609,8 @@ export function ChatPage({ onBack }: ChatPageProps) {
         
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: messageContent
+          content: messageContent,
+          sources: searchResults.length > 0 ? searchResults : undefined
         };
         setChatHistory(prev => [...prev, assistantMessage]);
       } else {
@@ -713,17 +738,17 @@ export function ChatPage({ onBack }: ChatPageProps) {
                             />
                           )}
                           {/* References section for assistant messages */}
-                          {isAssistant && lastSearchResults.length > 0 && (
+                          {isAssistant && msg.sources && msg.sources.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
                               <span className="font-semibold">Sources: </span>
-                              {Array.from(new Set(lastSearchResults.map(r => r.metadata?.filename))).map((filename, i) => {
-                                const source = lastSearchResults.find(r => r.metadata?.filename === filename);
+                              {Array.from(new Set(msg.sources.map(r => r.metadata?.filename))).map((filename, i) => {
+                                const source = msg.sources!.find(r => r.metadata?.filename === filename);
                                 return (
                                   <span key={filename} className="mr-2">
                                     <span className="underline cursor-pointer hover:text-gray-800" title={source ? source.content : 'No content found'}>
                                       {filename}
                                     </span>
-                                    {i < Array.from(new Set(lastSearchResults.map(r => r.metadata?.filename))).length - 1 && ','}
+                                    {i < Array.from(new Set(msg.sources!.map(r => r.metadata?.filename))).length - 1 && ','}
                                   </span>
                                 );
                               })}

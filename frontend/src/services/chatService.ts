@@ -44,6 +44,7 @@ interface SearchResponse {
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  sources?: SearchResult[]; // Sources used for this specific message
 }
 
 interface ChatRequest {
