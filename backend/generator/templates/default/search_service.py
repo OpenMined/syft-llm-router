@@ -52,7 +52,11 @@ class LocalSearchService(SearchService):
         """Make a search request to the RAG service."""
         response = self.rag_client.post(
             "/api/search",
-            json={"query": query, "limit": limit},
+            json={
+                "query": query, 
+                "limit": limit,
+                "router_id": self.config.project_name
+            },
         )
         response.raise_for_status()
 
