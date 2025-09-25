@@ -166,7 +166,21 @@ class AccountingManager:
                 logger.warning(f"Validation error in transaction history: {validation_error}")
                 try:
                     # Get raw response and handle zero-amount transactions manually
-                    raw_response = self.client._make_request("GET", "/transactions")
+                    # Use the client's underlying session to make the request
+                    import requests
+                    credentials = self.repository.get_active_credentials(
+                        accounting_service_url=self.accounting_config.url,
+                    )
+                    if not credentials:
+                        raise Exception("No active credentials found")
+                    
+                    session = requests.Session()
+                    session.auth = (credentials.email, credentials.password)
+                    response = session.get(f"{self.accounting_config.url}/transactions")
+                    if response.status_code == 200:
+                        raw_response = response.json()
+                    else:
+                        raw_response = {}
                     transactions_data = raw_response.get("transactions", [])
                     
                     # Filter out invalid transactions and create valid ones
@@ -183,6 +197,7 @@ class AccountingManager:
                                         self.senderEmail = data.get("senderEmail", "")
                                         self.recipientEmail = data.get("recipientEmail", "")
                                         self.appName = data.get("appName")
+                                        self.appEpPath = data.get("appEpPath")
                                         self.createdAt = datetime.fromisoformat(
                                             data.get("createdAt", "").replace("Z", "+00:00")
                                         ) if data.get("createdAt") else datetime.now()
@@ -318,7 +333,21 @@ class AccountingManager:
                 logger.warning(f"Validation error in transaction history: {validation_error}")
                 try:
                     # Get raw response and handle zero-amount transactions manually
-                    raw_response = self.client._make_request("GET", "/transactions")
+                    # Use the client's underlying session to make the request
+                    import requests
+                    credentials = self.repository.get_active_credentials(
+                        accounting_service_url=self.accounting_config.url,
+                    )
+                    if not credentials:
+                        raise Exception("No active credentials found")
+                    
+                    session = requests.Session()
+                    session.auth = (credentials.email, credentials.password)
+                    response = session.get(f"{self.accounting_config.url}/transactions")
+                    if response.status_code == 200:
+                        raw_response = response.json()
+                    else:
+                        raw_response = {}
                     transactions_data = raw_response.get("transactions", [])
                     
                     # Filter out invalid transactions and create valid ones
@@ -335,6 +364,7 @@ class AccountingManager:
                                         self.senderEmail = data.get("senderEmail", "")
                                         self.recipientEmail = data.get("recipientEmail", "")
                                         self.appName = data.get("appName")
+                                        self.appEpPath = data.get("appEpPath")
                                         self.createdAt = datetime.fromisoformat(
                                             data.get("createdAt", "").replace("Z", "+00:00")
                                         ) if data.get("createdAt") else datetime.now()
