@@ -1,0 +1,18 @@
+[project]
+name = "pingpong"
+version = "0.1.0"
+description = "Ping pong app"
+requires-python = ">=3.9"
+
+# Dependencies needed to run the server
+dependencies = [
+    "loguru>=0.6.0",
+    "syft-event>=0.2.2",
+    "pydantic>=2.0.0",
+    "requests>=2.32.3",
+    "tqdm>=4.67.1",
+    "PyYAML>=6.0.2",
+]
+
+[tool.uv.sources]
+syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
